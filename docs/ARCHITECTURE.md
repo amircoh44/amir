@@ -22,11 +22,13 @@ app/
   models/      SQLAlchemy models (users, products+tiers, cart, orders, quotes, referrals)
   schemas/     Pydantic request/response models
   services/    business logic: pricing, orders, auth, stripe, email, analytics, uploads
-  api/routes/  JSON API: auth, catalog, cart, checkout, orders, account,
-               quotes, admin (+ media uploads), public_api (X-API-Key), webhooks
-  web/         server-rendered page routes (storefront + session-gated /admin)
+  api/routes/  JSON API: auth, catalog, customers (public map), cart, checkout,
+               orders, account, quotes, admin (+ media uploads),
+               public_api (X-API-Key), webhooks
+  web/         server-rendered page routes (storefront, cart/checkout,
+               customer globe + session-gated /admin)
   templates/   Jinja2 (dark/neon-green design system); templates/admin/ = backend UI
-  static/      css (style + admin) + three.js hero/viewer + app/admin glue
+  static/      css (style + admin) + three.js hero/viewer/globe + app/admin/cart glue
 alembic/       migration env
 scripts/       init_db, seed, backup_db.sh
 deploy/        nginx.conf, systemd unit

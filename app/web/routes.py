@@ -84,6 +84,43 @@ async def dashboard_page(
     return templates.TemplateResponse("dashboard.html", _ctx(request, user))
 
 
+@router.get("/cart", response_class=HTMLResponse)
+async def cart_page(request: Request, user: User | None = Depends(get_current_user_optional)):
+    if user is None:
+        return RedirectResponse("/login", status_code=302)
+    return templates.TemplateResponse("cart.html", _ctx(request, user))
+
+
+@router.get("/checkout/success", response_class=HTMLResponse)
+async def checkout_success(
+    request: Request,
+    order: str | None = None,
+    user: User | None = Depends(get_current_user_optional),
+):
+    return templates.TemplateResponse(
+        "checkout_success.html", _ctx(request, user, order_number=order)
+    )
+
+
+@router.get("/checkout/cancel", response_class=HTMLResponse)
+async def checkout_cancel(
+    request: Request,
+    order: str | None = None,
+    user: User | None = Depends(get_current_user_optional),
+):
+    return templates.TemplateResponse(
+        "checkout_cancel.html", _ctx(request, user, order_number=order)
+    )
+
+
+@router.get("/customers", response_class=HTMLResponse)
+async def customers_globe(
+    request: Request, user: User | None = Depends(get_current_user_optional)
+):
+    """Public 'our customers' showcase rendered on a Three.js globe."""
+    return templates.TemplateResponse("customers.html", _ctx(request, user))
+
+
 # --- Admin pages -------------------------------------------------------------
 # These are thin shells; the page JS calls the admin JSON API (which enforces
 # require_admin via the session cookie). We still gate the page render so

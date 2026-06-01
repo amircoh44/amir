@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Cart — {{ settings.app_name }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <p class="eyebrow">Your order</p>
+    <h2 class="glow">Cart</h2>
+
+    {% if not user.can_purchase %}
+      <div class="notice warn">Your business account is <strong>{{ user.verification_status.value }}</strong>.
+        You can build a cart, but checkout unlocks once an admin approves your account.</div>
+    {% endif %}
+
+    <div id="cart-empty" class="muted" style="display:none">
+      Your cart is empty. <a href="/catalog">Browse the catalog →</a>
+    </div>
+
+    <table class="cart-table" id="cart-table" style="display:none">
+      <thead>
+        <tr><th>Product</th><th>Unit price</th><th>Quantity</th><th>Line total</th><th></th></tr>
+      </thead>
+      <tbody id="cart-rows"></tbody>
+    </table>
+
+    <div id="cart-summary" class="cart-summary" style="display:none">
+      <div class="summary-line"><span>Savings vs list price</span><span id="cart-savings" class="glow">—</span></div>
+      <div class="summary-line total"><span>Subtotal</span><span id="cart-subtotal">—</span></div>
+      <p class="muted" id="checkout-note"></p>
+      <button class="btn btn-primary full" id="checkout-btn"
+        {% if not user.can_purchase %}disabled title="Account pending verification"{% endif %}>
+        Proceed to checkout
+      </button>
+    </div>
+
+    <p class="muted" id="cart-status" style="margin-top:14px"></p>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/cart.js"></script>
+{% endblock %}

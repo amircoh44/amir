@@ -54,6 +54,55 @@ PRODUCTS = [
     },
 ]
 
+# Demo partners shown on the public "our customers" globe.
+SHOWCASE_CUSTOMERS = [
+    {
+        "email": "partner-denver@example.com",
+        "business_name": "Mile High Wholesale Co.",
+        "contact_name": "Jordan Pike",
+        "state": "CO", "city": "Denver",
+        "website": "milehighwholesale.example",
+        "public_info": "Colorado's bulk flower and concentrate distributor since 2016.",
+        "latitude": 39.7392, "longitude": -104.9903,
+    },
+    {
+        "email": "partner-portland@example.com",
+        "business_name": "Cascadia Botanicals",
+        "contact_name": "Sam Rivers",
+        "state": "OR", "city": "Portland",
+        "website": "cascadiabotanicals.example",
+        "public_info": "Pacific Northwest CBD wellness brand and retail chain.",
+        "latitude": 45.5152, "longitude": -122.6784,
+    },
+    {
+        "email": "partner-detroit@example.com",
+        "business_name": "Great Lakes Green",
+        "contact_name": "Riley Okafor",
+        "state": "MI", "city": "Detroit",
+        "website": "greatlakesgreen.example",
+        "public_info": "Midwest wholesale supplier and white-label manufacturer.",
+        "latitude": 42.3314, "longitude": -83.0458,
+    },
+    {
+        "email": "partner-boston@example.com",
+        "business_name": "Harbor & Hemp",
+        "contact_name": "Casey Lin",
+        "state": "MA", "city": "Boston",
+        "website": "harborandhemp.example",
+        "public_info": "New England dispensary network and tincture producer.",
+        "latitude": 42.3601, "longitude": -71.0589,
+    },
+    {
+        "email": "partner-austin@example.com",
+        "business_name": "Lone Star Leaf",
+        "contact_name": "Dana Cruz",
+        "state": "TX", "city": "Austin",
+        "website": "lonestarleaf.example",
+        "public_info": "Texas hemp-derived products distributor.",
+        "latitude": 30.2672, "longitude": -97.7431,
+    },
+]
+
 
 async def _exists(db, model, **filters) -> bool:
     stmt = select(model)
@@ -78,7 +127,7 @@ async def main() -> None:
             await db.flush()
             db.add(Cart(user_id=admin.id))
 
-        # Verified buyer
+        # Verified buyer (also opted in to the public customer globe)
         if not await _exists(db, User, email="buyer@example.com"):
             buyer = User(
                 email="buyer@example.com",
@@ -88,11 +137,33 @@ async def main() -> None:
                 business_name="Acme Dispensary LLC",
                 contact_name="Pat Buyer",
                 state="CA",
+                city="Los Angeles",
+                website="acme-dispensary.example",
+                public_info="Multi-location dispensary group serving Southern California.",
+                latitude=34.0522,
+                longitude=-118.2437,
+                show_on_map=True,
                 referral_code=new_referral_code(),
             )
             db.add(buyer)
             await db.flush()
             db.add(Cart(user_id=buyer.id))
+
+        # Additional showcase customers for the globe.
+        for c in SHOWCASE_CUSTOMERS:
+            if await _exists(db, User, email=c["email"]):
+                continue
+            user = User(
+                hashed_password=hash_password("partner-change-me-1234"),
+                role=UserRole.customer,
+                verification_status=VerificationStatus.approved,
+                show_on_map=True,
+                referral_code=new_referral_code(),
+                **c,
+            )
+            db.add(user)
+            await db.flush()
+            db.add(Cart(user_id=user.id))
 
         # Products
         for spec in PRODUCTS:

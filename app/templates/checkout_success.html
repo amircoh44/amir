@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Order confirmed — {{ settings.app_name }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="auth-wrap">
+    <div class="panel" style="text-align:center">
+      <p class="eyebrow">Thank you</p>
+      <h2 class="glow">Order received</h2>
+      {% if order_number %}
+        <p>Your order <strong>{{ order_number }}</strong> has been placed.</p>
+      {% else %}
+        <p>Your order has been placed.</p>
+      {% endif %}
+      <p class="muted">A confirmation email is on its way. Payment is confirmed
+        securely via our processor — your order status will update automatically.</p>
+      <div style="display:flex;gap:12px;justify-content:center;margin-top:20px">
+        <a class="btn btn-primary" href="/dashboard">View order history</a>
+        <a class="btn btn-ghost" href="/catalog">Keep shopping</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

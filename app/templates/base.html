@@ -13,7 +13,9 @@
     <a class="brand" href="/">Green<span class="dot">Bulk</span></a>
     <div class="nav-links">
       <a href="/catalog">Catalog</a>
+      <a href="/customers">Customers</a>
       {% if user %}
+        <a href="/cart">Cart</a>
         <a href="/dashboard">Dashboard</a>
         {% if user.role.value == 'admin' %}<a href="/admin">Admin</a>{% endif %}
         <a href="#" onclick="GreenBulk.api.post('/auth/logout').then(()=>location.href='/')">Sign out</a>

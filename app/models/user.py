@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -47,6 +47,14 @@ class User(Base, TimestampMixin):
     tax_id: Mapped[str | None] = mapped_column(String(64), default=None)  # EIN / reseller cert
     license_number: Mapped[str | None] = mapped_column(String(128), default=None)
     state: Mapped[str | None] = mapped_column(String(2), default=None)  # ISO-2 for restrictions
+
+    # --- Public "our customers" showcase (opt-in, rendered on the globe) ---
+    website: Mapped[str | None] = mapped_column(String(255), default=None)
+    public_info: Mapped[str | None] = mapped_column(Text, default=None)
+    city: Mapped[str | None] = mapped_column(String(120), default=None)
+    latitude: Mapped[float | None] = mapped_column(Float, default=None)
+    longitude: Mapped[float | None] = mapped_column(Float, default=None)
+    show_on_map: Mapped[bool] = mapped_column(Boolean, default=False)
 
     verification_status: Mapped[VerificationStatus] = mapped_column(
         Enum(VerificationStatus, name="verification_status"),

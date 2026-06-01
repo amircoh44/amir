@@ -19,7 +19,12 @@ limiting · Nginx + Gunicorn/Uvicorn + Let's Encrypt. See
 
 **Customer:** Google OAuth + email/password · account dashboard · order history
 + one-click reorder · catalog with THC%/CBD/type filtering · wholesale tier
-pricing · quote requests · Stripe checkout · 3D product viewer.
+pricing · **cart with live tier-savings + Stripe checkout** (success/cancel
+pages) · quote requests · 3D product viewer.
+
+**Showcase:** a public **Three.js customer globe** at `/customers` — verified
+partners who opt in (`show_on_map`) appear as glowing markers; click one for
+their business info and website. Backed by `GET /api/customers/map`.
 
 **Admin** (server-rendered pages at `/admin`; JSON API at `/api/admin/*`, OpenAPI
 UI at `/api/docs`): dashboard analytics (revenue, top products, top customers) ·

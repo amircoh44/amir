@@ -18,6 +18,7 @@ from app.api.routes import (
     cart,
     catalog,
     checkout,
+    customers,
     orders,
     public_api,
     quotes,
@@ -79,6 +80,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 # --- Routers -----------------------------------------------------------------
 app.include_router(auth.router)
 app.include_router(catalog.router)
+app.include_router(customers.router)
 app.include_router(cart.router)
 app.include_router(checkout.router)
 app.include_router(orders.router)

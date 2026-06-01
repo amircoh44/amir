@@ -22,6 +22,13 @@ class ProfileUpdate(BaseModel):
     state: str | None = Field(default=None, min_length=2, max_length=2)
     tax_id: str | None = Field(default=None, max_length=64)
     license_number: str | None = Field(default=None, max_length=128)
+    # Public "our customers" showcase (opt-in).
+    website: str | None = Field(default=None, max_length=255)
+    public_info: str | None = Field(default=None, max_length=2000)
+    city: str | None = Field(default=None, max_length=120)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    show_on_map: bool | None = None
 
 
 @router.get("/profile")
@@ -34,6 +41,12 @@ async def get_profile(user: User = Depends(get_current_user)) -> dict:
         "state": user.state,
         "tax_id": user.tax_id,
         "license_number": user.license_number,
+        "website": user.website,
+        "public_info": user.public_info,
+        "city": user.city,
+        "latitude": user.latitude,
+        "longitude": user.longitude,
+        "show_on_map": user.show_on_map,
         "verification_status": user.verification_status.value,
         "referral_code": user.referral_code,
     }

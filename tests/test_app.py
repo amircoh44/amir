@@ -54,3 +54,21 @@ def test_admin_pages_redirect_anonymous_to_login():
 def test_admin_api_requires_auth():
     # The admin JSON API the pages call is itself gated.
     assert client.get("/api/admin/products").status_code == 401
+
+
+def test_cart_page_requires_login():
+    resp = client.get("/cart", follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.headers["location"] == "/login"
+
+
+def test_customers_globe_page_is_public():
+    # The "our customers" showcase renders for anonymous visitors.
+    resp = client.get("/customers")
+    assert resp.status_code == 200
+    assert "globe-canvas" in resp.text
+
+
+def test_checkout_result_pages_render():
+    assert client.get("/checkout/success?order=ORD-1").status_code == 200
+    assert client.get("/checkout/cancel?order=ORD-1").status_code == 200
