@@ -214,6 +214,7 @@
               ${VERIFY_STATUSES.map(s => `<option value="${s}" ${s === c.verification_status ? "selected" : ""}>${s}</option>`).join("")}
             </select>
             <button class="btn btn-primary btn-sm" data-save="${c.id}">Save</button>
+            <button class="btn btn-ghost btn-sm" data-edit-showcase='${JSON.stringify(c).replace(/'/g, "&#39;")}'>Showcase…</button>
           </td>
         </tr>`; }).join("") : `<tr><td colspan="6" class="muted">No customers yet.</td></tr>`;
 
@@ -234,8 +235,54 @@
           loadCustomers();
         } catch (e) { toast(e.message, true); box.checked = !box.checked; }
       }));
+
+      // Full showcase editor (website, description, address...).
+      tbody.querySelectorAll("[data-edit-showcase]").forEach(btn =>
+        btn.addEventListener("click", () => openShowcaseEditor(JSON.parse(btn.dataset.editShowcase))));
     } catch (e) { toast(e.message, true); }
   }
+
+  function openShowcaseEditor(c) {
+    const modal = document.getElementById("showcase-modal");
+    const form = document.getElementById("showcase-edit-form");
+    if (!modal || !form) return;
+    document.getElementById("sc-subtitle").textContent = c.email;
+    form.elements.id.value = c.id;
+    form.elements.show_on_map.checked = !!c.show_on_map;
+    for (const f of ["business_name", "website", "street_address", "city", "state", "public_info"]) {
+      form.elements[f].value = c[f] ?? "";
+    }
+    document.getElementById("sc-coords").textContent = (c.latitude != null)
+      ? `Current map location: ${c.latitude.toFixed(3)}, ${c.longitude.toFixed(3)}`
+      : "Not yet placed on the globe — saving with a city/state will geocode it.";
+    modal.showModal();
+  }
+
+  (function bindShowcaseModal() {
+    const modal = document.getElementById("showcase-modal");
+    const form = document.getElementById("showcase-edit-form");
+    if (!modal || !form) return;
+    document.getElementById("sc-cancel").addEventListener("click", () => modal.close());
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const payload = {
+        show_on_map: form.elements.show_on_map.checked,
+        business_name: fd.get("business_name") || null,
+        website: fd.get("website") || null,
+        street_address: fd.get("street_address") || null,
+        city: fd.get("city") || null,
+        state: fd.get("state") || null,
+        public_info: fd.get("public_info") || null,
+      };
+      try {
+        const res = await api.req("PUT", `/api/admin/customers/${fd.get("id")}/showcase`, payload);
+        modal.close();
+        toast(res.latitude != null ? "Showcase saved & geocoded ✓" : "Saved ✓ (add city/state to place on globe)");
+        loadCustomers();
+      } catch (ex) { toast(ex.message, true); }
+    });
+  })();
 
   // --- Quotes ----------------------------------------------------------------
   async function loadQuotes() {

@@ -64,10 +64,16 @@ Demo admin after seeding: `admin@greenbulk.example` / `admin-change-me-1234`
 
 ## Migrations
 
+A **baseline migration** ships in `alembic/versions/`, so a fresh or existing
+database upgrades cleanly with Alembic (no need for `init_db` outside quick dev):
+
 ```bash
-make revision m="describe change"   # alembic autogenerate
-make migrate                        # alembic upgrade head
+make migrate                        # alembic upgrade head (applies baseline + later)
+make revision m="describe change"   # autogenerate the next migration after model edits
 ```
+
+The baseline's `downgrade()` also drops the PostgreSQL native enum types, so
+`downgrade → upgrade` round-trips without "type already exists" errors.
 
 ## Configuration
 

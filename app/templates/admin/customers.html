@@ -10,4 +10,28 @@
   </thead>
   <tbody id="customers-rows"><tr><td colspan="6" class="muted">Loading…</td></tr></tbody>
 </table>
+
+<dialog class="modal" id="showcase-modal">
+  <h3 class="glow">Edit globe showcase</h3>
+  <p class="muted" id="sc-subtitle"></p>
+  <form id="showcase-edit-form" method="dialog">
+    <input type="hidden" name="id">
+    <div class="field">
+      <label><input type="checkbox" name="show_on_map" style="width:auto;min-width:auto"> Show on public customer globe</label>
+    </div>
+    <div class="field"><label>Business name</label><input name="business_name"></div>
+    <div class="field"><label>Website</label><input name="website" placeholder="example.com"></div>
+    <div class="field"><label>Street address</label><input name="street_address"></div>
+    <div class="form-grid">
+      <div class="field"><label>City</label><input name="city"></div>
+      <div class="field"><label>State</label><input name="state" maxlength="2"></div>
+    </div>
+    <div class="field"><label>Public description</label><textarea name="public_info" rows="3" maxlength="2000"></textarea></div>
+    <p class="coords-note" id="sc-coords"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="sc-cancel">Cancel</button>
+      <button type="submit" class="btn btn-primary">Save &amp; geocode</button>
+    </div>
+  </form>
+</dialog>
 {% endblock %}
