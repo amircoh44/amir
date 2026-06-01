@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Checkout cancelled — {{ settings.app_name }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="auth-wrap">
+    <div class="panel" style="text-align:center">
+      <p class="eyebrow">No charge made</p>
+      <h2 class="glow">Checkout cancelled</h2>
+      {% if order_number %}
+        <p class="muted">Order <strong>{{ order_number }}</strong> is still pending and
+          was not paid. Your cart items are saved.</p>
+      {% else %}
+        <p class="muted">Your cart is saved — pick up where you left off whenever you're ready.</p>
+      {% endif %}
+      <div style="display:flex;gap:12px;justify-content:center;margin-top:20px">
+        <a class="btn btn-primary" href="/cart">Back to cart</a>
+        <a class="btn btn-ghost" href="/catalog">Browse catalog</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

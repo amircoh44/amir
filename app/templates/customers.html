@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Our customers — {{ settings.app_name }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <p class="eyebrow">Trusted by businesses nationwide</p>
+    <h2 class="glow">Our customers</h2>
+    <p class="muted">Verified wholesale partners on our network. Click a glowing
+      marker to see who they are.</p>
+
+    <div class="globe-wrap" style="margin-top:24px">
+      <canvas id="globe-canvas"></canvas>
+      <div class="globe-info" id="globe-info">
+        <span class="close" id="globe-close">✕</span>
+        <h3 class="glow" id="gi-name"></h3>
+        <div class="meta" id="gi-loc"></div>
+        <p id="gi-info" class="muted"></p>
+        <a class="btn btn-ghost btn-sm" id="gi-website" target="_blank" rel="noopener noreferrer">Visit website ↗</a>
+      </div>
+      <div class="globe-hint">drag to rotate · scroll to zoom</div>
+    </div>
+
+    <p class="muted" id="globe-empty" style="display:none;margin-top:16px">
+      No customers are on the map yet. Approved partners can opt in from their account settings.
+    </p>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { initGlobe } from "/static/js/globe.js";
+  initGlobe(document.getElementById("globe-canvas"));
+</script>
+{% endblock %}

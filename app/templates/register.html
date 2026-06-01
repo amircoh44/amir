@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Apply for an account — {{ settings.app_name }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="auth-wrap">
+    <div class="panel">
+      <p class="eyebrow">Wholesale application</p>
+      <h2 class="glow">Apply for a B2B account</h2>
+      <div class="notice warn">New accounts are reviewed for business verification (21+, valid
+        license/reseller cert) before purchasing is enabled.</div>
+
+      {% if settings.google_oauth_enabled %}
+        <a class="btn btn-ghost full" href="/auth/google/login">Continue with Google</a>
+        <p class="muted" style="text-align:center;margin:14px 0">— or register with email —</p>
+      {% endif %}
+
+      <form id="register-form">
+        <div class="field"><label>Business name</label><input name="business_name" required></div>
+        <div class="field"><label>Contact name</label><input name="contact_name" required></div>
+        <div class="field"><label>Email</label><input type="email" name="email" required></div>
+        <div class="field"><label>Phone</label><input name="phone"></div>
+        <div class="field"><label>State (2-letter)</label><input name="state" maxlength="2"></div>
+        <div class="field"><label>Password (min 10 chars)</label><input type="password" name="password" minlength="10" required></div>
+        <input type="hidden" name="referral_code" value="{{ ref or '' }}">
+        <p class="form-error" style="color:var(--danger)"></p>
+        <button class="btn btn-primary full" type="submit">Submit application</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

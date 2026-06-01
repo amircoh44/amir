@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name if product else "Not found" }} — {{ settings.app_name }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+  {% if not product %}
+    <h2>Product not found</h2>
+    <p class="muted"><a href="/catalog">Back to catalog</a></p>
+  {% else %}
+    <div class="product-layout">
+      <div>
+        <canvas id="product-viewer"></canvas>
+      </div>
+      <div>
+        <p class="eyebrow">{{ product.product_type.value }}</p>
+        <h2 class="glow">{{ product.name }}</h2>
+        <div class="badges">
+          <span class="badge">THC {{ product.thc_percent }}%</span>
+          <span class="badge">CBD {{ product.cbd_percent }}%</span>
+          <span class="badge">Ratio {{ product.cbd_thc_ratio }}</span>
+          {% if product.strain %}<span class="badge">{{ product.strain }}</span>{% endif %}
+        </div>
+        <p class="muted">{{ product.description or "" }}</p>
+
+        <p class="price">${{ "%.2f"|format(product.base_price_cents / 100) }}
+          <small>/ {{ product.unit_label }} · min order {{ product.min_order_qty }}</small></p>
+
+        {% if product.price_tiers %}
+        <table class="tier-table">
+          <thead><tr><th>Quantity ({{ product.unit_label }})</th><th>Per-unit price</th></tr></thead>
+          <tbody>
+          {% for tier in product.price_tiers %}
+            <tr><td>{{ tier.min_qty }}+</td><td>${{ "%.2f"|format(tier.unit_price_cents / 100) }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+
+        {% if user and user.can_purchase %}
+          <div class="filters" style="margin-top:22px">
+            <div class="field">
+              <label>Quantity ({{ product.unit_label }})</label>
+              <input type="number" id="qty" value="{{ product.min_order_qty }}" min="{{ product.min_order_qty }}">
+            </div>
+            <button class="btn btn-primary" id="add-to-cart" data-product-id="{{ product.id }}">Add to cart</button>
+          </div>
+          <p class="muted" id="cart-status"></p>
+        {% elif user %}
+          <div class="notice warn">Your business account is pending verification — you can browse but not yet purchase.</div>
+        {% else %}
+          <div class="notice">Sign in with a verified business account to order. <a href="/register">Apply</a>.</div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if product %}
+<script type="module">
+  import { initProductViewer } from "/static/js/product-viewer.js";
+  initProductViewer(document.getElementById("product-viewer"), {
+    modelUrl: {{ (product.model_url or "") | tojson }},
+    imageUrl: {{ (product.image_url or "") | tojson }}
+  });
+</script>
+{% endif %}
+{% endblock %}

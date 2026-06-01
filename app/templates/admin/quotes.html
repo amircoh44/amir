@@ -1,0 +1,13 @@
+{% extends "admin/base.html" %}
+{% block nav %}quotes{% endblock %}
+{% block content %}
+<div class="admin-head"><h1 class="glow">Quote requests</h1></div>
+<p class="muted">Respond with a per-unit price; the customer is emailed automatically.</p>
+
+<table class="table">
+  <thead>
+    <tr><th>Ref</th><th>Request</th><th>Status</th><th>Respond</th></tr>
+  </thead>
+  <tbody id="quotes-rows"><tr><td colspan="4" class="muted">Loading…</td></tr></tbody>
+</table>
+{% endblock %}
