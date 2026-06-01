@@ -1,0 +1,33 @@
+# Local development stack: app + PostgreSQL + Redis.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: greenbulk
+      POSTGRES_PASSWORD: greenbulk
+      POSTGRES_DB: greenbulk
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U greenbulk"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  app:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://greenbulk:greenbulk@db:5432/greenbulk
+      REDIS_URL: redis://redis:6379/0
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    # On first run: docker compose exec app python -m scripts.init_db && python -m scripts.seed
+
+volumes:
+  pgdata:

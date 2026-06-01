@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Sign in — {{ settings.app_name }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="auth-wrap">
+    <div class="panel">
+      <p class="eyebrow">Welcome back</p>
+      <h2 class="glow">Sign in</h2>
+
+      {% if settings.google_oauth_enabled %}
+        <a class="btn btn-ghost full" href="/auth/google/login">Continue with Google</a>
+        <p class="muted" style="text-align:center;margin:14px 0">— or —</p>
+      {% endif %}
+
+      <form id="login-form">
+        <div class="field"><label>Email</label><input type="email" name="email" required></div>
+        <div class="field"><label>Password</label><input type="password" name="password" required></div>
+        <p class="form-error" style="color:var(--danger)"></p>
+        <button class="btn btn-primary full" type="submit">Sign in</button>
+      </form>
+      <p class="muted" style="margin-top:16px">No account? <a href="/register">Apply for wholesale access</a></p>
+    </div>
+  </div>
+</section>
+{% endblock %}

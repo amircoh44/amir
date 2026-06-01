@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ settings.app_name }}{% endblock %}</title>
+  <meta name="description" content="Bulk THC/CBD wholesale supplier for verified businesses.">
+  <link rel="stylesheet" href="/static/css/style.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/">Green<span class="dot">Bulk</span></a>
+    <div class="nav-links">
+      <a href="/catalog">Catalog</a>
+      {% if user %}
+        <a href="/dashboard">Dashboard</a>
+        {% if user.role.value == 'admin' %}<a href="/api/docs">Admin API</a>{% endif %}
+        <a href="#" onclick="GreenBulk.api.post('/auth/logout').then(()=>location.href='/')">Sign out</a>
+      {% else %}
+        <a href="/login">Sign in</a>
+        <a class="btn btn-primary" href="/register">Apply for account</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <main>{% block content %}{% endblock %}</main>
+
+  <footer class="footer">
+    <div class="container">
+      <p><strong class="glow">GreenBulk</strong> — wholesale THC/CBD for verified businesses only.</p>
+      <p class="muted">Must be 21+. B2B sales only. Subject to state restrictions and business verification.</p>
+    </div>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

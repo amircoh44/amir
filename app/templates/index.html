@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ settings.app_name }} — Bulk THC/CBD Wholesale{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <canvas id="hero-canvas"></canvas>
+  <div class="hero-copy">
+    <p class="eyebrow">Verified B2B wholesale</p>
+    <h1 class="glow">One package. <br>A thousand pounds.</h1>
+    <p>Premium THC &amp; CBD product, sourced and shipped in bulk lots for
+       licensed businesses. Volume pricing, fast fulfillment, full traceability.</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="/catalog">Browse catalog</a>
+      <a class="btn btn-ghost" href="/register">Apply for an account</a>
+    </div>
+  </div>
+  <div class="scroll-hint">scroll to see the scale ↓</div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <p class="eyebrow">Why buyers choose us</p>
+    <h2>Built for volume, not walk-ins</h2>
+    <div class="grid" style="margin-top:32px">
+      <div class="card"><div class="body">
+        <h3 class="glow">Tiered bulk pricing</h3>
+        <p class="muted">Per-unit price drops automatically as your order quantity climbs.</p>
+      </div></div>
+      <div class="card"><div class="body">
+        <h3 class="glow">Custom quotes</h3>
+        <p class="muted">Need a lot outside standard tiers? Request a quote and we'll respond fast.</p>
+      </div></div>
+      <div class="card"><div class="body">
+        <h3 class="glow">Reorder in one click</h3>
+        <p class="muted">Full order history with one-click reorder for repeat purchasing.</p>
+      </div></div>
+      <div class="card"><div class="body">
+        <h3 class="glow">Partner API</h3>
+        <p class="muted">Integrate our live catalog into your own systems via the public API.</p>
+      </div></div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { initHero } from "/static/js/hero.js";
+  initHero(document.getElementById("hero-canvas"), {
+    imageUrl: {{ (hero_product.image_url if hero_product and hero_product.image_url else "") | tojson }}
+  });
+</script>
+{% endblock %}

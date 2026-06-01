@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — {{ settings.app_name }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+  {% if not user %}
+    <h2>Please <a href="/login">sign in</a>.</h2>
+  {% else %}
+    <p class="eyebrow">Account</p>
+    <h2 class="glow">{{ user.business_name or user.email }}</h2>
+    {% if not user.can_purchase %}
+      <div class="notice warn">Verification status: <strong>{{ user.verification_status.value }}</strong>.
+        Purchasing unlocks once an admin approves your business.</div>
+    {% endif %}
+
+    <div class="grid" style="margin-top:24px">
+      <div class="card"><div class="body">
+        <h3 class="glow">Order history</h3>
+        <div id="orders" class="muted">Loading…</div>
+      </div></div>
+      <div class="card"><div class="body">
+        <h3 class="glow">Referrals</h3>
+        <div id="referrals" class="muted">Loading…</div>
+      </div></div>
+      <div class="card"><div class="body">
+        <h3 class="glow">Quotes</h3>
+        <div id="quotes" class="muted">Loading…</div>
+      </div></div>
+    </div>
+  {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if user %}
+<script type="module">
+  const { api, money } = window.GreenBulk;
+
+  api.get("/api/orders").then(orders => {
+    const el = document.getElementById("orders");
+    el.innerHTML = orders.length ? orders.map(o => `
+      <div style="border-bottom:1px solid var(--border);padding:8px 0">
+        <strong>${o.order_number}</strong> — ${o.status} · ${money(o.total_cents)}
+        <button class="btn btn-ghost" style="padding:4px 10px;margin-left:8px"
+          onclick="api.post('/api/orders/${o.order_number}/reorder').then(()=>alert('Added to cart'))">Reorder</button>
+      </div>`).join("") : "No orders yet.";
+  }).catch(e => document.getElementById("orders").textContent = e.message);
+
+  api.get("/api/account/referrals").then(r => {
+    document.getElementById("referrals").innerHTML =
+      `Your code: <strong class="glow">${r.referral_code}</strong><br>
+       Earned: ${money(r.earned_commission_cents)}`;
+  }).catch(e => document.getElementById("referrals").textContent = e.message);
+
+  api.get("/api/quotes").then(qs => {
+    document.getElementById("quotes").innerHTML = qs.length
+      ? qs.map(q => `<div>${q.reference} — ${q.status}</div>`).join("")
+      : "No quote requests.";
+  }).catch(e => document.getElementById("quotes").textContent = e.message);
+
+  window.api = api; // for inline reorder handler
+</script>
+{% endif %}
+{% endblock %}

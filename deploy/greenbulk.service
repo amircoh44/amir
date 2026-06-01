@@ -1,0 +1,28 @@
+# systemd unit — runs Gunicorn with Uvicorn workers behind Nginx.
+# Install: cp deploy/greenbulk.service /etc/systemd/system/ && systemctl enable --now greenbulk
+[Unit]
+Description=GreenBulk wholesale platform (Gunicorn/Uvicorn)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=greenbulk
+Group=greenbulk
+WorkingDirectory=/opt/greenbulk
+EnvironmentFile=/opt/greenbulk/.env
+ExecStart=/opt/greenbulk/.venv/bin/gunicorn app.main:app \
+    --workers 4 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 127.0.0.1:8000 \
+    --timeout 60 \
+    --access-logfile - \
+    --error-logfile -
+Restart=always
+RestartSec=5
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
