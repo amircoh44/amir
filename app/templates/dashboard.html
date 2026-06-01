@@ -28,6 +28,31 @@
         <div id="quotes" class="muted">Loading…</div>
       </div></div>
     </div>
+
+    <div class="panel" style="margin-top:28px">
+      <h3 class="glow">Customer globe showcase</h3>
+      <p class="muted">Opt in to appear on our public <a href="/customers">customer globe</a>.
+        Your address is converted to a map location automatically when you save.</p>
+      <form id="showcase-form">
+        <div class="field" style="margin-bottom:14px">
+          <label><input type="checkbox" name="show_on_map" style="width:auto;min-width:auto">
+            Show my business on the public customer globe</label>
+        </div>
+        <div class="filters" style="margin-bottom:0">
+          <div class="field"><label>Website</label><input name="website" placeholder="example.com"></div>
+          <div class="field"><label>Street address</label><input name="street_address" placeholder="123 Main St"></div>
+          <div class="field"><label>City</label><input name="city"></div>
+          <div class="field"><label>State</label><input name="state" maxlength="2" style="width:80px"></div>
+        </div>
+        <div class="field" style="margin:14px 0">
+          <label>Short public description</label>
+          <textarea name="public_info" rows="2" maxlength="2000"
+            placeholder="What your business does (shown on the globe)"></textarea>
+        </div>
+        <button class="btn btn-primary" type="submit">Save showcase settings</button>
+        <span class="muted" id="showcase-status" style="margin-left:12px"></span>
+      </form>
+    </div>
   {% endif %}
   </div>
 </section>
@@ -59,6 +84,36 @@
       ? qs.map(q => `<div>${q.reference} — ${q.status}</div>`).join("")
       : "No quote requests.";
   }).catch(e => document.getElementById("quotes").textContent = e.message);
+
+  // --- Showcase settings ---
+  const form = document.getElementById("showcase-form");
+  const status = document.getElementById("showcase-status");
+  api.get("/api/account/profile").then(p => {
+    form.elements.show_on_map.checked = !!p.show_on_map;
+    for (const f of ["website", "street_address", "city", "state", "public_info"]) {
+      if (form.elements[f]) form.elements[f].value = p[f] ?? "";
+    }
+  }).catch(e => status.textContent = e.message);
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    status.textContent = "Saving…";
+    const fd = new FormData(form);
+    const payload = {
+      show_on_map: form.elements.show_on_map.checked,
+      website: fd.get("website") || null,
+      street_address: fd.get("street_address") || null,
+      city: fd.get("city") || null,
+      state: fd.get("state") || null,
+      public_info: fd.get("public_info") || null,
+    };
+    try {
+      const res = await api.req("PUT", "/api/account/profile", payload);
+      status.textContent = res.latitude != null
+        ? `Saved ✓ — mapped to ${res.latitude.toFixed(3)}, ${res.longitude.toFixed(3)}`
+        : "Saved ✓ — add a city/state so we can place you on the globe.";
+    } catch (ex) { status.textContent = ex.message; }
+  });
 
   window.api = api; // for inline reorder handler
 </script>

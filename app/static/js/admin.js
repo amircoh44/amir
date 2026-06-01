@@ -192,25 +192,47 @@
     if (!tbody) return;
     try {
       const customers = await api.get("/api/admin/customers");
-      tbody.innerHTML = customers.length ? customers.map(c => `
+      tbody.innerHTML = customers.length ? customers.map(c => {
+        const located = c.latitude != null && c.longitude != null;
+        const globeNote = c.show_on_map
+          ? (located ? pill("on globe", "ok") : pill("opted-in, no coords", "warn"))
+          : pill("hidden", "muted");
+        return `
         <tr>
           <td>${esc(c.business_name || "—")}<br><span class="muted" style="font-size:.78rem">${esc(c.email)}</span></td>
-          <td>${esc(c.state || "—")}</td>
+          <td>${esc([c.city, c.state].filter(Boolean).join(", ") || "—")}</td>
           <td>${esc(c.role)}</td>
           <td>${pill(c.verification_status, verifyClass(c.verification_status))}</td>
+          <td>
+            <label style="display:flex;gap:6px;align-items:center;font-size:.82rem">
+              <input type="checkbox" data-globe="${c.id}" ${c.show_on_map ? "checked" : ""} style="width:auto;min-width:auto">
+              ${globeNote}
+            </label>
+          </td>
           <td class="row-actions">
             <select class="inline" data-verify="${c.id}">
               ${VERIFY_STATUSES.map(s => `<option value="${s}" ${s === c.verification_status ? "selected" : ""}>${s}</option>`).join("")}
             </select>
             <button class="btn btn-primary btn-sm" data-save="${c.id}">Save</button>
           </td>
-        </tr>`).join("") : `<tr><td colspan="5" class="muted">No customers yet.</td></tr>`;
+        </tr>`; }).join("") : `<tr><td colspan="6" class="muted">No customers yet.</td></tr>`;
 
       tbody.querySelectorAll("[data-save]").forEach(btn => btn.addEventListener("click", async () => {
         const id = btn.dataset.save;
         const status = tbody.querySelector(`[data-verify="${id}"]`).value;
         try { await api.req("PUT", `/api/admin/customers/${id}/verification`, { status }); toast("Verification updated ✓"); }
         catch (e) { toast(e.message, true); }
+      }));
+
+      // Toggle globe visibility instantly; geocodes from the customer's address.
+      tbody.querySelectorAll("[data-globe]").forEach(box => box.addEventListener("change", async () => {
+        try {
+          const res = await api.req("PUT", `/api/admin/customers/${box.dataset.globe}/showcase`, { show_on_map: box.checked });
+          toast(box.checked
+            ? (res.latitude != null ? "Added to globe ✓" : "Opted in — needs a city/state to place on globe")
+            : "Removed from globe");
+          loadCustomers();
+        } catch (e) { toast(e.message, true); box.checked = !box.checked; }
       }));
     } catch (e) { toast(e.message, true); }
   }

@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.security import generate_api_key, hash_password
 from app.models import ApiKey, Referral, ReferralStatus, User
+from app.services.showcase import apply_profile_update
 
 router = APIRouter(prefix="/api/account", tags=["account"])
 
@@ -22,9 +23,11 @@ class ProfileUpdate(BaseModel):
     state: str | None = Field(default=None, min_length=2, max_length=2)
     tax_id: str | None = Field(default=None, max_length=64)
     license_number: str | None = Field(default=None, max_length=128)
-    # Public "our customers" showcase (opt-in).
+    # Public "our customers" showcase (opt-in). On save, the address is
+    # geocoded to lat/lon for the globe unless coordinates are passed explicitly.
     website: str | None = Field(default=None, max_length=255)
     public_info: str | None = Field(default=None, max_length=2000)
+    street_address: str | None = Field(default=None, max_length=255)
     city: str | None = Field(default=None, max_length=120)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
@@ -43,6 +46,7 @@ async def get_profile(user: User = Depends(get_current_user)) -> dict:
         "license_number": user.license_number,
         "website": user.website,
         "public_info": user.public_info,
+        "street_address": user.street_address,
         "city": user.city,
         "latitude": user.latitude,
         "longitude": user.longitude,
@@ -58,13 +62,14 @@ async def update_profile(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    data = payload.model_dump(exclude_unset=True)
-    if "state" in data and data["state"]:
-        data["state"] = data["state"].upper()
-    for field, value in data.items():
-        setattr(user, field, value)
+    await apply_profile_update(user, payload.model_dump(exclude_unset=True))
     await db.flush()
-    return {"ok": True}
+    return {
+        "ok": True,
+        "latitude": user.latitude,
+        "longitude": user.longitude,
+        "show_on_map": user.show_on_map,
+    }
 
 
 @router.get("/referrals")

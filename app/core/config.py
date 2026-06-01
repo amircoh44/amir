@@ -58,6 +58,12 @@ class Settings(BaseSettings):
     restricted_states: str = "ID,KS,NE"
     minimum_age: int = 21
 
+    # --- Geocoding (address -> lat/lon for the customer globe) ---
+    geocoding_enabled: bool = True
+    geocoder_url: str = "https://nominatim.openstreetmap.org/search"
+    geocoder_user_agent: str = "GreenBulk/0.1 (admin@greenbulk.example)"
+    default_country: str = "USA"
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def is_production(self) -> bool:

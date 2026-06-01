@@ -24,6 +24,7 @@ from app.schemas.product import ProductCreate, ProductOut, ProductUpdate
 from app.schemas.quote import QuoteOut, QuoteRespond
 from app.services import analytics
 from app.services.email import send_quote_response, send_shipping_update
+from app.services.showcase import apply_profile_update
 from app.services.uploads import save_upload
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -130,6 +131,20 @@ class VerificationUpdate(BaseModel):
     notes: str | None = None
 
 
+class ShowcaseUpdate(BaseModel):
+    """Admin curation of who appears on the public customer globe."""
+
+    show_on_map: bool | None = None
+    business_name: str | None = None
+    website: str | None = None
+    public_info: str | None = None
+    street_address: str | None = None
+    city: str | None = None
+    state: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+
+
 @router.get("/customers")
 async def list_customers(db: AsyncSession = Depends(get_db)) -> list[dict]:
     result = await db.execute(select(User).order_by(User.created_at.desc()).limit(500))
@@ -139,9 +154,14 @@ async def list_customers(db: AsyncSession = Depends(get_db)) -> list[dict]:
             "email": u.email,
             "business_name": u.business_name,
             "state": u.state,
+            "city": u.city,
+            "website": u.website,
             "verification_status": u.verification_status.value,
             "role": u.role.value,
             "is_active": u.is_active,
+            "show_on_map": u.show_on_map,
+            "latitude": u.latitude,
+            "longitude": u.longitude,
         }
         for u in result.scalars()
     ]
@@ -157,6 +177,23 @@ async def set_verification(
     user.verification_status = payload.status
     user.verification_notes = payload.notes
     return {"ok": True, "verification_status": user.verification_status.value}
+
+
+@router.put("/customers/{user_id}/showcase")
+async def set_showcase(
+    user_id: int, payload: ShowcaseUpdate, db: AsyncSession = Depends(get_db)
+) -> dict:
+    """Curate a customer's globe presence; geocodes the address on save."""
+    user = await db.get(User, user_id)
+    if user is None:
+        raise HTTPException(404, "Customer not found")
+    await apply_profile_update(user, payload.model_dump(exclude_unset=True))
+    return {
+        "ok": True,
+        "show_on_map": user.show_on_map,
+        "latitude": user.latitude,
+        "longitude": user.longitude,
+    }
 
 
 # --- Quotes ------------------------------------------------------------------

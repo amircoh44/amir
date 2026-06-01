@@ -21,7 +21,8 @@ app/
   core/        config, db engine, security (argon2/JWT), deps, rate limit, utils
   models/      SQLAlchemy models (users, products+tiers, cart, orders, quotes, referrals)
   schemas/     Pydantic request/response models
-  services/    business logic: pricing, orders, auth, stripe, email, analytics, uploads
+  services/    business logic: pricing, orders, auth, stripe, email, analytics,
+               uploads, geocoding, showcase (profile update + auto-geocode)
   api/routes/  JSON API: auth, catalog, customers (public map), cart, checkout,
                orders, account, quotes, admin (+ media uploads),
                public_api (X-API-Key), webhooks

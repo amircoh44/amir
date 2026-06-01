@@ -24,7 +24,10 @@ pages) · quote requests · 3D product viewer.
 
 **Showcase:** a public **Three.js customer globe** at `/customers` — verified
 partners who opt in (`show_on_map`) appear as glowing markers; click one for
-their business info and website. Backed by `GET /api/customers/map`.
+their business info and website. Backed by `GET /api/customers/map`. Customers
+manage their own presence from the dashboard; admins curate it from
+`/admin/customers`. Addresses are **geocoded to lat/lon** automatically on save
+(OpenStreetMap Nominatim by default — see `GEOCODER_*` in `.env.example`).
 
 **Admin** (server-rendered pages at `/admin`; JSON API at `/api/admin/*`, OpenAPI
 UI at `/api/docs`): dashboard analytics (revenue, top products, top customers) ·

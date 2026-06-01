@@ -51,6 +51,7 @@ class User(Base, TimestampMixin):
     # --- Public "our customers" showcase (opt-in, rendered on the globe) ---
     website: Mapped[str | None] = mapped_column(String(255), default=None)
     public_info: Mapped[str | None] = mapped_column(Text, default=None)
+    street_address: Mapped[str | None] = mapped_column(String(255), default=None)
     city: Mapped[str | None] = mapped_column(String(120), default=None)
     latitude: Mapped[float | None] = mapped_column(Float, default=None)
     longitude: Mapped[float | None] = mapped_column(Float, default=None)
