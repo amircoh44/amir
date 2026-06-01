@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,11 +24,38 @@ from app.schemas.product import ProductCreate, ProductOut, ProductUpdate
 from app.schemas.quote import QuoteOut, QuoteRespond
 from app.services import analytics
 from app.services.email import send_quote_response, send_shipping_update
+from app.services.uploads import save_upload
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
 
+# --- Media uploads -----------------------------------------------------------
+@router.post("/uploads", status_code=201)
+async def upload_media(
+    file: UploadFile = File(...),
+    kind: str = Query(default="image", pattern="^(image|model)$"),
+) -> dict:
+    """Store a product image or 3D model; returns the public URL to save on a product."""
+    url = await save_upload(file, kind)
+    return {"url": url, "kind": kind}
+
+
 # --- Inventory ---------------------------------------------------------------
+@router.get("/products", response_model=list[ProductOut])
+async def admin_list_products(db: AsyncSession = Depends(get_db)) -> list[Product]:
+    """All products including inactive ones (admin view)."""
+    result = await db.execute(select(Product).order_by(Product.created_at.desc()))
+    return list(result.scalars().all())
+
+
+@router.get("/products/{product_id}", response_model=ProductOut)
+async def admin_get_product(product_id: int, db: AsyncSession = Depends(get_db)) -> Product:
+    product = await db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(404, "Product not found")
+    return product
+
+
 @router.post("/products", response_model=ProductOut, status_code=201)
 async def create_product(payload: ProductCreate, db: AsyncSession = Depends(get_db)) -> Product:
     product = Product(

@@ -1,0 +1,12 @@
+{% extends "admin/base.html" %}
+{% block nav %}orders{% endblock %}
+{% block content %}
+<div class="admin-head"><h1 class="glow">Orders</h1></div>
+
+<table class="table">
+  <thead>
+    <tr><th>Order</th><th>Status</th><th>Payment</th><th>Total</th><th>Fulfillment</th></tr>
+  </thead>
+  <tbody id="orders-rows"><tr><td colspan="5" class="muted">Loading…</td></tr></tbody>
+</table>
+{% endblock %}

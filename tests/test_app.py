@@ -41,3 +41,16 @@ def test_jwt_round_trip():
     assert claims["sub"] == "42"
     assert claims["type"] == "access"
     assert claims["role"] == "customer"
+
+
+def test_admin_pages_redirect_anonymous_to_login():
+    # Anonymous users must never see the admin chrome.
+    for path in ("/admin", "/admin/products", "/admin/orders", "/admin/customers"):
+        resp = client.get(path, follow_redirects=False)
+        assert resp.status_code == 302
+        assert resp.headers["location"] == "/login"
+
+
+def test_admin_api_requires_auth():
+    # The admin JSON API the pages call is itself gated.
+    assert client.get("/api/admin/products").status_code == 401

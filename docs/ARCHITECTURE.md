@@ -21,12 +21,12 @@ app/
   core/        config, db engine, security (argon2/JWT), deps, rate limit, utils
   models/      SQLAlchemy models (users, products+tiers, cart, orders, quotes, referrals)
   schemas/     Pydantic request/response models
-  services/    business logic: pricing, orders, auth, stripe, email, analytics
+  services/    business logic: pricing, orders, auth, stripe, email, analytics, uploads
   api/routes/  JSON API: auth, catalog, cart, checkout, orders, account,
-               quotes, admin, public_api (X-API-Key), webhooks
-  web/         server-rendered page routes
-  templates/   Jinja2 (dark/neon-green design system)
-  static/      css + three.js hero/viewer + app glue
+               quotes, admin (+ media uploads), public_api (X-API-Key), webhooks
+  web/         server-rendered page routes (storefront + session-gated /admin)
+  templates/   Jinja2 (dark/neon-green design system); templates/admin/ = backend UI
+  static/      css (style + admin) + three.js hero/viewer + app/admin glue
 alembic/       migration env
 scripts/       init_db, seed, backup_db.sh
 deploy/        nginx.conf, systemd unit

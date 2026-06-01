@@ -36,8 +36,11 @@ Set on the product record:
 
 ## Where assets live
 
-- Upload product media and reference it by URL on the product record, **or**
-  drop files in `app/static/uploads/` (gitignored) and reference
-  `/static/uploads/<file>`.
-- For production, prefer object storage (S3/Cloudflare R2) + CDN and store the
-  CDN URL in `image_url` / `model_url`.
+- **Upload via the admin UI:** `/admin/products/new` (or edit) has image and
+  3D-model upload fields. Files are validated (type + size: images ≤ 8 MB,
+  models ≤ 25 MB), stored under `app/static/uploads/` (gitignored), and the
+  resulting `/static/uploads/<file>` URL is saved on the product
+  (`image_url` / `model_url`). Backed by `POST /api/admin/uploads?kind=image|model`.
+- For production, prefer object storage (S3/Cloudflare R2) + CDN: swap the
+  `app/services/uploads.py` save step to push to your bucket and return the CDN
+  URL — nothing else changes.

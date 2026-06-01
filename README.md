@@ -21,9 +21,11 @@ limiting · Nginx + Gunicorn/Uvicorn + Let's Encrypt. See
 + one-click reorder · catalog with THC%/CBD/type filtering · wholesale tier
 pricing · quote requests · Stripe checkout · 3D product viewer.
 
-**Admin** (`/api/admin/*`, OpenAPI UI at `/api/docs`): inventory + price tiers ·
-order status/fulfillment · customer verification/approval · analytics
-(revenue, top products, top customers) · quote responses.
+**Admin** (server-rendered pages at `/admin`; JSON API at `/api/admin/*`, OpenAPI
+UI at `/api/docs`): dashboard analytics (revenue, top products, top customers) ·
+product editor with price tiers + **image/3D-model upload** · order
+status/fulfillment + tracking · customer verification/approval · quote responses.
+Admin pages are session-gated; non-admins are redirected.
 
 **Platform:** public API (`X-API-Key`) for partner integrations · referral /
 affiliate system · SendGrid transactional email (order confirmations, shipping,

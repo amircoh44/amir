@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Admin — {{ settings.app_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+  <div class="admin-shell">
+    <aside class="admin-side">
+      <a class="brand" href="/admin">Green<span class="dot">Bulk</span> admin</a>
+      <a href="/admin" data-nav="dashboard">Dashboard</a>
+      <a href="/admin/products" data-nav="products">Products</a>
+      <a href="/admin/orders" data-nav="orders">Orders</a>
+      <a href="/admin/customers" data-nav="customers">Customers</a>
+      <a href="/admin/quotes" data-nav="quotes">Quotes</a>
+      <div class="sep"></div>
+      <a href="/" >← View store</a>
+      <a href="/api/docs">API docs</a>
+      <a href="#" onclick="GreenBulk.api.post('/auth/logout').then(()=>location.href='/')">Sign out</a>
+    </aside>
+
+    <main class="admin-main">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/admin.js"></script>
+  <script>document.querySelectorAll('[data-nav="{% block nav %}{% endblock %}"]').forEach(a=>a.classList.add('active'));</script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
