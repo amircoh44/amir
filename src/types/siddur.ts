@@ -8,6 +8,12 @@ export interface SiddurNode {
   children?: SiddurNode[];
 }
 
+export interface MissingEntry {
+  path: string[];
+  heTitle: string;
+  enTitle: string;
+}
+
 export interface SiddurDoc {
   key: string;
   title: string;
@@ -16,6 +22,8 @@ export interface SiddurDoc {
   language: string;
   source: string;
   versionTitle: string;
+  excluded: string[];
+  missing: MissingEntry[];
   tree: SiddurNode;
 }
 
@@ -26,6 +34,8 @@ export interface NusachEntry {
   nusachHe: string;
   source: string;
   lines: number;
+  missing: number;
+  excluded: number;
   file: string;
   text: string;
 }

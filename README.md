@@ -21,6 +21,32 @@ Four nuschaot are included:
 > Sefaria has no complete standalone Yemenite (Teiman) siddur; Edot HaMizrach is
 > the closest Mizrahi / North-African rite available.
 
+### Included vs. excluded content
+
+The text is filtered to a **weekday + blessings + minor-occasion** scope
+(`FILTERS` in `scripts/download-siddur.mjs`):
+
+- **Included:** weekday Shacharit/Mincha/Maariv, all blessings (food, wedding,
+  priestly, lifecycle), Rosh Chodesh (new month) + Birkat HaLevana, the month of
+  Nissan incl. **Birkat HaIlanot** (tree blessing), **Chanukah**, **Purim**, and
+  Chol HaMoed / Tu BiShvat additions (which appear inline in the weekday
+  services).
+- **Excluded:** Shabbat services, and the full festival / Yom Tov services
+  (Shalosh Regalim, Pesach Haggadah, Sukkot/Lulav, Shavuot, Simchat Torah,
+  Dew/Rain, festival piyutim), plus fast days and festival-prep orders.
+
+Notes: Sefaria's **Ashkenaz** siddur has no wedding blessings. **Tu BiShvat** and
+**Chol HaMoed** have no standalone order in Sefaria — they appear only as inline
+additions inside the kept weekday prayers.
+
+### Features
+
+- **Search widget** at the top — filter the table of contents by section title,
+  or search the full prayer text (matches are highlighted).
+- **Missing-text tab** — lists any section that has a heading but no Hebrew text
+  in the source; such sections are also flagged with ⚠ in the directory.
+- **Download** the Hebrew-only plain-text file for the selected nusach.
+
 ### Refreshing the data
 
 The text data lives under `public/siddur/` — one directory per nusach, each with

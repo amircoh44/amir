@@ -1,6 +1,6 @@
 {
   "name": "Siddur Text",
-  "generated": "2026-06-06T00:22:05.540Z",
+  "generated": "2026-06-06T01:05:14.129Z",
   "nuschaot": [
     {
       "key": "ashkenaz",
@@ -8,7 +8,9 @@
       "heTitle": "סידור אשכנז",
       "nusachHe": "נוסח אשכנז",
       "source": "https://www.sefaria.org/Siddur_Ashkenaz",
-      "lines": 3718,
+      "lines": 1372,
+      "missing": 2,
+      "excluded": 2,
       "file": "ashkenaz/ashkenaz.json",
       "text": "ashkenaz/ashkenaz.txt"
     },
@@ -18,7 +20,9 @@
       "heTitle": "סידור ספרד",
       "nusachHe": "נוסח ספרד",
       "source": "https://www.sefaria.org/Siddur_Sefard",
-      "lines": 6799,
+      "lines": 2429,
+      "missing": 0,
+      "excluded": 22,
       "file": "sefard/sefard.json",
       "text": "sefard/sefard.txt"
     },
@@ -28,7 +32,9 @@
       "heTitle": "סידור נוסח עדות המזרח",
       "nusachHe": "נוסח עדות המזרח",
       "source": "https://www.sefaria.org/Siddur_Edot_HaMizrach",
-      "lines": 3379,
+      "lines": 1597,
+      "missing": 0,
+      "excluded": 14,
       "file": "edot-hamizrach/edot-hamizrach.json",
       "text": "edot-hamizrach/edot-hamizrach.txt"
     },
@@ -38,7 +44,9 @@
       "heTitle": "סידור חב\"ד לימות החול",
       "nusachHe": "נוסח חב\"ד (אר\"י)",
       "source": "https://www.sefaria.org/Weekday_Siddur_Chabad",
-      "lines": 961,
+      "lines": 881,
+      "missing": 0,
+      "excluded": 4,
       "file": "chabad/chabad.json",
       "text": "chabad/chabad.txt"
     }

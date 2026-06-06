@@ -33,6 +33,81 @@ const NUSCHAOT = [
   { key: 'chabad',         title: 'Weekday Siddur Chabad',  he: 'נוסח חב"ד (אר"י)',  gcs: 'Weekday Siddur Chabad' },
 ];
 
+// ---------------------------------------------------------------------------
+// Content filter.
+//
+// Requested scope: keep the weekday prayers and ALL blessings (food, wedding,
+// new-month, etc.), PLUS the minor-holiday / seasonal additions the user asked
+// for — Chanukah, Purim, the month of Nissan (incl. Birkat HaIlanot, the tree
+// blessing) and Rosh Chodesh. Chol HaMoed and Tu BiShvat live only as inline
+// additions inside the kept weekday services (no standalone order in Sefaria).
+//
+// EXCLUDE: Shabbat services and the full festival / Yom Tov services — the
+// Shalosh Regalim (Pesach/Shavuot/Sukkot/Shemini Atzeret/Simchat Torah) with
+// their Musaf and the Haggadah, Hoshanot/Lulav, Dew/Rain, festival piyutim,
+// plus fast days and festival-prep orders (Eruv Tavshilin, Kapparot, Hatarat
+// Nedarim). Match is on a top-level section's heTitle or enTitle (trimmed).
+// ---------------------------------------------------------------------------
+const FILTERS = {
+  ashkenaz: {
+    // Clean nested structure: Weekday / Shabbat / Festivals / Berachot / Kaddish.
+    dropTop: ['Shabbat', 'שבת'],
+    // Festivals holds Rosh Chodesh + Chanukah — keep those, drop the rest.
+    keepWithin: {
+      match: ['Festivals', 'חגים'],
+      keepChildren: ['ראש חודש', 'Rosh Chodesh', 'חנוכה', 'Chanukah'],
+    },
+  },
+  sefard: {
+    dropTop: [
+      'שירים לל"ג בעומר', 'סדר ערוב תבשילין', 'סדר הדלקת נרות שבת', 'מנחה לערב שבת',
+      'קבלת שבת', 'תפילת ערבית של שבת', 'סעודת ליל שבת', 'שחרית של שבת', 'מוסף של שבת',
+      'סעודת שבת', 'מנחה לשבת קודש', 'סעודה שלישית', 'למוצאי שבת', 'סדר נטילת לולב',
+      'לשלש רגלים', 'הגדה של פסח', 'סוכות', 'שמחת תורה', 'שבועות', 'יוצרות',
+      'תעניות ואבלות', 'סדר הקריאות',
+    ],
+  },
+  'edot-hamizrach': {
+    dropTop: [
+      'סדר הדלקת נרות שבת', 'שיר השירים', 'קבלת שבת', 'ערבית של שבת', 'סדר ליל שבת',
+      'שחרית של שבת', 'מוסף של שבת', 'סדר סעודה שניה', 'מנחה של שבת',
+      'משניות שבת לסעודה שלישית', 'מוצאי שבת', 'תפילה לשלש רגלים',
+      'תעניות ואבילות', 'משניות לשבת',
+    ],
+  },
+  chabad: {
+    dropTop: ['לולב', 'מוסף לשלש רגלים', 'סדר התרת נדרים', 'סדר כפרות'],
+  },
+};
+
+const titles = (n) => [String(n.heTitle ?? '').trim(), String(n.enTitle ?? '').trim()];
+
+/** Apply the Shabbat/holiday exclusion to a built tree, returning {tree, dropped}. */
+function applyFilter(key, tree) {
+  const f = FILTERS[key];
+  if (!f) return { tree, dropped: [] };
+  const dropSet = new Set(f.dropTop ?? []);
+  const dropped = [];
+  let children = (tree.children ?? []).filter((c) => {
+    const hit = titles(c).some((t) => t && dropSet.has(t));
+    if (hit) dropped.push(c.heTitle || c.enTitle);
+    return !hit;
+  });
+  if (f.keepWithin) {
+    const keep = new Set(f.keepWithin.keepChildren);
+    children = children.map((c) => {
+      if (titles(c).some((t) => f.keepWithin.match.includes(t))) {
+        const kept = (c.children ?? []).filter((ch) => titles(ch).some((t) => keep.has(t)));
+        const removed = (c.children ?? []).length - kept.length;
+        if (removed) dropped.push(`${c.heTitle} (kept ${kept.length}/${(c.children ?? []).length})`);
+        return { ...c, children: kept };
+      }
+      return c;
+    });
+  }
+  return { tree: { ...tree, children }, dropped };
+}
+
 /** Strip Sefaria HTML markup, keep the Hebrew letters + nikkud (Unicode). */
 function stripHtml(s) {
   return String(s)
@@ -98,6 +173,24 @@ function countLines(node) {
   return (node.children || []).reduce((n, c) => n + countLines(c), 0);
 }
 
+/**
+ * Collect sections that have NO Hebrew text — i.e. a heading exists in the
+ * source but Sefaria has no content for it. Each entry records the heading
+ * trail so the app can point to exactly where text is missing.
+ */
+function collectMissing(node, trail = []) {
+  const out = [];
+  const label = node.heTitle || node.enTitle;
+  const here = label ? [...trail, label] : trail;
+  if (node.children && node.children.length) {
+    for (const c of node.children) out.push(...collectMissing(c, here));
+  } else if (!node.lines || node.lines.length === 0) {
+    // Leaf with no lines = missing text.
+    if (label) out.push({ path: here, heTitle: node.heTitle || '', enTitle: node.enTitle || '' });
+  }
+  return out;
+}
+
 /** Flatten the tree into a plain-text Hebrew document. */
 function toPlainText(node, title, depth = 0) {
   const out = [];
@@ -135,8 +228,10 @@ async function main() {
     }
 
     const heMap = buildHeMap(raw.schema);
-    const tree = buildTree(raw.text, heMap);
+    const built = buildTree(raw.text, heMap);
+    const { tree, dropped } = applyFilter(n.key, built);
     const lineCount = countLines(tree);
+    const missing = collectMissing(tree);
 
     const doc = {
       key: n.key,
@@ -146,6 +241,8 @@ async function main() {
       language: 'he',
       source: raw.versionSource || `https://www.sefaria.org/${n.gcs.replace(/ /g, '_')}`,
       versionTitle: raw.versionTitle || '',
+      excluded: dropped,
+      missing,
       tree,
     };
 
@@ -161,10 +258,14 @@ async function main() {
       nusachHe: n.he,
       source: doc.source,
       lines: lineCount,
+      missing: missing.length,
+      excluded: dropped.length,
       file: `${n.key}/${n.key}.json`,
       text: `${n.key}/${n.key}.txt`,
     });
-    console.log(`OK (${lineCount} lines)`);
+    console.log(
+      `OK (${lineCount} lines, ${missing.length} missing, excluded ${dropped.length} Shabbat/holiday sections)`,
+    );
   }
 
   await writeFile(
