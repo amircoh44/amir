@@ -6,9 +6,13 @@ import { AudioUpload } from './components/AudioUpload';
 import { ImageCard } from './components/ImageCard';
 import { Visualizer } from './components/Visualizer';
 import { AudioPlayer } from './components/AudioPlayer';
+import { SiddurText } from './components/SiddurText';
 import './App.css';
 
+type View = 'visualizer' | 'siddur';
+
 function App() {
+  const [view, setView] = useState<View>('visualizer');
   const [images, setImages] = useState<ImageItem[]>([]);
   const [audioState, setAudioState] = useState<AudioState>({
     file: null,
@@ -78,10 +82,33 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Audio Reactive Image Visualizer</h1>
-        <p>Upload HD images and audio to create stunning visualizations</p>
+        <h1>{view === 'siddur' ? 'Siddur Text · סידור' : 'Audio Reactive Image Visualizer'}</h1>
+        <p>
+          {view === 'siddur'
+            ? 'Hebrew prayer-book text by nusach (Sefaria)'
+            : 'Upload HD images and audio to create stunning visualizations'}
+        </p>
+        <nav className="app-nav">
+          <button
+            className={`nav-btn ${view === 'visualizer' ? 'active' : ''}`}
+            onClick={() => setView('visualizer')}
+          >
+            Visualizer
+          </button>
+          <button
+            className={`nav-btn ${view === 'siddur' ? 'active' : ''}`}
+            onClick={() => setView('siddur')}
+          >
+            Siddur Text
+          </button>
+        </nav>
       </header>
 
+      {view === 'siddur' ? (
+        <div className="app-report">
+          <SiddurText />
+        </div>
+      ) : (
       <div className="app-layout">
         <aside className={`sidebar ${showConfig ? 'open' : 'closed'}`}>
           <button
@@ -138,6 +165,7 @@ function App() {
           />
         </main>
       </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,42 @@
 # React + TypeScript + Vite
 
+This app has two views, switched from the header nav:
+
+1. **Audio Reactive Image Visualizer** — the original app.
+2. **Siddur Text** — a report of Jewish prayer-book (סידור) text, organized by
+   *nusach* (rite), showing **Hebrew text only**.
+
+## Siddur Text report
+
+Hebrew text is sourced from [Sefaria](https://www.sefaria.org)'s public corpus.
+Four nuschaot are included:
+
+| Nusach | Source text |
+| --- | --- |
+| Ashkenaz (אשכנז) | Siddur Ashkenaz |
+| Sefard (ספרד) | Siddur Sefard |
+| Edot HaMizrach / North African (עדות המזרח) | Siddur Edot HaMizrach |
+| Chabad / Ari (חב"ד) | Weekday Siddur Chabad |
+
+> Sefaria has no complete standalone Yemenite (Teiman) siddur; Edot HaMizrach is
+> the closest Mizrahi / North-African rite available.
+
+### Refreshing the data
+
+The text data lives under `public/siddur/` — one directory per nusach, each with
+a structured `<key>.json` (used by the app) and a flat Hebrew `<key>.txt` (the
+"download" file). To re-download from Sefaria:
+
+```bash
+npm run download:siddur
+```
+
+The downloader (`scripts/download-siddur.mjs`) fetches the **Hebrew** `merged.json`
+for each nusach from Sefaria's public Google Cloud Storage export, strips HTML
+markup (keeping the Hebrew letters and nikkud), and writes the directory tree.
+
+---
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
