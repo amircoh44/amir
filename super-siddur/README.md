@@ -1,148 +1,112 @@
 # The Super Siddur
 
-A self-contained prayer-companion PWA — siddur (Ashkenaz / Sefard / Edot HaMizrach / Ari),
-Tehillim, a real astronomical zmanim engine, a Hebrew-calendar engine, "daven with me"
-mode, a Kotel compass, search, and an in-app **admin panel** for editing the prayer text,
-annotations, and the opening splash screen.
+A prayer-companion PWA — siddur (Ashkenaz / Sefard / Edot HaMizrach / Ari), Tehillim,
+a real astronomical zmanim engine, a Hebrew-calendar engine, Hebcal-driven parasha,
+"daven with me" mode, a Kotel compass, search, and an in-app **admin panel** with auth,
+content editing, splash branding, and icon management.
 
-This was refactored from a single 1.7 MB HTML file into a maintainable, deployable app so
-it can keep evolving. **Behaviour is byte-for-byte identical to the original** — the split
-is verified by exact reassembly + per-module syntax checks + a jsdom runtime boot.
+Vanilla-JS frontend (no build step) + a **FastAPI** backend with **SQLite**. The frontend
+was refactored from a single 1.7 MB HTML file into ordered modules — behaviour is
+verified by exact reassembly + per-module syntax checks + a jsdom runtime boot.
 
 ## Project layout
 
 ```
 super-siddur/
-├─ public/                  # static frontend (no build step — plain HTML/CSS/JS)
-│  ├─ index.html            # app shell
-│  ├─ manifest.webmanifest  # PWA manifest
-│  ├─ sw.js                 # service worker (offline app shell)
-│  ├─ css/app.css
-│  ├─ icons/
+├─ public/                  # static PWA (plain HTML/CSS/JS, no bundler)
+│  ├─ index.html
+│  ├─ manifest.webmanifest  sw.js   css/   icons/
 │  └─ js/
-│     ├─ textdata.js        # decoded per-nusach siddur text (generated data blob)
+│     ├─ textdata.js        # decoded per-nusach siddur text (seed data)
+│     ├─ 05-hebcal.js       # @hebcal/core UMD bundle (GPLv2) — parasha + holidays
 │     ├─ 00-engine.js       # Hebrew calendar, astronomical zmanim, gematria, cities
 │     ├─ 10-data.js         # data model, services, prayers, Tehillim, state + storage
 │     ├─ 20-logic.js        # occasional/seasonal prayers, categories, ordering
-│     ├─ 30-views.js        # onboarding, router, all views, print/booklet
-│     ├─ 40-admin.js        # Settings/admin panel + prayer editor
-│     └─ 50-import.js       # buildImported(), text index, posture detection, bootstrap
-├─ server/                  # Node/Express server + admin content API
-│  ├─ server.js
-│  └─ package.json
-├─ data/                    # runtime: content.json (server-persisted edits) + backups
-├─ Dockerfile
-├─ docker-compose.yml
-├─ nginx.conf               # reverse proxy + TLS (sample)
-└─ deploy/super-siddur.service   # systemd unit (non-Docker)
+│     ├─ 25-calendar.js     # hebcal glue: il flag, sunset rollover, parasha, holidays
+│     ├─ 30-views.js        # onboarding, router, all views, Kotel line art, print
+│     ├─ 40-admin.js        # Settings/admin panel shell + per-prayer editor
+│     ├─ 50-import.js       # buildImported(), text index, posture detection, bootstrap
+│     └─ 60-adminx.js       # auth, content/splash/icons/admins admin tabs, server sync
+├─ backend/                 # FastAPI app (separated components)
+│  ├─ app/
+│  │  ├─ main.py            # app + static mount + startup seed
+│  │  ├─ config.py db.py models.py schemas.py security.py seed.py
+│  │  └─ routers/           # auth, content, settings, icons, admins
+│  ├─ tests/test_api.py     # pytest (auth, permissions, content, settings, icons, admins)
+│  └─ requirements.txt      # stdlib-only crypto; no native build deps
+├─ data/                    # runtime: siddur.db (SQLite) + uploaded icons
+├─ Dockerfile  docker-compose.yml  nginx.conf  deploy/super-siddur.service
+└─ test/smoke.js            # jsdom frontend smoke test
 ```
-
-### Calendar & location awareness
-
-- **Hebcal** (`@hebcal/core`, bundled offline as `js/05-hebcal.js`) drives the
-  weekly **parasha** and holiday names, with the **Israel/Diaspora flag** derived
-  from the user's region — so the parasha follows the correct cycle (they desync
-  when a festival falls on Shabbat in the diaspora) and Yom Tov day-counts match.
-- **Sunset rollover** (`js/25-calendar.js`): after local *shkia* the app shows the
-  next Jewish day's date and parasha (the day begins at nightfall).
-- **Region-gated prayers**: any block can be marked *Diaspora only* / *Eretz
-  Yisrael only* in the editor (e.g. the Ashkenaz Maariv "ברוך ה׳ לעולם" said only
-  outside Israel). The gate also honours `region` / `diaspora_only` / `israel_only`.
-
-> **License note:** `@hebcal/core` is **GPLv2** (its notice is preserved at the top
-> of `js/05-hebcal.js`). It is loaded as a standalone script via its public API. If
-> you'd rather not ship GPL code, swap it for the Hebcal REST API in `25-calendar.js`.
-
-### Why the JS is split into numbered files
-They are **classic scripts loaded in order** and share one global scope, so the split is
-purely organisational — no bundler, no imports to maintain. Edit any module and reload.
-Keep the numeric load order in `index.html` (`textdata.js` must load before `50-import.js`).
-
-To re-derive `content.json` after editing `textdata.js`, delete `data/content.json` and
-restart the server (it re-seeds from the bundle).
 
 ## Run locally
 
 ```bash
-cd server && npm install
-cd .. && ADMIN_TOKEN=dev-secret PORT=8080 node server/server.js
-# open http://localhost:8080
+cd backend
+python3 -m pip install -r requirements.txt
+SIDDUR_JWT_SECRET=dev SIDDUR_SUPERADMIN_PASSWORD=devpass1 \
+  python3 -m uvicorn app.main:app --app-dir . --port 8080 --reload
+# open http://localhost:8080   (API docs at /docs)
 ```
 
-Without `ADMIN_TOKEN` set, the app still runs fully; only server-side admin **saves** are
-disabled (the in-app admin panel falls back to per-device localStorage).
+The DB is created and seeded on first boot (super admins + bundled siddur text).
 
-## Deploy to a VPS
-
-### Option A — Docker (recommended)
-
+### Tests
 ```bash
-# on the server, in the super-siddur/ directory:
-echo "ADMIN_TOKEN=$(openssl rand -hex 24)" > .env
-docker compose up -d --build
+cd backend && python3 -m pytest -q          # backend API (10 checks)
+cd test    && npm install && npm test        # frontend jsdom (49 checks)
 ```
 
-The container listens on `127.0.0.1:8080`; admin edits persist in the `siddur-data`
-volume. Put nginx in front for TLS:
+## Admin panel (Settings ⚙ in the app)
 
-```bash
-sudo cp nginx.conf /etc/nginx/sites-available/super-siddur
-sudo ln -s /etc/nginx/sites-available/super-siddur /etc/nginx/sites-enabled/
-# edit server_name, then:
-sudo certbot --nginx -d siddur.example.com
-sudo nginx -t && sudo systemctl reload nginx
-```
+Sign in (bottom of the Content/Splash/Icons/Admins tabs) with a super-admin account.
+**Seeded super admins:** `amir@graphicatz.com` and `shalomlebowitz@gmail.com` (initial
+password `SIDDUR_SUPERADMIN_PASSWORD`; change it after first login).
 
-### Option B — systemd + Node (no Docker)
+- **Content** — find/replace across nuschaot, missing-text report, Save-to-server.
+- **Splash** — cover wordmark/subtitle/accent + cover & Compass image uploads (each with
+  recommended pixel sizes). Published via the settings API.
+- **Icons** — upload a PNG/SVG to **override any built-in icon** (`stand/sit/bow/sun/…`)
+  or **add a custom icon**; overrides apply live across the app.
+- **Admins** — super admins create editors with granular permissions
+  (`content.edit`, `settings.edit`, `icons.edit`, `admins.manage`), or other super admins.
+- **Edit** — per-prayer editor: text per nusach, posture cues, kavanot as reorderable
+  blocks, and a per-block "Show where" (Everywhere / Diaspora only / Eretz Yisrael only).
 
-```bash
-sudo mkdir -p /opt/super-siddur && sudo cp -r . /opt/super-siddur/
-cd /opt/super-siddur/server && sudo npm install --omit=dev
-sudo cp /opt/super-siddur/deploy/super-siddur.service /etc/systemd/system/
-sudo sed -i "s/change-me/$(openssl rand -hex 24)/" /etc/systemd/system/super-siddur.service
-sudo systemctl daemon-reload && sudo systemctl enable --now super-siddur
-```
-
-Then front it with the same `nginx.conf`.
-
-## Admin panel (in-app, under Settings ⚙)
-
-- **Content** — find/replace across nuschaot (live, with a match count), a
-  missing-text report, and **Save to server** to publish edits for everyone.
-- **Splash** — edit the opening-cover wordmark/subtitle/accent and upload a cover
-  background image; each image upload shows the recommended pixel size for every
-  layout. Also uploads an optional **Compass header image** that overrides the
-  built-in Kotel line art. **Save for everyone** publishes via `/api/settings`.
-- **Edit** (per-prayer editor) — Hebrew/translation/transliteration, posture cues,
-  and **kavanot as their own reorderable blocks** (Foundation / Halachic /
-  Kabbalistic), placeable anywhere in the block list. Legacy prayers whose kavanah
-  was attached to a text block convert cleanly and keep working.
-- **Display** — a user-facing **Opening cover** toggle to skip the splash on launch.
-
-The **Compass** header is original, theme-driven SVG line art (`var(--accent)`,
-no external image) with an engraved "ירושלים / JERUSALEM" wordmark.
-
-## Admin API
+## API
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| `GET`  | `/api/content` | — | Current siddur content (array of nusach docs) |
-| `POST` | `/api/content` | `X-Admin-Token` | Replace content; a timestamped backup is kept |
-| `GET`  | `/api/settings` | — | Site settings (splash branding) |
-| `POST` | `/api/settings` | `X-Admin-Token` | Update settings |
-| `GET`  | `/api/admin/status` | — | `{ enabled }` — whether server-side saves are configured |
-| `GET`  | `/healthz` | — | Liveness probe |
+| `POST` | `/api/auth/login` | — | email+password → JWT |
+| `GET`  | `/api/auth/me` | bearer | current admin + permissions |
+| `GET`/`POST` | `/api/content` | read public / write `content.edit` | siddur docs |
+| `GET` `/api/settings`, `PUT /api/settings/{key}` | read public / write `settings.edit` | site settings (branding) |
+| `GET` `/api/icons`, `GET /api/icons/{key}/raw`, `POST`/`DELETE` | read public / write `icons.edit` | icon CMS |
+| `GET`/`POST`/`PATCH`/`DELETE` `/api/admins` | `superadmin` | manage admins |
+| `GET` `/healthz` | — | liveness |
 
-The admin token is entered once in the app's **Settings → Content / Splash** panel
-and stored in that browser's localStorage; it is sent with each save.
+## Deploy to a VPS
 
-## Tests
-
+### Docker (recommended)
 ```bash
-cd test && npm install && npm test
+cat > .env <<EOF
+SIDDUR_JWT_SECRET=$(openssl rand -hex 24)
+SIDDUR_SUPERADMIN_PASSWORD=$(openssl rand -hex 12)
+EOF
+docker compose up -d --build
 ```
+Listens on `127.0.0.1:8080`; the SQLite DB + icons persist in the `siddur-data` volume.
+Front it with `nginx.conf` (+ `certbot`) for TLS. Swap SQLite for Postgres any time with
+`SIDDUR_DATABASE_URL=postgresql+psycopg://…`.
 
-Boots the app in jsdom and checks the content pipeline, admin/editor + splash
-features, the Kotel line art, and the kavanot blocks. If the original single-file
-HTML is available, point `SIDDUR_ORIG` at it to also assert behavioural parity.
-```
+### systemd (no Docker)
+See `deploy/super-siddur.service`.
+
+## Configuration (env, `SIDDUR_` prefix)
+
+`JWT_SECRET`, `SUPERADMIN_PASSWORD`, `SUPERADMIN_EMAILS`, `DATABASE_URL`, `DATA_DIR`,
+`CORS_ORIGINS`.
+
+> **License note:** `@hebcal/core` (`public/js/05-hebcal.js`) is **GPLv2** — its notice is
+> preserved at the top of the file. It's loaded as a standalone script via its public API.
+> To avoid shipping GPL code, swap it for the Hebcal REST API in `25-calendar.js`.

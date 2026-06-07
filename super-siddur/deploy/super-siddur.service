@@ -1,21 +1,21 @@
-# systemd unit for running The Super Siddur directly with Node (no Docker).
+# systemd unit for running The Super Siddur with uvicorn (no Docker).
 # Install: sudo cp deploy/super-siddur.service /etc/systemd/system/
 #          sudo systemctl daemon-reload && sudo systemctl enable --now super-siddur
 [Unit]
-Description=The Super Siddur
+Description=The Super Siddur (FastAPI)
 After=network.target
 
 [Service]
 Type=simple
 WorkingDirectory=/opt/super-siddur
-ExecStart=/usr/bin/node server/server.js
+ExecStart=/opt/super-siddur/.venv/bin/python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8080 --workers 2
 Restart=on-failure
 RestartSec=3
-Environment=NODE_ENV=production
-Environment=PORT=8080
-Environment=DATA_DIR=/opt/super-siddur/data
-# Set your admin token here (or use an EnvironmentFile).
-Environment=ADMIN_TOKEN=change-me
+Environment=PYTHONUNBUFFERED=1
+Environment=SIDDUR_DATA_DIR=/opt/super-siddur/data
+# Set real secrets here (or use an EnvironmentFile=/etc/super-siddur.env).
+Environment=SIDDUR_JWT_SECRET=change-me
+Environment=SIDDUR_SUPERADMIN_PASSWORD=change-me
 User=www-data
 Group=www-data
 

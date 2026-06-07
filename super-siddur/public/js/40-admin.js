@@ -4,7 +4,7 @@ function openAdmin(){admTab="profile";paintAdmin();$("#admSheet").classList.add(
 function paintAdmin(){
   const body=$("#admBody");body.innerHTML="";
   const tabs=el("div","tabs");
-  [["profile","Profile"],["display","Display"],["people","Pray For"],["reminders","Reminders"],["inserts","Insertions"],["nusachloc","Nusach & Location"],["arrange","Edit"],["content","Content"],["splash","Splash"]].forEach(([k,lbl])=>{
+  [["profile","Profile"],["display","Display"],["people","Pray For"],["reminders","Reminders"],["inserts","Insertions"],["nusachloc","Nusach & Location"],["arrange","Edit"],["content","Content"],["splash","Splash"],["icons","Icons"],["admins","Admins"]].forEach(([k,lbl])=>{
     const b=el("button",admTab===k?"on":"");b.textContent=lbl;b.onclick=()=>{admTab=k;paintAdmin();};tabs.appendChild(b);
   });
   body.appendChild(tabs);
@@ -18,6 +18,8 @@ function paintAdmin(){
   else if(admTab==="arrange")admArrange(wrap);
   else if(admTab==="content")admContent(wrap);
   else if(admTab==="splash")admSplash(wrap);
+  else if(admTab==="icons")admIcons(wrap);
+  else if(admTab==="admins")admAdmins(wrap);
 }
 function admProfile(w){
   w.appendChild(el("div","note","Your name personalizes greetings, and your Hebrew birthday powers the birthday-psalm feature and age display."));

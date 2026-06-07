@@ -1,7 +1,13 @@
+__pycache__
+*.pyc
+.venv
 node_modules
-server/node_modules
-data/content.json
-data/content.*.bak.json
+data/siddur.db
+data/siddur.db-wal
+data/siddur.db-shm
+data/icons
+data/*.json
 *.log
 .env
 .git
+test/node_modules

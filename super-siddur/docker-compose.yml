@@ -5,12 +5,15 @@ services:
     container_name: super-siddur
     restart: unless-stopped
     environment:
-      # Set a strong token; admin saves are rejected without it.
-      ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN in your .env}
-      PORT: 8080
-      DATA_DIR: /app/data
+      # Strong secret for signing admin sessions (JWT).
+      SIDDUR_JWT_SECRET: ${SIDDUR_JWT_SECRET:?set SIDDUR_JWT_SECRET in your .env}
+      # Initial password for the seeded super admins (change after first login).
+      SIDDUR_SUPERADMIN_PASSWORD: ${SIDDUR_SUPERADMIN_PASSWORD:?set SIDDUR_SUPERADMIN_PASSWORD in your .env}
+      # Optional: override the seeded super-admin emails (comma-separated).
+      SIDDUR_SUPERADMIN_EMAILS: ${SIDDUR_SUPERADMIN_EMAILS:-amir@graphicatz.com,shalomlebowitz@gmail.com}
+      SIDDUR_DATA_DIR: /app/data
     volumes:
-      # Persist admin edits (content.json + backups) across container rebuilds.
+      # Persist the SQLite DB + uploaded icons across rebuilds.
       - siddur-data:/app/data
     ports:
       # Expose only to localhost; put nginx (below) in front for TLS.

@@ -1,24 +1,23 @@
-# The Super Siddur — single-stage Node image (no build step; vanilla frontend).
-FROM node:20-alpine
+# The Super Siddur — FastAPI backend + static PWA frontend.
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install server deps first for better layer caching.
-COPY server/package.json server/package-lock.json* ./server/
-RUN cd server && npm install --omit=dev
+# Install deps first for layer caching.
+COPY backend/requirements.txt ./backend/requirements.txt
+RUN pip install --no-cache-dir -r backend/requirements.txt
 
-# App code.
-COPY server ./server
+# App code: Python backend + static frontend.
+COPY backend ./backend
 COPY public ./public
 
-# content.json lives here; mount a volume to persist admin edits across deploys.
 RUN mkdir -p /app/data
-ENV NODE_ENV=production \
-    PORT=8080 \
-    DATA_DIR=/app/data
+ENV SIDDUR_DATA_DIR=/app/data \
+    PYTHONUNBUFFERED=1
 
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=4s --start-period=5s \
-  CMD wget -qO- http://127.0.0.1:8080/healthz || exit 1
+HEALTHCHECK --interval=30s --timeout=4s --start-period=6s \
+  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz').status==200 else 1)" || exit 1
 
-CMD ["node", "server/server.js"]
+# 2 workers is plenty for this read-heavy app; tune as needed.
+CMD ["python", "-m", "uvicorn", "app.main:app", "--app-dir", "backend", "--host", "0.0.0.0", "--port", "8080", "--workers", "2"]

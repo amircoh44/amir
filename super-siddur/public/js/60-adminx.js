@@ -3,57 +3,88 @@
    splash-screen branding, and server sync. Builds on the helpers in 10-data.js
    and the admin panel in 40-admin.js. */
 
-/* ===== server sync ===== */
-let _serverAdmin = false;
-function adminToken() { return (state.adminToken || "").trim(); }
-function adminHeaders() { return { "Content-Type": "application/json", "X-Admin-Token": adminToken() }; }
+/* ===== server sync + auth (FastAPI backend; JWT bearer) ===== */
+let _me = null; // current signed-in admin {email, role, permissions}
+function authToken() { return (state.adminToken || "").trim(); }
+function authHeader() { return authToken() ? { Authorization: "Bearer " + authToken() } : {}; }
+function jsonHeaders() { return Object.assign({ "Content-Type": "application/json" }, authHeader()); }
+function hasPerm(p) { return !!_me && (_me.role === "superadmin" || (_me.permissions || []).includes(p)); }
 
-/* Pull live content (admin edits) + settings (splash) from the server, if available. */
+function fetchMe() {
+  if (!authToken()) { _me = null; return Promise.resolve(); }
+  return fetch("/api/auth/me", { headers: authHeader() })
+    .then((r) => (r.ok ? r.json() : null)).then((m) => { _me = m; }).catch(() => { _me = null; });
+}
+
+/* Pull live content + settings + icon overrides from the server, and validate any saved session. */
 function syncFromServer() {
-  fetch("/api/admin/status").then((r) => r.json()).then((s) => { _serverAdmin = !!s.enabled; }).catch(() => {});
+  fetchMe();
   fetch("/api/content").then((r) => (r.ok ? r.json() : null)).then((data) => {
     if (Array.isArray(data) && data.length) {
-      window.TEXTDATA = data;
-      buildImported();
-      const app = $("#app");
-      if (app && app.style.visibility !== "hidden") render();
+      window.TEXTDATA = data; buildImported();
+      const app = $("#app"); if (app && app.style.visibility !== "hidden") render();
     }
   }).catch(() => {});
   fetch("/api/settings").then((r) => (r.ok ? r.json() : null)).then((cfg) => {
     if (cfg && cfg.branding) { state.branding = cfg.branding; saveState(); applySplash(); }
   }).catch(() => {});
+  fetch("/api/icons").then((r) => (r.ok ? r.json() : [])).then((list) => {
+    const m = {}; (list || []).forEach((i) => { m[i.key] = i.url; });
+    window.ICON_OVERRIDES = m;
+    const app = $("#app"); if (app && app.style.visibility !== "hidden") render();
+  }).catch(() => {});
 }
 
 function saveContentToServer() {
-  return fetch("/api/content", { method: "POST", headers: adminHeaders(), body: JSON.stringify(window.TEXTDATA || []) })
-    .then((r) => r.json().then((j) => ({ ok: r.ok, j })));
+  return fetch("/api/content", { method: "POST", headers: jsonHeaders(), body: JSON.stringify(window.TEXTDATA || []) })
+    .then((r) => r.json().then((j) => ({ ok: r.ok, j })).catch(() => ({ ok: r.ok, j: {} })));
 }
 function saveSettingsToServer() {
-  return fetch("/api/settings", { method: "POST", headers: adminHeaders(), body: JSON.stringify({ branding: state.branding || null }) })
-    .then((r) => r.json().then((j) => ({ ok: r.ok, j })));
+  return fetch("/api/settings/branding", { method: "PUT", headers: jsonHeaders(), body: JSON.stringify({ value: state.branding || {} }) })
+    .then((r) => r.json().then((j) => ({ ok: r.ok, j })).catch(() => ({ ok: r.ok, j: {} })));
 }
 
 function publishBtnFlow(btn, fn, okMsg) {
-  if (!adminToken()) { toast("Enter your admin token first"); return; }
+  if (!_me) { toast("Sign in below to save to the server"); return; }
   const old = btn.textContent; btn.textContent = "Saving…"; btn.disabled = true;
   fn().then(({ ok, j }) => {
     btn.disabled = false; btn.textContent = old;
-    toast(ok ? okMsg(j) : "Save failed: " + (j.error || "server error"));
+    toast(ok ? okMsg(j) : "Save failed: " + (j.detail || j.error || "permission denied"));
   }).catch(() => { btn.disabled = false; btn.textContent = old; toast("Save failed (offline?)"); });
 }
 
-/* Shared admin-token input used by both new tabs. */
-function adminTokenField(w) {
+function doLogin(email, password, btn) {
+  if (!email || !password) { toast("Enter email and password"); return; }
+  const old = btn.textContent; btn.textContent = "Signing in…"; btn.disabled = true;
+  fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) })
+    .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+    .then(({ ok, j }) => {
+      btn.disabled = false; btn.textContent = old;
+      if (ok && j.access_token) {
+        state.adminToken = j.access_token; saveState();
+        fetchMe().then(() => paintAdmin()); toast("Signed in");
+      } else { toast("Sign in failed: " + (j.detail || "check credentials")); }
+    }).catch(() => { btn.disabled = false; btn.textContent = old; toast("Sign in failed (offline?)"); });
+}
+
+/* Sign-in / identity block shown at the bottom of admin tabs that save to the server. */
+function adminAuthField(w) {
   const f = el("div", "field"); f.style.marginTop = "1rem";
-  f.innerHTML = `<label>Admin token — for saving to the server</label>`;
-  const inp = el("input"); inp.type = "password"; inp.value = state.adminToken || "";
-  inp.placeholder = _serverAdmin ? "Enter the server's admin token" : "Server saves not enabled";
-  inp.style.cssText = "width:100%";
-  inp.oninput = () => { state.adminToken = inp.value; saveState(); };
-  f.appendChild(inp);
-  f.appendChild(el("div", "note", _serverAdmin
-    ? "Stored on this device only and sent with each save."
-    : "This server has no ADMIN_TOKEN set — edits persist locally on each device only."));
+  if (_me) {
+    f.innerHTML = `<label>Signed in</label>`;
+    f.appendChild(el("div", "note", `${esc(_me.email)} — ${_me.role === "superadmin" ? "super admin (all permissions)" : (esc((_me.permissions || []).join(", ")) || "no permissions")}`));
+    const out = el("button", "btn-ghost", "Sign out");
+    out.onclick = () => { state.adminToken = ""; _me = null; saveState(); paintAdmin(); };
+    f.appendChild(out); w.appendChild(f); return;
+  }
+  f.innerHTML = `<label>Admin sign in</label>`;
+  const em = el("input"); em.type = "email"; em.placeholder = "email"; em.autocomplete = "username"; em.style.cssText = "width:100%;margin-bottom:.4rem";
+  const pw = el("input"); pw.type = "password"; pw.placeholder = "password"; pw.autocomplete = "current-password"; pw.style.cssText = "width:100%;margin-bottom:.4rem";
+  const btn = el("button", "btn-primary", "Sign in");
+  btn.onclick = () => doLogin(em.value.trim(), pw.value, btn);
+  pw.onkeydown = (e) => { if (e.key === "Enter") btn.click(); };
+  f.appendChild(em); f.appendChild(pw); f.appendChild(btn);
+  f.appendChild(el("div", "note", "Sign in to publish edits to the server for everyone. Super admins: amir@graphicatz.com, shalomlebowitz@gmail.com."));
   w.appendChild(f);
 }
 
@@ -145,7 +176,7 @@ function admSplash(w) {
   pv.onclick = () => { applySplash(); closeSheet("admSheet"); const cover = $("#cover"); if (cover) { cover.classList.remove("gone", "lifting"); const bc = $("#bookCover"); if (bc) bc.classList.remove("open"); } };
   w.appendChild(pv);
 
-  adminTokenField(w);
+  adminAuthField(w);
 }
 
 /* ===== content editor: find/replace + missing-text report ===== */
@@ -199,7 +230,7 @@ function admContent(w) {
   recount();
 
   missingReport(w);
-  adminTokenField(w);
+  adminAuthField(w);
 }
 
 /* Sections with no non-empty text — the "missing text" report. */
@@ -221,4 +252,111 @@ function missingReport(w) {
     list.appendChild(r);
   });
   w.appendChild(list);
+}
+
+/* ===== icon CMS: override built-in icons or add custom ones ===== */
+const BUILTIN_ICON_KEYS = ["stand", "sit", "bow", "sun", "dusk", "moon", "food", "path", "star", "book"];
+
+function uploadIcon(key, label, kind, file, btn) {
+  if (!_me) { toast("Sign in to manage icons"); return; }
+  if (!key) { toast("Enter an icon key"); return; }
+  if (!file) { toast("Choose an image file"); return; }
+  if (file.size > 2000000) { toast("Image too large (max ~2 MB)"); return; }
+  const fd = new FormData();
+  fd.append("key", key); fd.append("label", label || ""); fd.append("kind", kind);
+  fd.append("file", file);
+  const old = btn.textContent; btn.textContent = "Uploading…"; btn.disabled = true;
+  fetch("/api/icons", { method: "POST", headers: authHeader(), body: fd })
+    .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+    .then(({ ok, j }) => {
+      btn.disabled = false; btn.textContent = old;
+      if (ok) { toast("Icon saved"); syncFromServer(); paintAdmin(); }
+      else toast("Upload failed: " + (j.detail || "permission denied"));
+    }).catch(() => { btn.disabled = false; btn.textContent = old; toast("Upload failed (offline?)"); });
+}
+
+function deleteIcon(key) {
+  fetch("/api/icons/" + encodeURIComponent(key), { method: "DELETE", headers: authHeader() })
+    .then((r) => { if (r.ok) { toast("Icon removed"); syncFromServer(); paintAdmin(); } else toast("Remove failed"); })
+    .catch(() => toast("Remove failed"));
+}
+
+function admIcons(w) {
+  w.appendChild(el("p", "note", "Upload a PNG/SVG to override a built-in icon (use its exact key) or add a new custom one. Built-in keys: " + BUILTIN_ICON_KEYS.join(", ") + "."));
+
+  const f = el("div", "field");
+  const key = el("input"); key.placeholder = "icon key (e.g. bow, sun, my_icon)"; key.style.cssText = "width:100%;margin-bottom:.4rem";
+  const label = el("input"); label.placeholder = "label (optional)"; label.style.cssText = "width:100%;margin-bottom:.4rem";
+  const kindSel = el("select"); kindSel.innerHTML = `<option value="override">Override a built-in icon</option><option value="custom">Add a custom icon</option>`; kindSel.style.cssText = "width:100%;margin-bottom:.4rem";
+  const file = el("input"); file.type = "file"; file.accept = "image/png,image/svg+xml,image/jpeg,image/webp";
+  f.appendChild(key); f.appendChild(label); f.appendChild(kindSel); f.appendChild(file);
+  f.appendChild(el("div", "hint", "Square icon, recommended 64 × 64 px (min 32 × 32). Transparent PNG or SVG preferred; shown small, inline with the prayer text. PNG / SVG / JPG / WebP, under ~2 MB."));
+  const up = el("button", "btn-primary", "Upload icon"); up.style.marginTop = ".5rem";
+  up.onclick = () => uploadIcon(key.value.trim().toLowerCase(), label.value.trim(), kindSel.value, file.files[0], up);
+  w.appendChild(f);
+
+  fetch("/api/icons").then((r) => r.json()).then((list) => {
+    const h = el("div", "field"); h.style.marginTop = "1rem";
+    h.innerHTML = `<label>Custom & overridden icons — ${(list || []).length}</label>`; w.appendChild(h);
+    (list || []).forEach((ic) => {
+      const r = el("div", "arr-row");
+      r.innerHTML = `<img src="${ic.url}" alt="${esc(ic.key)}" style="width:26px;height:26px;object-fit:contain;background:var(--surface2);border-radius:6px;padding:2px"><div class="nm" style="flex:1"><b>${esc(ic.key)}</b><small>${esc(ic.kind)}${ic.label ? " · " + esc(ic.label) : ""}</small></div>`;
+      const rm = el("button", "arr-mini"); rm.style.color = "#d9534f";
+      rm.innerHTML = `<svg class="icon" viewBox="0 0 24 24" style="width:1em"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>`;
+      rm.onclick = () => deleteIcon(ic.key);
+      r.appendChild(rm); w.appendChild(r);
+    });
+    if (!(list || []).length) w.appendChild(el("div", "note", "No custom icons yet — the built-in icons are in use."));
+  }).catch(() => {});
+
+  adminAuthField(w);
+}
+
+/* ===== admin management (super admins only) ===== */
+function admAdmins(w) {
+  if (!_me) { w.appendChild(el("p", "note", "Sign in as a super admin to manage admins.")); adminAuthField(w); return; }
+  if (_me.role !== "superadmin") { w.appendChild(el("p", "note", "Super admins only.")); return; }
+
+  const PERMS = [["content.edit", "Edit content"], ["settings.edit", "Edit splash/settings"], ["icons.edit", "Manage icons"], ["admins.manage", "Manage admins"]];
+  const f = el("div", "field");
+  const em = el("input"); em.type = "email"; em.placeholder = "new admin email"; em.style.cssText = "width:100%;margin-bottom:.4rem";
+  const nm = el("input"); nm.placeholder = "name (optional)"; nm.style.cssText = "width:100%;margin-bottom:.4rem";
+  const pw = el("input"); pw.type = "password"; pw.placeholder = "temporary password (min 8 chars)"; pw.style.cssText = "width:100%;margin-bottom:.4rem";
+  const roleSel = el("select"); roleSel.innerHTML = `<option value="editor">Editor (choose permissions)</option><option value="superadmin">Super admin (all permissions)</option>`; roleSel.style.cssText = "width:100%;margin-bottom:.5rem";
+  const permWrap = el("div", ""); permWrap.style.cssText = "display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem";
+  const permState = {};
+  PERMS.forEach(([p, lbl]) => {
+    const b = el("button", ""); b.type = "button";
+    const paint = () => { b.style.cssText = "padding:.35rem .6rem;border-radius:.5rem;font-size:.75rem;font-weight:600;cursor:pointer;border:1px solid " + (permState[p] ? "var(--accent)" : "var(--line)") + ";background:" + (permState[p] ? "color-mix(in srgb,var(--accent) 14%,transparent)" : "var(--surface2)") + ";color:" + (permState[p] ? "var(--accent)" : "var(--ink2)"); };
+    b.textContent = lbl; paint(); b.onclick = () => { permState[p] = !permState[p]; paint(); };
+    permWrap.appendChild(b);
+  });
+  f.appendChild(em); f.appendChild(nm); f.appendChild(pw); f.appendChild(roleSel);
+  f.appendChild(el("div", "hint", "Editors only get the permissions you select below.")); f.appendChild(permWrap);
+  const add = el("button", "btn-primary", "Create admin");
+  add.onclick = () => {
+    const perms = PERMS.filter(([p]) => permState[p]).map(([p]) => p);
+    fetch("/api/admins", { method: "POST", headers: jsonHeaders(), body: JSON.stringify({ email: em.value.trim(), name: nm.value.trim(), password: pw.value, role: roleSel.value, permissions: perms }) })
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then(({ ok, j }) => { if (ok) { toast("Admin created"); paintAdmin(); } else toast("Failed: " + (j.detail || "check fields")); })
+      .catch(() => toast("Failed (offline?)"));
+  };
+  f.appendChild(add); w.appendChild(f);
+
+  fetch("/api/admins", { headers: authHeader() }).then((r) => r.json()).then((list) => {
+    const h = el("div", "field"); h.style.marginTop = "1rem"; h.innerHTML = `<label>Admins — ${(list || []).length}</label>`; w.appendChild(h);
+    (list || []).forEach((a) => {
+      const r = el("div", "arr-row");
+      r.innerHTML = `<div class="nm" style="flex:1"><b>${esc(a.email)}</b><small>${a.role === "superadmin" ? "super admin" : (a.permissions.join(", ") || "no permissions")}</small></div>`;
+      if (a.role !== "superadmin" || (a.email !== "amir@graphicatz.com" && a.email !== "shalomlebowitz@gmail.com")) {
+        const rm = el("button", "arr-mini"); rm.style.color = "#d9534f";
+        rm.innerHTML = `<svg class="icon" viewBox="0 0 24 24" style="width:1em"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>`;
+        rm.onclick = () => fetch("/api/admins/" + a.id, { method: "DELETE", headers: authHeader() }).then((rr) => { if (rr.ok) { toast("Removed"); paintAdmin(); } else toast("Cannot remove"); });
+        r.appendChild(rm);
+      }
+      w.appendChild(r);
+    });
+  }).catch(() => {});
+
+  adminAuthField(w);
 }

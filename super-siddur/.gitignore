@@ -1,7 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
 node_modules/
-# Runtime, server-managed content (seeded from public/js/textdata.js on first boot)
-data/content.json
-data/content.*.bak.json
-data/settings.json
+# Runtime data (SQLite DB + uploaded icons), seeded on first boot
+data/siddur.db
+data/siddur.db-wal
+data/siddur.db-shm
+data/icons/
+data/*.json
 *.log
 .env

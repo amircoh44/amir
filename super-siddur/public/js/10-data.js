@@ -468,7 +468,12 @@ function favKey(s,p){return s+"."+p;}
 function isFav(s,p){return state.favorites.includes(favKey(s,p));}
 function toggleFav(s,p){const k=favKey(s,p);const i=state.favorites.indexOf(k);if(i>=0)state.favorites.splice(i,1);else state.favorites.push(k);saveState();}
 function trackRecent(s,p){const k=favKey(s,p);state.recent=state.recent.filter(x=>x!==k);state.recent.unshift(k);if(state.recent.length>8)state.recent=state.recent.slice(0,8);saveState();}
+/* Admin-uploaded icon overrides, key -> /api/icons/<key>/raw (populated on load). */
+window.ICON_OVERRIDES=window.ICON_OVERRIDES||{};
+function iconOverrideUrl(key){return window.ICON_OVERRIDES[key]||null;}
 function postureIcon(tag){
+  const o=iconOverrideUrl(tag);
+  if(o)return `<img class="icon" src="${o}" alt="${esc(tag)}" style="width:1.1em;height:1.1em;object-fit:contain;vertical-align:middle">`;
   if(tag==="stand")return '<svg class="icon" viewBox="0 0 24 24" style="width:1.1em;height:1.1em"><path d="M12 4v16M6 10l6-6 6 6"/></svg>';
   if(tag==="sit")return '<svg class="icon" viewBox="0 0 24 24" style="width:1.1em;height:1.1em"><path d="M12 20V4M6 14l6 6 6-6"/></svg>';
   if(tag==="bow")return '<svg class="icon" viewBox="0 0 24 24" style="width:1.1em;height:1.1em"><circle cx="12" cy="5" r="2.2"/><path d="M12 8c0 3-1 4-4 5l1 6M12 8c1 2.5 3 3.5 5 4"/></svg>';
