@@ -2,5 +2,6 @@ node_modules/
 # Runtime, server-managed content (seeded from public/js/textdata.js on first boot)
 data/content.json
 data/content.*.bak.json
+data/settings.json
 *.log
 .env

@@ -4,7 +4,7 @@ function openAdmin(){admTab="profile";paintAdmin();$("#admSheet").classList.add(
 function paintAdmin(){
   const body=$("#admBody");body.innerHTML="";
   const tabs=el("div","tabs");
-  [["profile","Profile"],["display","Display"],["people","Pray For"],["reminders","Reminders"],["inserts","Insertions"],["nusachloc","Nusach & Location"],["arrange","Edit"]].forEach(([k,lbl])=>{
+  [["profile","Profile"],["display","Display"],["people","Pray For"],["reminders","Reminders"],["inserts","Insertions"],["nusachloc","Nusach & Location"],["arrange","Edit"],["content","Content"],["splash","Splash"]].forEach(([k,lbl])=>{
     const b=el("button",admTab===k?"on":"");b.textContent=lbl;b.onclick=()=>{admTab=k;paintAdmin();};tabs.appendChild(b);
   });
   body.appendChild(tabs);
@@ -16,6 +16,8 @@ function paintAdmin(){
   else if(admTab==="reminders")admReminders(wrap);
   else if(admTab==="inserts")admInserts(wrap);
   else if(admTab==="arrange")admArrange(wrap);
+  else if(admTab==="content")admContent(wrap);
+  else if(admTab==="splash")admSplash(wrap);
 }
 function admProfile(w){
   w.appendChild(el("div","note","Your name personalizes greetings, and your Hebrew birthday powers the birthday-psalm feature and age display."));
@@ -213,7 +215,7 @@ function admDisplay(w){
   mkSlider("hebScale","Hebrew size",true);
   mkSlider("enScale","English & transliteration size",false);
   /* toggles */
-  const toggles=[["translit","Transliteration","Show romanized pronunciation under Hebrew"],["showInstr","Instructions","Show rubric guidance (stand, sit, bow)"],["showKavanot","Kavanot","Show meditative intentions where provided"],["hebrewOnly","Hebrew only","Hide English & transliteration for an immersive view"],["minyan","Praying with a minyan","Show prayers that require a quorum of ten"],["womanMode","Women's siddur","Hide tefillin and other men's-obligation prayers"],["hideTachanun","Skip Tachanun","Remove Tachanun \u2014 for a simcha in shul, a new baby, a chatan, etc."]];
+  const toggles=[["translit","Transliteration","Show romanized pronunciation under Hebrew"],["showInstr","Instructions","Show rubric guidance (stand, sit, bow)"],["showKavanot","Kavanot","Show meditative intentions where provided"],["hebrewOnly","Hebrew only","Hide English & transliteration for an immersive view"],["minyan","Praying with a minyan","Show prayers that require a quorum of ten"],["womanMode","Women's siddur","Hide tefillin and other men's-obligation prayers"],["hideTachanun","Skip Tachanun","Remove Tachanun \u2014 for a simcha in shul, a new baby, a chatan, etc."],["showCover","Opening cover","Show the animated book cover each time the app launches"]];
   toggles.forEach(([k,lbl,sub])=>{
     const r=el("div","adm-row");r.innerHTML=`<div class="lbl"><b>${lbl}</b><small>${sub}</small></div>`;
     const sw=el("button","switch"+(state[k]?" on":""));

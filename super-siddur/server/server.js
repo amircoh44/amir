@@ -17,6 +17,7 @@ const ROOT = path.resolve(__dirname, "..");
 const PUBLIC_DIR = path.join(ROOT, "public");
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, "data");
 const CONTENT_FILE = path.join(DATA_DIR, "content.json");
+const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 const PORT = process.env.PORT || 8080;
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
 
@@ -94,6 +95,30 @@ function requireAdmin(req, res, next) {
   }
   next();
 }
+
+// Site settings (splash branding, etc.) — public read, admin write.
+app.get("/api/settings", (_req, res) => {
+  res.set("Cache-Control", "no-cache");
+  try {
+    res.json(fs.existsSync(SETTINGS_FILE) ? JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8")) : {});
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
+app.post("/api/settings", requireAdmin, (req, res) => {
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+    return res.status(400).json({ error: "expected a JSON object" });
+  }
+  try {
+    const tmp = SETTINGS_FILE + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify(req.body));
+    fs.renameSync(tmp, SETTINGS_FILE);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
 
 // Let the client check whether admin writes are possible without leaking the token.
 app.get("/api/admin/status", (_req, res) => res.json({ enabled: !!ADMIN_TOKEN }));

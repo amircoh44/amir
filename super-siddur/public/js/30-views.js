@@ -292,7 +292,7 @@ function renderPrayerInline(pr,svcId,wrap){
     replaceRules.forEach(r=>wrap.appendChild(renderInsert(r)));
   } else {
     startRules.forEach(r=>wrap.appendChild(renderInsert(r)));
-    pr.blocks.forEach(b=>renderBlockTo(b,wrap));
+    normalizeBlocks(pr.blocks).forEach(b=>renderBlockTo(b,wrap));
     endRules.forEach(r=>wrap.appendChild(renderInsert(r)));
   }
   injectPersonal(pr,svcId,wrap);
@@ -567,6 +567,7 @@ function injectPersonal(pr,svcId,wrap){
 }
 
 function renderBlockTo(b,wrap){
+  if(b.k==="kavanah"){if(state.showKavanot)renderKavanot(b,wrap);return;}
   if(b.k==="rubric"){if(!state.showInstr)return;const r=el("div","rubric");r.innerHTML=esc(b.text||"");const post=postureOf(b);if(post){const tag=el("span","posture-tag "+post.tag);tag.innerHTML=`${postureIcon(post.tag)}<span>${post.label}</span>`;r.insertBefore(tag,r.firstChild);}wrap.appendChild(r);return;}
   if(!blockVisible(b))return;
   const tags=b.tags||[];
@@ -586,6 +587,20 @@ function kavLayers(b){
   if(b.kavanah&&typeof b.kavanah==="object")return b.kavanah;
   return {};
 }
+/* Kavanot are their own blocks (k:"kavanah"). Legacy prayers attach a kavanah to a
+   text block; splitKavBlock converts those into [textBlock, kavanahBlock] so the
+   kavanah becomes an independent, reorderable item. Idempotent. */
+function blockHasKav(b){const l=kavLayers(b);return !!(l&&(l.found||l.halachic||l.kabbalistic));}
+function splitKavBlock(b){
+  if(!b||b.k==="kavanah")return [b];
+  if(!blockHasKav(b))return [b];
+  const l=kavLayers(b);
+  const text=Object.assign({},b);delete text.kavanah;delete text.kav;
+  const kav={k:"kavanah",kav:{}};
+  if(l.found)kav.kav.found=l.found;if(l.halachic)kav.kav.halachic=l.halachic;if(l.kabbalistic)kav.kav.kabbalistic=l.kabbalistic;
+  return [text,kav];
+}
+function normalizeBlocks(blocks){const out=[];(blocks||[]).forEach(b=>{splitKavBlock(b).forEach(x=>out.push(x));});return out;}
 function renderKavanot(b,wrap){
   const layers=kavLayers(b);const lv=state.kavLevels||{found:true};
   const defs=[["found","Kavanah","var(--insert)"],["halachic","Halachic Focus","#9fa97a"],["kabbalistic","Kabbalistic","#b08cc4"]];
@@ -604,7 +619,7 @@ let dm={svcId:null,blocks:[],idx:0};
 function startDaven(svcId){
   const prayers=orderedPrayers(svcId);if(!prayers.length)return;
   const blocks=[];
-  prayers.forEach(pr=>{blocks.push({k:"header",en:pr.en,he:pr.he,section:pr.section});pr.blocks.forEach(b=>{if(b.k==="rubric"&&!state.showInstr)return;if(b.k!=="rubric"&&!blockVisible(b))return;blocks.push(b);});});
+  prayers.forEach(pr=>{blocks.push({k:"header",en:pr.en,he:pr.he,section:pr.section});normalizeBlocks(pr.blocks).forEach(b=>{if(b.k==="rubric"&&!state.showInstr)return;if(b.k==="kavanah"&&!state.showKavanot)return;if(b.k!=="rubric"&&b.k!=="kavanah"&&!blockVisible(b))return;blocks.push(b);});});
   if(!blocks.length)return;
   dm={svcId,blocks,idx:0};const svc=svcById(svcId);$("#dmTitle").textContent=svc.en;$("#daven").classList.add("show");paintDaven();
 }
@@ -614,6 +629,7 @@ function paintDaven(){
     const card=el("div","dm-block");if(i<dm.idx)card.classList.add("past");else if(i===dm.idx)card.classList.add("current");
     if(b.k==="header"){card.innerHTML=`<div style="font-size:.62rem;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:.3rem">${esc(b.section||"Main")}</div><div style="font-family:var(--display);font-size:1.5rem;font-weight:600;color:var(--ink);letter-spacing:-.01em">${esc(b.en)} <span style="font-family:var(--hebrew);direction:rtl;color:var(--accent);font-size:.85em">${esc(b.he)}</span></div>`;}
     else if(b.k==="rubric"){const post=postureOf(b);let postHtml="";if(post)postHtml=`<span class="posture-tag ${post.tag}">${postureIcon(post.tag)}<span>${post.label}</span></span>`;card.innerHTML=`<div class="rubric">${postHtml}${esc(b.text||"")}</div>`;}
+    else if(b.k==="kavanah"){renderKavanot(b,card);}
     else{let html="";const he=pickHe(b);if(he)html+=`<div class="he-text">${esc(he)}</div>`;if(state.translit&&b.tr)html+=`<div class="translit">${esc(b.tr)}</div>`;if(!state.hebrewOnly&&b.en)html+=`<div class="en-text">${esc(b.en)}</div>`;card.innerHTML=html;if(state.showKavanot&&i===dm.idx)renderKavanot(b,card);}
     c.appendChild(card);
   });
@@ -789,16 +805,53 @@ function bearingToKotel(lat,lng){
   return (toD(Math.atan2(y,x))+360)%360;
 }
 let _kotelHandler=null;
+/* Original Kotel line art — minimalist ashlar masonry with an engraved
+   "ירושלים / JERUSALEM" wordmark. Pure SVG, every colour from var(--accent)/
+   var(--bg) via the `style` property (presentation attributes don't take var()),
+   so it restyles with the theme and needs no external image. */
+function kotelArtSVG(){
+  const W=360,H=176,x0=8,x1=352,top=26,ground=158;
+  const rows=7,rowH=(ground-top)/rows,cell=58;
+  const bandY0=top+3*rowH,bandY1=top+5*rowH; // cleared band (2 courses) for the wordmark
+  let courses="",joints="";
+  for(let i=0;i<=rows;i++){const y=(top+i*rowH).toFixed(1);courses+=`<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}"/>`;}
+  for(let r=0;r<rows;r++){
+    const yA=top+r*rowH,yB=top+(r+1)*rowH;
+    if(yA>=bandY0-0.5&&yB<=bandY1+0.5)continue;      // keep the wordmark band clear
+    const off=(r%2)?cell/2:0;                          // running-bond offset
+    for(let x=x0+off;x<x1-2;x+=cell){if(x<=x0+2)continue;joints+=`<line x1="${x.toFixed(1)}" y1="${yA.toFixed(1)}" x2="${x.toFixed(1)}" y2="${yB.toFixed(1)}"/>`;}
+  }
+  const arch=`<path d="M214 ${top} A 72 72 0 0 1 ${x1} ${top}" style="stroke-opacity:.4"/>`; // Wilson's Arch hint
+  const tuft=(x,y)=>`<g style="stroke-opacity:.7"><path d="M${x} ${y} q -3 -7 -6 -10"/><path d="M${x} ${y} q 0 -8 0 -12"/><path d="M${x} ${y} q 3 -7 6 -10"/></g>`;
+  const greens=tuft(x0+cell,(top+rowH).toFixed(1))+tuft((x0+cell*3+cell/2).toFixed(1),(top+2*rowH).toFixed(1))+tuft((x1-cell).toFixed(1),ground);
+  const base=`<line x1="${x0}" y1="${ground}" x2="${x1}" y2="${ground}" style="stroke-width:2.2"/>`;
+  const band=`<rect x="${x0}" y="${bandY0.toFixed(1)}" width="${x1-x0}" height="${(bandY1-bandY0).toFixed(1)}" rx="3" style="fill:var(--bg);fill-opacity:.82;stroke:none"/>`;
+  const midY=(bandY0+bandY1)/2;
+  const word=`<g style="fill:var(--accent);stroke:none;filter:drop-shadow(0 0 5px color-mix(in srgb,var(--accent) 55%,transparent))" text-anchor="middle">`
+    +`<text x="${W/2}" y="${(midY-1).toFixed(1)}" dominant-baseline="middle" style="font-family:var(--hebrew);font-weight:600;font-size:29px">ירושלים</text>`
+    +`<text x="${W/2}" y="${(midY+17).toFixed(1)}" dominant-baseline="middle" style="font-family:var(--display);font-size:9px;letter-spacing:4px">JERUSALEM</text></g>`;
+  return `<svg class="kotel-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Jerusalem"`
+    +` style="stroke:var(--accent)" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">`
+    +`${arch}<g>${courses}</g><g>${joints}</g>${base}${greens}${band}${word}</svg>`;
+}
 function renderKotel(stage){
   const loc=state.loc||{name:"Jerusalem",lat:31.78,lng:35.23};
   const atKotel=Math.abs(loc.lat-KOTEL.lat)<0.02&&Math.abs(loc.lng-KOTEL.lng)<0.02;
   const bearing=bearingToKotel(loc.lat,loc.lng);
-  /* hero with Kotel image */
-  const hero=el("div","kotel-hero");
-  const img=el("div","kh-img");img.style.backgroundImage="url('https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Western_wall_jerusalem_night.jpg/1280px-Western_wall_jerusalem_night.jpg')";
-  hero.appendChild(img);
-  const cap=el("div","kh-cap");cap.innerHTML=`<div class="t">Toward Jerusalem</div><div class="s">${esc(loc.name||"")}</div>`;hero.appendChild(cap);
-  stage.appendChild(hero);
+  /* Header: themed line art by default; an admin-uploaded photo overrides it. */
+  const kImg=(state.branding&&state.branding.kotelImage)||"";
+  if(kImg){
+    const hero=el("div","kotel-hero");
+    const img=el("div","kh-img");img.style.backgroundImage=`url("${kImg}")`;hero.appendChild(img);
+    const cap=el("div","kh-cap");cap.innerHTML=`<div class="t">Toward Jerusalem</div><div class="s">${esc(loc.name||"")}</div>`;hero.appendChild(cap);
+    stage.appendChild(hero);
+  }else{
+    const hero=el("div","kotel-art");
+    hero.innerHTML=kotelArtSVG();
+    const from=el("div","from");from.textContent="From "+(loc.name||"your location");
+    hero.appendChild(from);
+    stage.appendChild(hero);
+  }
 
   const wrap=el("div","compass-wrap");
   if(atKotel){

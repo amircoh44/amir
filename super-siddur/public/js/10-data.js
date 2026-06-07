@@ -447,7 +447,10 @@ const DEFAULTS={
   notifyPrayers:false,notifyMinutes:15,notifyWhich:{shacharit:true,mincha:true,maariv:true},
   insertRules:[],insertRulesDeleted:[],
   hideTachanun:false,womanMode:false,
-  coverSeen:0
+  coverSeen:0,
+  showCover:true,           // user toggle: animated opening cover on launch
+  branding:null,            // admin-set splash overrides {title1,title2,subtitle,bgImage,accent}
+  adminToken:""             // admin's saved token for server-side saves (this device only)
 };
 let state={};
 function loadState(){try{const s=localStorage.getItem("super_siddur_v23");state=s?Object.assign({},DEFAULTS,JSON.parse(s)):Object.assign({},DEFAULTS);}catch(e){state=Object.assign({},DEFAULTS);}if(!state.order)state.order={};if(!state.hidden)state.hidden={};if(!state.prayerEdits)state.prayerEdits={};if(!state.customPrayers)state.customPrayers={};}

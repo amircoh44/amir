@@ -103,6 +103,14 @@ main{flex:1;padding:1rem 1rem 5rem;max-width:680px;margin:0 auto;width:100%}
 .kotel-hero .kh-cap{position:absolute;left:0;right:0;bottom:.7rem;z-index:2;text-align:center}
 .kotel-hero .kh-cap .t{font-family:var(--display);font-size:1.5rem;font-weight:600;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .kotel-hero .kh-cap .s{font-size:.78rem;color:rgba(255,255,255,.85);text-shadow:0 1px 8px rgba(0,0,0,.6);margin-top:.1rem}
+/* themed Kotel line-art header (no photo) */
+.kotel-art{margin:.2rem 0 .2rem;text-align:center}
+.kotel-art .kotel-svg{display:block;width:100%;max-width:440px;height:auto;margin:0 auto}
+.kotel-art .from{margin-top:.35rem;font-size:.66rem;letter-spacing:.22em;text-transform:uppercase;color:var(--ink2)}
+/* admin image-upload helper */
+.img-up{margin:.2rem 0 .4rem}
+.img-up .hint{font-size:.7rem;color:var(--ink2);line-height:1.5;margin-top:.35rem}
+.img-up .thumb{margin-top:.5rem;height:90px;border:1px solid var(--line);border-radius:.5rem;background-size:cover;background-position:center}
 .compass-wrap{display:flex;flex-direction:column;align-items:center;padding:1.4rem 0 .5rem}
 .compass{position:relative;width:min(74vw,300px);height:min(74vw,300px);border-radius:50%;
   background:radial-gradient(circle at 50% 42%,color-mix(in srgb,var(--accent) 12%,var(--surface)),var(--surface) 72%);

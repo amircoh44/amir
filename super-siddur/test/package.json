@@ -1,0 +1,12 @@
+{
+  "name": "super-siddur-test",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Smoke test for The Super Siddur (jsdom boot + feature checks)",
+  "scripts": {
+    "test": "node smoke.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

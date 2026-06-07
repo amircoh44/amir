@@ -65,6 +65,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   loadState();
   buildImported();
   applyTheme();
+  if(typeof applySplash==="function")applySplash();      // admin-set splash overrides
+  if(typeof syncFromServer==="function")syncFromServer(); // pull live content + branding
   window.addEventListener("scroll",trackScroll,{passive:true});
   const nm=state.userEngName||state.userHebName;if(nm)$("#coverName").textContent=nm;
 
@@ -78,8 +80,10 @@ document.addEventListener("DOMContentLoaded",()=>{
     setTimeout(()=>{cover.classList.add("lifting");},650);
     setTimeout(()=>{cover.classList.add("gone");},1550);
   }
-  /* skip the animated cover after it's been seen enough times */
-  if(state.coverSeen>=5&&state.onboarded){cover.classList.add("gone");openApp();}
+  /* Skip the animated cover when the user turned it off, or after it's been seen enough. */
+  const skipCover = state.showCover===false || state.coverSeen>=5;
+  if(state.onboarded && skipCover){cover.classList.add("gone");openApp();}
+  else if(!state.onboarded && state.showCover===false){startOnboard();}
   else if(bookCover){bookCover.addEventListener("click",enterFromCover);cover.addEventListener("click",e=>{if(e.target===cover)enterFromCover();});}
 
   /* bottom nav */
@@ -133,13 +137,13 @@ function openPrayerEditor(svcId,prId){
   const eff=effPrayer(svcId,basePr);
   const custom=isCustomPrayer(svcId,prId);
   const meta={en:eff.en||"",he:eff.he||"",section:eff.section||"Main"};
-  let blocks=JSON.parse(JSON.stringify(eff.blocks||[]));
+  let blocks=normalizeBlocks(JSON.parse(JSON.stringify(eff.blocks||[])));
   let targetNusach=state.nusach; /* which nusach this edit applies to; "__all__" = all */
   function loadFor(tn){
     const key = tn==="__all__" ? prayerKey(svcId,prId) : (svcId+"."+prId+"@"+tn);
     const ov = state.prayerEdits[key];
-    if(ov){meta.en=ov.en!=null?ov.en:basePr.en;meta.he=ov.he!=null?ov.he:basePr.he;meta.section=ov.section!=null?ov.section:(basePr.section||"Main");blocks=JSON.parse(JSON.stringify(ov.blocks||basePr.blocks||[]));}
-    else{meta.en=basePr.en||"";meta.he=basePr.he||"";meta.section=basePr.section||"Main";blocks=JSON.parse(JSON.stringify(basePr.blocks||[]));}
+    if(ov){meta.en=ov.en!=null?ov.en:basePr.en;meta.he=ov.he!=null?ov.he:basePr.he;meta.section=ov.section!=null?ov.section:(basePr.section||"Main");blocks=normalizeBlocks(JSON.parse(JSON.stringify(ov.blocks||basePr.blocks||[])));}
+    else{meta.en=basePr.en||"";meta.he=basePr.he||"";meta.section=basePr.section||"Main";blocks=normalizeBlocks(JSON.parse(JSON.stringify(basePr.blocks||[])));}
   }
   const old=$("#prayerEditor");if(old)old.remove();
   const ov=el("div","");ov.id="prayerEditor";
@@ -169,7 +173,8 @@ function openPrayerEditor(svcId,prId){
   const ft=el("div","");ft.style.cssText="position:absolute;left:0;right:0;bottom:0;padding:.8rem 1.1rem;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line);display:flex;gap:.5rem;flex-wrap:wrap";
   const addTxt=el("button","btn-ghost");addTxt.style.margin="0";addTxt.style.flex="1 1 30%";addTxt.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M12 5v14M5 12h14"/></svg> Prayer text`;
   const addRub=el("button","btn-ghost");addRub.style.margin="0";addRub.style.flex="1 1 30%";addRub.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M4 6h10M4 12h16M4 18h7"/></svg> Instruction`;
-  ft.appendChild(addTxt);ft.appendChild(addRub);
+  const addKav=el("button","btn-ghost");addKav.style.margin="0";addKav.style.flex="1 1 30%";addKav.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M12 3a4 4 0 0 1 4 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 0 1 4-4zM10 18h4M11 21h2"/></svg> Kavanah`;
+  ft.appendChild(addTxt);ft.appendChild(addRub);ft.appendChild(addKav);
   if(custom){const del=el("button","btn-ghost");del.style.cssText="margin:0;flex:1 1 30%;color:#d9534f;border-color:color-mix(in srgb,#d9534f 40%,transparent)";del.textContent="Delete prayer";del.onclick=()=>{if(!confirm("Delete this prayer? This cannot be undone."))return;state.customPrayers[svcId]=(state.customPrayers[svcId]||[]).filter(p=>p.id!==prId);if(state.hidden[svcId])state.hidden[svcId]=state.hidden[svcId].filter(x=>x!==prId);if(state.order[svcId])state.order[svcId]=state.order[svcId].filter(x=>x!==prId);saveState();ov.remove();render();};ft.appendChild(del);}
   else{const rst=el("button","btn-ghost");rst.style.cssText="margin:0;flex:1 1 30%";rst.textContent="Reset to original";rst.onclick=()=>{delete state.prayerEdits[prayerKey(svcId,prId)];delete state.prayerEdits[svcId+"."+prId+"@"+state.nusach];saveState();ov.remove();render();toast("Reset to original");};ft.appendChild(rst);}
   ov.appendChild(ft);
@@ -179,10 +184,10 @@ function openPrayerEditor(svcId,prId){
     list.innerHTML="";
     if(!blocks.length){list.appendChild(el("div","note","No blocks yet. Add prayer text or an instruction below."));}
     blocks.forEach((b,i)=>{
-      const isRub=b.k==="rubric";
-      const card=el("div","");card.style.cssText="background:var(--surface);border:1px solid var(--line);border-radius:.6rem;padding:.8rem;margin-bottom:.7rem"+(isRub?";border-left:3px solid var(--instr)":"");
+      const isRub=b.k==="rubric",isKav=b.k==="kavanah";
+      const card=el("div","");card.style.cssText="background:var(--surface);border:1px solid var(--line);border-radius:.6rem;padding:.8rem;margin-bottom:.7rem"+(isRub?";border-left:3px solid var(--instr)":isKav?";border-left:3px solid var(--insert)":"");
       const top=el("div","");top.style.cssText="display:flex;align-items:center;gap:.4rem;margin-bottom:.55rem";
-      const chip=el("span","");chip.style.cssText="font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;padding:.2rem .5rem;border-radius:.3rem;"+(isRub?"color:var(--instr);background:color-mix(in srgb,var(--instr) 12%,transparent)":"color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)");chip.textContent=isRub?"Instruction":"Prayer text";
+      const chip=el("span","");chip.style.cssText="font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;padding:.2rem .5rem;border-radius:.3rem;"+(isRub?"color:var(--instr);background:color-mix(in srgb,var(--instr) 12%,transparent)":isKav?"color:var(--insert);background:color-mix(in srgb,var(--insert) 12%,transparent)":"color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)");chip.textContent=isRub?"Instruction":isKav?"Kavanah":"Prayer text";
       top.appendChild(chip);const spacer=el("div","");spacer.style.flex="1";top.appendChild(spacer);
       const up=el("button","arr-mini");up.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M18 15l-6-6-6 6"/></svg>`;up.disabled=i===0;up.style.opacity=i===0?".3":"1";up.onclick=()=>{[blocks[i-1],blocks[i]]=[blocks[i],blocks[i-1]];paintBlocks();};
       const dn=el("button","arr-mini");dn.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M6 9l6 6 6-6"/></svg>`;dn.disabled=i===blocks.length-1;dn.style.opacity=i===blocks.length-1?".3":"1";dn.onclick=()=>{[blocks[i+1],blocks[i]]=[blocks[i],blocks[i+1]];paintBlocks();};
@@ -199,6 +204,19 @@ function openPrayerEditor(svcId,prId){
         prow.appendChild(mkP("sit","Sit",postureIcon("sit")));
         prow.appendChild(mkP("bow","Bow",postureIcon("bow")));
         card.appendChild(prow);
+      }else if(isKav){
+        /* Kavanah block \u2014 three editable layers, reorderable like any other block. */
+        const kv=kavLayers(b);
+        b.kav=b.kav||{found:kv.found||"",halachic:kv.halachic||"",kabbalistic:kv.kabbalistic||""};
+        if(typeof b.kavanah==="string"){if(!b.kav.found)b.kav.found=b.kavanah;delete b.kavanah;}
+        card.appendChild(el("div","note","Place this anywhere in the list \u2014 it appears in the service exactly where it sits here."));
+        const mkKav=(key,label,color)=>{
+          card.appendChild(mkLabel(label));
+          const k=el("textarea");k.value=b.kav[key]||"";k.placeholder="\u2026";k.rows=2;k.style.cssText=taCss()+"background:color-mix(in srgb,"+color+" 8%,transparent);border-color:color-mix(in srgb,"+color+" 28%,transparent)";k.addEventListener("input",e=>{b.kav[key]=e.target.value;});card.appendChild(k);
+        };
+        mkKav("found","Foundation kavanah","var(--insert)");
+        mkKav("halachic","Halachic focus","#9fa97a");
+        mkKav("kabbalistic","Kabbalistic kavanah","#b08cc4");
       }else{
         const he=el("textarea");he.value=b.he||"";he.placeholder="Hebrew text";he.rows=3;he.dir="rtl";he.style.cssText=taCss()+"font-family:var(--hebrew);font-size:1.15rem;line-height:1.9;text-align:right";he.addEventListener("input",e=>b.he=e.target.value);
         const tr=el("input");tr.value=b.tr||"";tr.placeholder="Transliteration (optional)";tr.style.cssText=taCss()+"font-style:italic";tr.addEventListener("input",e=>b.tr=e.target.value);
@@ -206,24 +224,6 @@ function openPrayerEditor(svcId,prId){
         card.appendChild(mkLabel("Hebrew"));card.appendChild(he);
         card.appendChild(mkLabel("Transliteration"));card.appendChild(tr);
         card.appendChild(mkLabel("English"));card.appendChild(en);
-        /* kavanah fields: three levels */
-        const kv=kavLayers(b);const hasAny=kv.found||kv.halachic||kv.kabbalistic;
-        const kWrap=el("div","");kWrap.style.marginTop=".3rem";
-        if(hasAny||b._showK){
-          b.kav=b.kav||{found:kv.found||"",halachic:kv.halachic||"",kabbalistic:kv.kabbalistic||""};
-          if(typeof b.kavanah==="string")delete b.kavanah;
-          const mkKav=(key,label,color)=>{
-            kWrap.appendChild(mkLabel(label));
-            const k=el("textarea");k.value=b.kav[key]||"";k.placeholder="\u2026";k.rows=2;k.style.cssText=taCss()+"background:color-mix(in srgb,"+color+" 8%,transparent);border-color:color-mix(in srgb,"+color+" 28%,transparent)";k.addEventListener("input",e=>{b.kav[key]=e.target.value;});kWrap.appendChild(k);
-          };
-          mkKav("found","Foundation kavanah","var(--insert)");
-          mkKav("halachic","Halachic focus","#9fa97a");
-          mkKav("kabbalistic","Kabbalistic kavanah","#b08cc4");
-        }else{
-          const addK=el("button","");addK.style.cssText="display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .7rem;border-radius:.5rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:var(--sans);border:1px dashed color-mix(in srgb,var(--accent) 45%,transparent);background:transparent;color:var(--accent)";addK.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M12 5v14M5 12h14"/></svg> Add kavanot`;addK.onclick=()=>{b._showK=true;paintBlocks();};
-          kWrap.appendChild(addK);
-        }
-        card.appendChild(kWrap);
       }
       list.appendChild(card);
     });
@@ -234,10 +234,15 @@ function openPrayerEditor(svcId,prId){
   paintBlocks();
   addTxt.onclick=()=>{blocks.push({k:"p",he:"",tr:"",en:""});paintBlocks();bodyScroll.scrollTop=bodyScroll.scrollHeight;};
   addRub.onclick=()=>{blocks.push({k:"rubric",text:""});paintBlocks();bodyScroll.scrollTop=bodyScroll.scrollHeight;};
+  addKav.onclick=()=>{blocks.push({k:"kavanah",kav:{found:"",halachic:"",kabbalistic:""}});paintBlocks();bodyScroll.scrollTop=bodyScroll.scrollHeight;};
   $("#peClose").onclick=()=>{ov.remove();};
   $("#peSave").onclick=()=>{
     const en=$("#peEn").value.trim(),he=$("#peHe").value.trim();
-    const clean=blocks.filter(b=>b.k==="rubric"?(b.text||"").trim():((b.he||"").trim()||(b.en||"").trim()||(b.tr||"").trim())).map(b=>{const c=Object.assign({},b);delete c._showK;if(c.kavanah==="")delete c.kavanah;if(c.kav){const kk={};if((c.kav.found||"").trim())kk.found=c.kav.found.trim();if((c.kav.halachic||"").trim())kk.halachic=c.kav.halachic.trim();if((c.kav.kabbalistic||"").trim())kk.kabbalistic=c.kav.kabbalistic.trim();if(Object.keys(kk).length)c.kav=kk;else delete c.kav;}return c;});
+    const clean=blocks.filter(b=>{
+      if(b.k==="rubric")return (b.text||"").trim();
+      if(b.k==="kavanah"){const k=b.kav||{};return (k.found||"").trim()||(k.halachic||"").trim()||(k.kabbalistic||"").trim();}
+      return (b.he||"").trim()||(b.en||"").trim()||(b.tr||"").trim();
+    }).map(b=>{const c=Object.assign({},b);delete c._showK;delete c.kavanah;if(c.kav){const kk={};if((c.kav.found||"").trim())kk.found=c.kav.found.trim();if((c.kav.halachic||"").trim())kk.halachic=c.kav.halachic.trim();if((c.kav.kabbalistic||"").trim())kk.kabbalistic=c.kav.kabbalistic.trim();if(Object.keys(kk).length)c.kav=kk;else delete c.kav;}return c;});
     if(custom){
       const arr=state.customPrayers[svcId]||[];const idx=arr.findIndex(p=>p.id===prId);
       if(idx>=0)arr[idx]=Object.assign({},arr[idx],{en:en||"Untitled",he,section:meta.section,blocks:clean});

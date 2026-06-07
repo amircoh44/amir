@@ -89,15 +89,44 @@ sudo systemctl daemon-reload && sudo systemctl enable --now super-siddur
 
 Then front it with the same `nginx.conf`.
 
+## Admin panel (in-app, under Settings ⚙)
+
+- **Content** — find/replace across nuschaot (live, with a match count), a
+  missing-text report, and **Save to server** to publish edits for everyone.
+- **Splash** — edit the opening-cover wordmark/subtitle/accent and upload a cover
+  background image; each image upload shows the recommended pixel size for every
+  layout. Also uploads an optional **Compass header image** that overrides the
+  built-in Kotel line art. **Save for everyone** publishes via `/api/settings`.
+- **Edit** (per-prayer editor) — Hebrew/translation/transliteration, posture cues,
+  and **kavanot as their own reorderable blocks** (Foundation / Halachic /
+  Kabbalistic), placeable anywhere in the block list. Legacy prayers whose kavanah
+  was attached to a text block convert cleanly and keep working.
+- **Display** — a user-facing **Opening cover** toggle to skip the splash on launch.
+
+The **Compass** header is original, theme-driven SVG line art (`var(--accent)`,
+no external image) with an engraved "ירושלים / JERUSALEM" wordmark.
+
 ## Admin API
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | `GET`  | `/api/content` | — | Current siddur content (array of nusach docs) |
 | `POST` | `/api/content` | `X-Admin-Token` | Replace content; a timestamped backup is kept |
+| `GET`  | `/api/settings` | — | Site settings (splash branding) |
+| `POST` | `/api/settings` | `X-Admin-Token` | Update settings |
 | `GET`  | `/api/admin/status` | — | `{ enabled }` — whether server-side saves are configured |
 | `GET`  | `/healthz` | — | Liveness probe |
 
-The admin token is entered once in the app's **Settings → Content** panel and stored in
-that browser's localStorage; it is sent with each save.
+The admin token is entered once in the app's **Settings → Content / Splash** panel
+and stored in that browser's localStorage; it is sent with each save.
+
+## Tests
+
+```bash
+cd test && npm install && npm test
+```
+
+Boots the app in jsdom and checks the content pipeline, admin/editor + splash
+features, the Kotel line art, and the kavanot blocks. If the original single-file
+HTML is available, point `SIDDUR_ORIG` at it to also assert behavioural parity.
 ```
