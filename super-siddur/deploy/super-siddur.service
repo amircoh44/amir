@@ -1,0 +1,23 @@
+# systemd unit for running The Super Siddur directly with Node (no Docker).
+# Install: sudo cp deploy/super-siddur.service /etc/systemd/system/
+#          sudo systemctl daemon-reload && sudo systemctl enable --now super-siddur
+[Unit]
+Description=The Super Siddur
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/super-siddur
+ExecStart=/usr/bin/node server/server.js
+Restart=on-failure
+RestartSec=3
+Environment=NODE_ENV=production
+Environment=PORT=8080
+Environment=DATA_DIR=/opt/super-siddur/data
+# Set your admin token here (or use an EnvironmentFile).
+Environment=ADMIN_TOKEN=change-me
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target

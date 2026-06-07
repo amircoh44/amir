@@ -1,0 +1,20 @@
+services:
+  siddur:
+    build: .
+    image: super-siddur:latest
+    container_name: super-siddur
+    restart: unless-stopped
+    environment:
+      # Set a strong token; admin saves are rejected without it.
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN in your .env}
+      PORT: 8080
+      DATA_DIR: /app/data
+    volumes:
+      # Persist admin edits (content.json + backups) across container rebuilds.
+      - siddur-data:/app/data
+    ports:
+      # Expose only to localhost; put nginx (below) in front for TLS.
+      - "127.0.0.1:8080:8080"
+
+volumes:
+  siddur-data:

@@ -1,0 +1,2 @@
+# Server writes content.json (and timestamped .bak.json backups) here at runtime.
+# Mount this directory as a volume in production to persist admin edits.

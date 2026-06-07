@@ -1,0 +1,255 @@
+"use strict";
+/* buildImported(), text index browser, posture detection, bootstrap */
+
+/* ====== FULL TEXT SIDDUR (decoded from your PDFs) ====== */
+window.IMPORTED={};
+function buildImported(){
+  window.IMPORTED={};
+  (window.TEXTDATA||[]).forEach(d=>{
+    const sid=d.svcId;if(!sid||sid==="torah")return;
+    if(!window.IMPORTED[sid])window.IMPORTED[sid]=[];
+    d.sections.forEach((sec,si)=>{
+      window.IMPORTED[sid].push({
+        id:"imp_"+d.nusach+"_"+sid+"_"+si,
+        en:"",he:(sec.header&&sec.header.trim())||d.service,section:d.service,
+        only:[d.nusach],imported:true,
+        blocks:sec.blocks.map(b=>b.k==="rubric"?{k:"rubric",text:b.t}:{k:"p",he:b.t})
+      });
+    });
+  });
+}
+function textDocs(){return (window.TEXTDATA||[]);}
+function openTextIndex(){
+  const docs=textDocs();if(!docs.length){toast("Text is still loading\u2026");return;}
+  const old=$("#textIndex");if(old)old.remove();
+  const ov=el("div","");ov.id="textIndex";
+  ov.style.cssText="position:fixed;inset:0;z-index:125;background:var(--bg);display:flex;flex-direction:column";
+  const hd=el("div","");hd.style.cssText="flex:none;display:flex;align-items:center;gap:.6rem;padding:.95rem 1rem;border-bottom:1px solid var(--line);background:var(--surface)";
+  hd.innerHTML=`<button id="tiClose" style="background:transparent;border:0;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:.3rem;font-size:.85rem"><svg class="icon" viewBox="0 0 24 24" style="width:1.1em;height:1.1em"><path d="M15 18l-6-6 6-6"/></svg> Back</button><div style="flex:1;text-align:center;font-family:var(--display);font-weight:600;color:var(--ink)">Full Text Siddur</div><div style="width:3rem"></div>`;
+  ov.appendChild(hd);
+  const body=el("div","");body.style.cssText="flex:1;overflow-y:auto;padding:1rem 1.1rem 2rem";
+  let curNus=null;
+  docs.forEach((d,i)=>{
+    if(d.nusach!==curNus){curNus=d.nusach;const h=el("div","");h.style.cssText="font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:700;margin:1rem 0 .5rem;padding-bottom:.3rem;border-bottom:1px solid var(--line)";h.textContent=d.nusach;body.appendChild(h);}
+    const nb=d.sections.reduce((a,s)=>a+s.blocks.length,0);
+    const b=el("button","card");b.style.marginBottom=".5rem";
+    b.innerHTML=`<div class="icon-wrap"><svg class="icon" viewBox="0 0 24 24"><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M8 8h6M8 12h6"/></svg></div><div class="body"><div class="title">${esc(d.service)}</div><div class="sub">${nb} passages \u00B7 fully vocalized</div></div><div class="arr">\u2192</div>`;
+    b.onclick=()=>openTextDoc(i);
+    body.appendChild(b);
+  });
+  ov.appendChild(body);document.body.appendChild(ov);
+  $("#tiClose").onclick=()=>ov.remove();
+}
+function openTextDoc(i){
+  const d=textDocs()[i];if(!d)return;
+  const old=$("#textReader");if(old)old.remove();
+  const ov=el("div","");ov.id="textReader";
+  ov.style.cssText="position:fixed;inset:0;z-index:130;background:var(--bg);display:flex;flex-direction:column";
+  const hd=el("div","");hd.style.cssText="flex:none;display:flex;align-items:center;gap:.6rem;padding:.9rem 1rem;border-bottom:1px solid var(--line);background:var(--surface)";
+  hd.innerHTML=`<button id="trClose" style="background:transparent;border:0;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:.3rem;font-size:.85rem"><svg class="icon" viewBox="0 0 24 24" style="width:1.1em;height:1.1em"><path d="M15 18l-6-6 6-6"/></svg> Back</button><div style="flex:1;text-align:center;font-family:var(--display);font-weight:600;color:var(--ink);font-size:.95rem">${esc(d.service)} <span style="color:var(--muted);font-weight:400">· ${esc(d.nusach)}</span></div><div style="width:3rem"></div>`;
+  ov.appendChild(hd);
+  const body=el("div","");body.style.cssText="flex:1;overflow-y:auto;padding:1.2rem 1.1rem 3rem";
+  d.sections.forEach(sec=>{
+    if(sec.header){const h=el("div","");h.style.cssText="font-family:var(--display);font-size:1.15rem;font-weight:600;color:var(--accent);text-align:center;margin:1.4rem 0 .8rem;direction:rtl;font-family:var(--hebrew)";h.textContent=sec.header;body.appendChild(h);}
+    sec.blocks.forEach(b=>{
+      if(b.k==="rubric"){const r=el("div","");r.style.cssText="font-size:calc(.9rem * var(--scale,1));color:var(--muted);font-style:italic;text-align:center;direction:rtl;font-family:var(--hebrew);margin:.8rem 0 .4rem";r.textContent=b.t;body.appendChild(r);}
+      else{const p=el("div","");p.style.cssText="font-family:var(--hebrew);direction:rtl;text-align:right;font-size:calc(1.15rem * var(--scale,1));line-height:2;color:var(--ink);margin-bottom:.7rem";p.textContent=b.t;body.appendChild(p);}
+    });
+  });
+  ov.appendChild(body);document.body.appendChild(ov);
+  $("#trClose").onclick=()=>ov.remove();
+}
+
+/* ====== BOOT / EVENT WIRING ====== */
+document.addEventListener("DOMContentLoaded",()=>{
+  loadState();
+  buildImported();
+  applyTheme();
+  window.addEventListener("scroll",trackScroll,{passive:true});
+  const nm=state.userEngName||state.userHebName;if(nm)$("#coverName").textContent=nm;
+
+  const cover=$("#cover"),bookCover=$("#bookCover");
+  function enterFromCover(){
+    state.coverSeen=(state.coverSeen||0)+1;saveState();
+    if(!state.onboarded){startOnboard();return;}
+    if(bookCover)bookCover.classList.add("open");
+    /* render the app underneath first so the opening book reveals it */
+    openApp();
+    setTimeout(()=>{cover.classList.add("lifting");},650);
+    setTimeout(()=>{cover.classList.add("gone");},1550);
+  }
+  /* skip the animated cover after it's been seen enough times */
+  if(state.coverSeen>=5&&state.onboarded){cover.classList.add("gone");openApp();}
+  else if(bookCover){bookCover.addEventListener("click",enterFromCover);cover.addEventListener("click",e=>{if(e.target===cover)enterFromCover();});}
+
+  /* bottom nav */
+  document.querySelectorAll(".nav-tab").forEach(tab=>{
+    tab.addEventListener("click",()=>go(tab.getAttribute("data-view")));
+  });
+  /* top bar */
+  const libBtn=$("#libBtn");if(libBtn)libBtn.addEventListener("click",openLib);
+  const admBtn=$("#admBtn");if(admBtn)admBtn.addEventListener("click",openAdmin);
+  const searchBtn=$("#searchBtn");if(searchBtn)searchBtn.addEventListener("click",openSearch);
+
+  /* sheet close buttons + backdrop */
+  document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>closeSheet(b.getAttribute("data-close"))));
+  document.querySelectorAll(".sheet").forEach(sh=>sh.addEventListener("click",e=>{if(e.target===sh)sh.classList.remove("show");}));
+
+  /* search input */
+  const si=$("#searchInput");if(si)si.addEventListener("input",e=>paintSearch(e.target.value));
+
+  /* daven controls */
+  const dn=$("#dmNext");if(dn)dn.addEventListener("click",dmNext);
+  const dp=$("#dmPrev");if(dp)dp.addEventListener("click",dmPrev);
+  const dc=$("#dmClose");if(dc)dc.addEventListener("click",()=>$("#daven").classList.remove("show"));
+
+  /* keyboard */
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape"){
+      const dav=$("#daven");if(dav&&dav.classList.contains("show")){dav.classList.remove("show");return;}
+      let closed=false;document.querySelectorAll(".sheet.show").forEach(s=>{s.classList.remove("show");closed=true;});
+      if(closed)return;
+    }
+    const dav=$("#daven");
+    if(dav&&dav.classList.contains("show")){
+      if(e.key==="ArrowRight"||e.key===" "){e.preventDefault();dmNext();}
+      else if(e.key==="ArrowLeft"){e.preventDefault();dmPrev();}
+    }
+  });
+});
+
+/* ====== PRAYER EDITOR ====== */
+function addCustomPrayer(svcId){
+  if(!state.customPrayers[svcId])state.customPrayers[svcId]=[];
+  const id="custom_"+Date.now();
+  state.customPrayers[svcId].push({id,en:"New Prayer",he:"",section:"Main",blocks:[{k:"p",he:"",tr:"",en:""}],custom:true});
+  saveState();
+  openPrayerEditor(svcId,id);
+}
+function findBasePrayer(svcId,prId){return allBasePrayers(svcId).find(p=>p.id===prId);}
+function isCustomPrayer(svcId,prId){return ((state.customPrayers&&state.customPrayers[svcId])||[]).some(p=>p.id===prId);}
+function openPrayerEditor(svcId,prId){
+  const basePr=findBasePrayer(svcId,prId);if(!basePr)return;
+  const eff=effPrayer(svcId,basePr);
+  const custom=isCustomPrayer(svcId,prId);
+  const meta={en:eff.en||"",he:eff.he||"",section:eff.section||"Main"};
+  let blocks=JSON.parse(JSON.stringify(eff.blocks||[]));
+  let targetNusach=state.nusach; /* which nusach this edit applies to; "__all__" = all */
+  function loadFor(tn){
+    const key = tn==="__all__" ? prayerKey(svcId,prId) : (svcId+"."+prId+"@"+tn);
+    const ov = state.prayerEdits[key];
+    if(ov){meta.en=ov.en!=null?ov.en:basePr.en;meta.he=ov.he!=null?ov.he:basePr.he;meta.section=ov.section!=null?ov.section:(basePr.section||"Main");blocks=JSON.parse(JSON.stringify(ov.blocks||basePr.blocks||[]));}
+    else{meta.en=basePr.en||"";meta.he=basePr.he||"";meta.section=basePr.section||"Main";blocks=JSON.parse(JSON.stringify(basePr.blocks||[]));}
+  }
+  const old=$("#prayerEditor");if(old)old.remove();
+  const ov=el("div","");ov.id="prayerEditor";
+  ov.style.cssText="position:fixed;inset:0;z-index:120;background:var(--bg);display:flex;flex-direction:column;overflow:hidden";
+  /* header */
+  const hd=el("div","");hd.style.cssText="flex:none;padding:1rem 1.1rem .8rem;border-bottom:1px solid var(--line);background:var(--surface)";
+  hd.innerHTML=`<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.8rem"><button id="peClose" style="background:transparent;border:0;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:.3rem;font-size:.85rem"><svg class="icon" viewBox="0 0 24 24" style="width:1.1em;height:1.1em"><path d="M15 18l-6-6 6-6"/></svg> Back</button><div style="flex:1;text-align:center;font-family:var(--display);font-weight:600;color:var(--ink)">${custom?"Edit Prayer":"Edit Prayer"}</div><button id="peSave" style="background:var(--accent);color:var(--on-accent);border:0;border-radius:.45rem;padding:.45rem .9rem;font-weight:700;font-size:.82rem;cursor:pointer">Save</button></div>`;
+  /* nusach picker (only for built-in prayers) */
+  if(!custom){
+    const sc=el("div","field");sc.style.marginBottom=".7rem";
+    sc.innerHTML=`<label>These changes apply to</label>`;
+    const chips=el("div","");chips.style.cssText="display:flex;flex-wrap:wrap;gap:.4rem";
+    const opts=Object.keys(NUSACH_LABELS).map(k=>[k,NUSACH_LABELS[k]]).concat([["__all__","All nusachot"]]);
+    const repaintChips=()=>{[...chips.children].forEach((c,i)=>{const on=opts[i][0]===targetNusach;c.style.borderColor=on?"var(--accent)":"var(--line)";c.style.background=on?"color-mix(in srgb,var(--accent) 16%,transparent)":"var(--surface2)";c.style.color=on?"var(--accent)":"var(--ink2)";});};
+    opts.forEach(([val,label])=>{const b=el("button","");b.style.cssText="padding:.45rem .75rem;border-radius:.5rem;font-size:.82rem;font-weight:600;cursor:pointer;font-family:var(--sans);border:1px solid var(--line);background:var(--surface2);color:var(--ink2)";b.textContent=label;b.onclick=()=>{targetNusach=val;loadFor(targetNusach);$("#peEn").value=meta.en;$("#peHe").value=meta.he;repaintChips();paintBlocks();};chips.appendChild(b);});
+    sc.appendChild(chips);hd.appendChild(sc);
+    setTimeout(repaintChips,0);
+  }
+  const fEn=el("div","field");fEn.innerHTML=`<label>Title (English)</label><input id="peEn" value="${esc(meta.en)}">`;hd.appendChild(fEn);
+  const fHe=el("div","field hebrew");fHe.style.marginBottom="0";fHe.innerHTML=`<label>Title (Hebrew)</label><input id="peHe" value="${esc(meta.he)}">`;hd.appendChild(fHe);
+  ov.appendChild(hd);
+  /* body */
+  const bodyScroll=el("div","");bodyScroll.style.cssText="flex:1;overflow-y:auto;padding:1rem 1.1rem 7rem";
+  const list=el("div","");bodyScroll.appendChild(list);
+  ov.appendChild(bodyScroll);
+  /* footer */
+  const ft=el("div","");ft.style.cssText="position:absolute;left:0;right:0;bottom:0;padding:.8rem 1.1rem;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line);display:flex;gap:.5rem;flex-wrap:wrap";
+  const addTxt=el("button","btn-ghost");addTxt.style.margin="0";addTxt.style.flex="1 1 30%";addTxt.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M12 5v14M5 12h14"/></svg> Prayer text`;
+  const addRub=el("button","btn-ghost");addRub.style.margin="0";addRub.style.flex="1 1 30%";addRub.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M4 6h10M4 12h16M4 18h7"/></svg> Instruction`;
+  ft.appendChild(addTxt);ft.appendChild(addRub);
+  if(custom){const del=el("button","btn-ghost");del.style.cssText="margin:0;flex:1 1 30%;color:#d9534f;border-color:color-mix(in srgb,#d9534f 40%,transparent)";del.textContent="Delete prayer";del.onclick=()=>{if(!confirm("Delete this prayer? This cannot be undone."))return;state.customPrayers[svcId]=(state.customPrayers[svcId]||[]).filter(p=>p.id!==prId);if(state.hidden[svcId])state.hidden[svcId]=state.hidden[svcId].filter(x=>x!==prId);if(state.order[svcId])state.order[svcId]=state.order[svcId].filter(x=>x!==prId);saveState();ov.remove();render();};ft.appendChild(del);}
+  else{const rst=el("button","btn-ghost");rst.style.cssText="margin:0;flex:1 1 30%";rst.textContent="Reset to original";rst.onclick=()=>{delete state.prayerEdits[prayerKey(svcId,prId)];delete state.prayerEdits[svcId+"."+prId+"@"+state.nusach];saveState();ov.remove();render();toast("Reset to original");};ft.appendChild(rst);}
+  ov.appendChild(ft);
+  document.body.appendChild(ov);
+
+  function paintBlocks(){
+    list.innerHTML="";
+    if(!blocks.length){list.appendChild(el("div","note","No blocks yet. Add prayer text or an instruction below."));}
+    blocks.forEach((b,i)=>{
+      const isRub=b.k==="rubric";
+      const card=el("div","");card.style.cssText="background:var(--surface);border:1px solid var(--line);border-radius:.6rem;padding:.8rem;margin-bottom:.7rem"+(isRub?";border-left:3px solid var(--instr)":"");
+      const top=el("div","");top.style.cssText="display:flex;align-items:center;gap:.4rem;margin-bottom:.55rem";
+      const chip=el("span","");chip.style.cssText="font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;padding:.2rem .5rem;border-radius:.3rem;"+(isRub?"color:var(--instr);background:color-mix(in srgb,var(--instr) 12%,transparent)":"color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)");chip.textContent=isRub?"Instruction":"Prayer text";
+      top.appendChild(chip);const spacer=el("div","");spacer.style.flex="1";top.appendChild(spacer);
+      const up=el("button","arr-mini");up.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M18 15l-6-6-6 6"/></svg>`;up.disabled=i===0;up.style.opacity=i===0?".3":"1";up.onclick=()=>{[blocks[i-1],blocks[i]]=[blocks[i],blocks[i-1]];paintBlocks();};
+      const dn=el("button","arr-mini");dn.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M6 9l6 6 6-6"/></svg>`;dn.disabled=i===blocks.length-1;dn.style.opacity=i===blocks.length-1?".3":"1";dn.onclick=()=>{[blocks[i+1],blocks[i]]=[blocks[i],blocks[i+1]];paintBlocks();};
+      const rm=el("button","arr-mini");rm.style.color="#d9534f";rm.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>`;rm.onclick=()=>{blocks.splice(i,1);paintBlocks();};
+      top.appendChild(up);top.appendChild(dn);top.appendChild(rm);card.appendChild(top);
+      if(isRub){
+        const ta=el("textarea");ta.value=b.text||"";ta.placeholder="Instruction, e.g. \u201CSay the following quietly\u201D";ta.rows=2;ta.style.cssText=taCss();ta.addEventListener("input",e=>b.text=e.target.value);card.appendChild(ta);
+        /* posture toggle */
+        const pl=el("div","");pl.textContent="Posture cue";pl.style.cssText=miniLabel()+"margin-top:.5rem";card.appendChild(pl);
+        const prow=el("div","");prow.style.cssText="display:flex;gap:.4rem;flex-wrap:wrap";
+        const cur=b.posture||postureAuto(b.text||"");
+        const mkP=(val,label,svg)=>{const on=cur===val;const pb=el("button","");pb.style.cssText="display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .7rem;border-radius:.5rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:var(--sans);border:1px solid "+(on?"var(--accent)":"var(--line)")+";background:"+(on?"color-mix(in srgb,var(--accent) 14%,transparent)":"var(--surface2)")+";color:"+(on?"var(--accent)":"var(--ink2)");pb.innerHTML=svg+`<span>${label}</span>`;pb.onclick=()=>{b.posture=(b.posture===val?null:val);paintBlocks();};return pb;};
+        prow.appendChild(mkP("stand","Rise",postureIcon("stand")));
+        prow.appendChild(mkP("sit","Sit",postureIcon("sit")));
+        prow.appendChild(mkP("bow","Bow",postureIcon("bow")));
+        card.appendChild(prow);
+      }else{
+        const he=el("textarea");he.value=b.he||"";he.placeholder="Hebrew text";he.rows=3;he.dir="rtl";he.style.cssText=taCss()+"font-family:var(--hebrew);font-size:1.15rem;line-height:1.9;text-align:right";he.addEventListener("input",e=>b.he=e.target.value);
+        const tr=el("input");tr.value=b.tr||"";tr.placeholder="Transliteration (optional)";tr.style.cssText=taCss()+"font-style:italic";tr.addEventListener("input",e=>b.tr=e.target.value);
+        const en=el("textarea");en.value=b.en||"";en.placeholder="English translation (optional)";en.rows=2;en.style.cssText=taCss();en.addEventListener("input",e=>b.en=e.target.value);
+        card.appendChild(mkLabel("Hebrew"));card.appendChild(he);
+        card.appendChild(mkLabel("Transliteration"));card.appendChild(tr);
+        card.appendChild(mkLabel("English"));card.appendChild(en);
+        /* kavanah fields: three levels */
+        const kv=kavLayers(b);const hasAny=kv.found||kv.halachic||kv.kabbalistic;
+        const kWrap=el("div","");kWrap.style.marginTop=".3rem";
+        if(hasAny||b._showK){
+          b.kav=b.kav||{found:kv.found||"",halachic:kv.halachic||"",kabbalistic:kv.kabbalistic||""};
+          if(typeof b.kavanah==="string")delete b.kavanah;
+          const mkKav=(key,label,color)=>{
+            kWrap.appendChild(mkLabel(label));
+            const k=el("textarea");k.value=b.kav[key]||"";k.placeholder="\u2026";k.rows=2;k.style.cssText=taCss()+"background:color-mix(in srgb,"+color+" 8%,transparent);border-color:color-mix(in srgb,"+color+" 28%,transparent)";k.addEventListener("input",e=>{b.kav[key]=e.target.value;});kWrap.appendChild(k);
+          };
+          mkKav("found","Foundation kavanah","var(--insert)");
+          mkKav("halachic","Halachic focus","#9fa97a");
+          mkKav("kabbalistic","Kabbalistic kavanah","#b08cc4");
+        }else{
+          const addK=el("button","");addK.style.cssText="display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .7rem;border-radius:.5rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:var(--sans);border:1px dashed color-mix(in srgb,var(--accent) 45%,transparent);background:transparent;color:var(--accent)";addK.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M12 5v14M5 12h14"/></svg> Add kavanot`;addK.onclick=()=>{b._showK=true;paintBlocks();};
+          kWrap.appendChild(addK);
+        }
+        card.appendChild(kWrap);
+      }
+      list.appendChild(card);
+    });
+  }
+  function taCss(){return "width:100%;padding:.6rem .7rem;background:var(--surface2);border:1px solid var(--line);border-radius:.45rem;color:var(--ink);font-size:.92rem;outline:none;font-family:var(--sans);resize:vertical;margin-bottom:.5rem";}
+  function miniLabel(){return "font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:.25rem";}
+  function mkLabel(t){const d=el("div","");d.textContent=t;d.style.cssText=miniLabel();return d;}
+  paintBlocks();
+  addTxt.onclick=()=>{blocks.push({k:"p",he:"",tr:"",en:""});paintBlocks();bodyScroll.scrollTop=bodyScroll.scrollHeight;};
+  addRub.onclick=()=>{blocks.push({k:"rubric",text:""});paintBlocks();bodyScroll.scrollTop=bodyScroll.scrollHeight;};
+  $("#peClose").onclick=()=>{ov.remove();};
+  $("#peSave").onclick=()=>{
+    const en=$("#peEn").value.trim(),he=$("#peHe").value.trim();
+    const clean=blocks.filter(b=>b.k==="rubric"?(b.text||"").trim():((b.he||"").trim()||(b.en||"").trim()||(b.tr||"").trim())).map(b=>{const c=Object.assign({},b);delete c._showK;if(c.kavanah==="")delete c.kavanah;if(c.kav){const kk={};if((c.kav.found||"").trim())kk.found=c.kav.found.trim();if((c.kav.halachic||"").trim())kk.halachic=c.kav.halachic.trim();if((c.kav.kabbalistic||"").trim())kk.kabbalistic=c.kav.kabbalistic.trim();if(Object.keys(kk).length)c.kav=kk;else delete c.kav;}return c;});
+    if(custom){
+      const arr=state.customPrayers[svcId]||[];const idx=arr.findIndex(p=>p.id===prId);
+      if(idx>=0)arr[idx]=Object.assign({},arr[idx],{en:en||"Untitled",he,section:meta.section,blocks:clean});
+    }else{
+      const rec={en,he,section:meta.section,blocks:clean};
+      if(targetNusach==="__all__"){state.prayerEdits[prayerKey(svcId,prId)]=rec;}
+      else{state.prayerEdits[svcId+"."+prId+"@"+targetNusach]=rec;}
+    }
+    saveState();ov.remove();render();toast(targetNusach==="__all__"?"Saved for all nusachot":"Saved for "+NUSACH_LABELS[targetNusach]);
+  };
+}
+function postureOf(b){if(b&&b.posture)return{tag:b.posture,label:b.posture==="stand"?"Rise":b.posture==="sit"?"Sit":"Bow"};return postureFromText((b&&b.text)||"");}
+function postureAuto(t){const p=postureFromText(t);return p?p.tag:null;}
+
+
