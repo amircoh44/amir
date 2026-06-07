@@ -224,6 +224,13 @@ function openPrayerEditor(svcId,prId){
         card.appendChild(mkLabel("Hebrew"));card.appendChild(he);
         card.appendChild(mkLabel("Transliteration"));card.appendChild(tr);
         card.appendChild(mkLabel("English"));card.appendChild(en);
+        /* location gate: show this block everywhere / diaspora only / Israel only */
+        const rl=el("div","");rl.textContent="Show where";rl.style.cssText=miniLabel()+"margin-top:.5rem";card.appendChild(rl);
+        const rrow=el("div","");rrow.style.cssText="display:flex;gap:.4rem;flex-wrap:wrap";
+        [["","Everywhere"],["diaspora","Diaspora only"],["israel","Eretz Yisrael only"]].forEach(([val,label])=>{
+          const on=(b.region||"")===val;const rb=el("button","");rb.style.cssText="padding:.4rem .7rem;border-radius:.5rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:var(--sans);border:1px solid "+(on?"var(--accent)":"var(--line)")+";background:"+(on?"color-mix(in srgb,var(--accent) 14%,transparent)":"var(--surface2)")+";color:"+(on?"var(--accent)":"var(--ink2)");rb.textContent=label;rb.onclick=()=>{if(val)b.region=val;else delete b.region;paintBlocks();};rrow.appendChild(rb);
+        });
+        card.appendChild(rrow);
       }
       list.appendChild(card);
     });
@@ -242,7 +249,7 @@ function openPrayerEditor(svcId,prId){
       if(b.k==="rubric")return (b.text||"").trim();
       if(b.k==="kavanah"){const k=b.kav||{};return (k.found||"").trim()||(k.halachic||"").trim()||(k.kabbalistic||"").trim();}
       return (b.he||"").trim()||(b.en||"").trim()||(b.tr||"").trim();
-    }).map(b=>{const c=Object.assign({},b);delete c._showK;delete c.kavanah;if(c.kav){const kk={};if((c.kav.found||"").trim())kk.found=c.kav.found.trim();if((c.kav.halachic||"").trim())kk.halachic=c.kav.halachic.trim();if((c.kav.kabbalistic||"").trim())kk.kabbalistic=c.kav.kabbalistic.trim();if(Object.keys(kk).length)c.kav=kk;else delete c.kav;}return c;});
+    }).map(b=>{const c=Object.assign({},b);delete c._showK;delete c.kavanah;if(!c.region)delete c.region;if(c.kav){const kk={};if((c.kav.found||"").trim())kk.found=c.kav.found.trim();if((c.kav.halachic||"").trim())kk.halachic=c.kav.halachic.trim();if((c.kav.kabbalistic||"").trim())kk.kabbalistic=c.kav.kabbalistic.trim();if(Object.keys(kk).length)c.kav=kk;else delete c.kav;}return c;});
     if(custom){
       const arr=state.customPrayers[svcId]||[];const idx=arr.findIndex(p=>p.id===prId);
       if(idx>=0)arr[idx]=Object.assign({},arr[idx],{en:en||"Untitled",he,section:meta.section,blocks:clean});

@@ -88,14 +88,20 @@ function makeSvcCard(svc,opts){
   return c;
 }
 function renderHome(stage){
-  const now=new Date();const h=todayHeb(now);const tz=tzForLoc(state.loc);
+  const now=new Date();const tz=tzForLoc(state.loc);
+  /* The Jewish day rolls at sunset — after shkia, show the next day's Hebrew date. */
+  const app=(typeof appHebDate==="function")?appHebDate(state.loc):{heb:todayHeb(now),afterSunset:false};
+  const h=app.heb;
   let dateStr;try{dateStr=new Intl.DateTimeFormat("en-US",{timeZone:tz,weekday:"long",month:"long",day:"numeric"}).format(now);}catch(e){dateStr=now.toDateString();}
-  const hebStr=`${gematria(h.day)} ${monthHe(h.month,h.year)}`;
+  const hebStr=`${gematria(h.day)} ${monthHe(h.month,h.year)}`+(app.afterSunset?` <span style="color:var(--accent);font-size:.82em">· evening (after sunset)</span>`:"");
   const hero=el("div","today-hero");
   hero.innerHTML=`<div class="today-greeting">${getGreeting(now)}${state.userEngName?", "+esc(state.userEngName):""}</div><div class="today-date">${esc(dateStr)}</div><div class="today-heb-date">${hebStr}</div><div class="today-loc"><svg class="icon" viewBox="0 0 24 24" style="width:.9em;height:.9em"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(state.loc.name)}<span class="pill">${esc(NUSACH_LABELS[state.nusach]||state.nusach)}</span></div>`;
   const z=computeZmanim(now,state.loc);
   if(z){const Z=[["alot","Dawn"],["netz","Sunrise"],["shma","Latest Shema"],["tefila","Latest Shacharit"],["chatzot","Midday"],["minchaG","Earliest Mincha"],["minchaK","Mincha Ketana"],["plag","Plag"],["shkia","Sunset"],["tzeit","Nightfall"]];const nm=nowInLocTz(state.loc);const next=Z.map(([k,en])=>({k,en,t:z[k]})).find(x=>x.t!=null&&x.t>nm);if(next){const mins=Math.round(next.t-nm);const hrs=Math.floor(mins/60),rem=mins%60;const inStr=hrs>0?`in ${hrs}h ${rem}m`:`in ${mins}m`;const card=el("button","next-zman");card.innerHTML=`<div class="nz-dot"></div><div class="nz-info"><div class="nz-label">${inStr} \u00B7 ${esc(state.loc.name.split(",")[0])}</div><div class="nz-name">${next.en}</div></div><div class="nz-time">${hmFmt(next.t)}</div>`;card.onclick=()=>go("zmanim");hero.appendChild(card);}}
   stage.appendChild(hero);
+
+  /* --- This week's parasha (location-correct via hebcal) --- */
+  if(typeof parashaCard==="function"){const pc=parashaCard();if(pc)stage.appendChild(pc);}
 
   /* --- NOW: current prayer by time --- */
   const nm=nowInLocTz(state.loc);

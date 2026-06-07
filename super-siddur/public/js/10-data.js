@@ -476,7 +476,14 @@ function postureIcon(tag){
 }
 function postureFromText(t){if(/\bstand(ing)?\b|recited standing|while standing|rise\b/i.test(t))return{tag:"stand",label:"Stand"};if(/\bsit(ting)?\b|recited sit|sit down|be seated|in bed/i.test(t))return{tag:"sit",label:"Sit"};if(/\bbow(ing)?\b|prostrat/i.test(t))return{tag:"bow",label:"Bow"};return null;}
 function pickHe(b){if(b.alt&&b.alt[state.nusach])return b.alt[state.nusach];return b.he;}
-function blockVisible(b){const tags=b.tags||[];if(tags.includes("requires_minyan")&&!state.minyan)return false;if(b.only&&!b.only.includes(state.nusach))return false;if(b.skip&&b.skip.includes(state.nusach))return false;return true;}
+function blockVisible(b){const tags=b.tags||[];if(tags.includes("requires_minyan")&&!state.minyan)return false;if(b.only&&!b.only.includes(state.nusach))return false;if(b.skip&&b.skip.includes(state.nusach))return false;
+  /* Location-gated blocks: e.g. Ashkenaz Maariv "Baruch Hashem L'Olam" before the
+     Amidah is said only outside Eretz Yisrael; festival inserts can be region-bound. */
+  const inIsrael=(state.israelMode==="israel"||state.israelMode==="yerushalayim");
+  const region=b.region||(tags.includes("diaspora_only")?"diaspora":tags.includes("israel_only")?"israel":null);
+  if(region==="diaspora"&&inIsrael)return false;
+  if(region==="israel"&&!inIsrael)return false;
+  return true;}
 function prayerKey(svcId,prId){return svcId+"."+prId;}
 function importedFor(svcId){return ((window.IMPORTED&&window.IMPORTED[svcId])||[]).filter(p=>!p.only||p.only.includes(state.nusach));}
 

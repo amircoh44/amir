@@ -40,7 +40,7 @@ function seed(R, obj) {
   R.ctx.loadState();
 }
 
-const order = ["textdata.js", "00-engine.js", "10-data.js", "20-logic.js", "30-views.js", "40-admin.js", "50-import.js", "60-adminx.js"];
+const order = ["textdata.js", "05-hebcal.js", "00-engine.js", "10-data.js", "20-logic.js", "25-calendar.js", "30-views.js", "40-admin.js", "50-import.js", "60-adminx.js"];
 const refSources = order.map((f) => [f, fs.readFileSync(path.join(ROOT, "js", f), "utf8")]);
 
 console.log("\n[A] Refactored app boots");
@@ -127,6 +127,27 @@ try {
   const txtIdx = kids.findIndex((n) => (n.className || "").includes("block"));
   ok("kavanah renders ABOVE text when placed first", kavIdx >= 0 && txtIdx >= 0 && kavIdx < txtIdx, "kavIdx=" + kavIdx + " txtIdx=" + txtIdx);
 } catch (e) { ok("kavanot separation", false, e.message); }
+
+console.log("\n[H] Hebcal: parasha + holidays + sunset rollover + region gate");
+try {
+  ok("hebcal global loaded", typeof R.ctx.hebcal === "object" && !!R.ctx.hebcal.HebrewCalendar);
+  // currentParasha() builds its own Date inside the ctx realm -> HDate accepts it
+  seed(R, { israelMode: "diaspora" });
+  const pGal = R.ctx.currentParasha();
+  ok("currentParasha returns {en,he}", pGal && /Parashat|Pesach|Sukkot|Rosh|Yom/.test(pGal.en) && /[֐-׿]/.test(pGal.he), JSON.stringify(pGal));
+  ok("ilFlag false in diaspora", R.ctx.ilFlag() === false);
+  seed(R, { israelMode: "israel" });
+  ok("ilFlag true in Israel", R.ctx.ilFlag() === true);
+  ok("holidaysFor() callable", Array.isArray(R.ctx.holidaysFor()));
+  ok("appNow/afterSunset defined", typeof R.ctx.appNow === "function" && typeof R.ctx.afterSunset === "function");
+  // region gate on blockVisible
+  seed(R, { israelMode: "diaspora", nusach: "ashkenaz" });
+  ok("diaspora-only block visible in diaspora", R.ctx.blockVisible({ k: "p", he: "x", region: "diaspora" }) === true);
+  seed(R, { israelMode: "israel", nusach: "ashkenaz" });
+  ok("diaspora-only block hidden in Israel", R.ctx.blockVisible({ k: "p", he: "x", region: "diaspora" }) === false);
+  ok("israel-only block hidden in diaspora", (seed(R, { israelMode: "diaspora" }), R.ctx.blockVisible({ k: "p", he: "x", region: "israel" })) === false);
+  ok("'diaspora_only' tag also gates", (seed(R, { israelMode: "israel" }), R.ctx.blockVisible({ k: "p", he: "x", tags: ["diaspora_only"] })) === false);
+} catch (e) { ok("hebcal/region", false, e.message); }
 
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 if (diag.length) console.log("\n--- diagnostics ---\n" + diag.join("\n"));

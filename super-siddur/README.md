@@ -37,6 +37,22 @@ super-siddur/
 └─ deploy/super-siddur.service   # systemd unit (non-Docker)
 ```
 
+### Calendar & location awareness
+
+- **Hebcal** (`@hebcal/core`, bundled offline as `js/05-hebcal.js`) drives the
+  weekly **parasha** and holiday names, with the **Israel/Diaspora flag** derived
+  from the user's region — so the parasha follows the correct cycle (they desync
+  when a festival falls on Shabbat in the diaspora) and Yom Tov day-counts match.
+- **Sunset rollover** (`js/25-calendar.js`): after local *shkia* the app shows the
+  next Jewish day's date and parasha (the day begins at nightfall).
+- **Region-gated prayers**: any block can be marked *Diaspora only* / *Eretz
+  Yisrael only* in the editor (e.g. the Ashkenaz Maariv "ברוך ה׳ לעולם" said only
+  outside Israel). The gate also honours `region` / `diaspora_only` / `israel_only`.
+
+> **License note:** `@hebcal/core` is **GPLv2** (its notice is preserved at the top
+> of `js/05-hebcal.js`). It is loaded as a standalone script via its public API. If
+> you'd rather not ship GPL code, swap it for the Hebcal REST API in `25-calendar.js`.
+
 ### Why the JS is split into numbered files
 They are **classic scripts loaded in order** and share one global scope, so the split is
 purely organisational — no bundler, no imports to maintain. Edit any module and reload.
