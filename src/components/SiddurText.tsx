@@ -12,11 +12,19 @@ import {
 import type { MissingEntry, NusachEntry, SiddurDoc, SiddurIndex, SiddurNode } from '../types/siddur';
 import { useAnnotations, type AnnotationMap } from '../hooks/useAnnotations';
 import { ICON_BY_ID, SIDDUR_ICONS, type Annotation, type Connector } from './siddurIcons';
-import { buildFindRegex, countMatches, mapTreeLines, treeToText, type FindOptions } from '../lib/siddurText';
+import {
+  buildFindRegex,
+  collectMatches,
+  countMatches,
+  mapTreeLines,
+  treeToText,
+  type FindOptions,
+  type MatchResult,
+} from '../lib/siddurText';
 import './SiddurText.css';
 
 const BASE = `${import.meta.env.BASE_URL}siddur`;
-type Panel = 'directory' | 'missing';
+type Panel = 'directory' | 'missing' | 'results';
 
 /** A leaf with no Hebrew text is "missing". */
 function isMissing(node: SiddurNode): boolean {
@@ -246,10 +254,19 @@ export function SiddurText() {
   // find / replace
   const [findText, setFindText] = useState('');
   const [replaceText, setReplaceText] = useState('');
-  const [opts, setOpts] = useState<FindOptions>({ matchCase: false, ignoreNikkud: true, wholeWord: false });
+  const [opts, setOpts] = useState<FindOptions>({
+    matchCase: false,
+    ignoreNikkud: true,
+    wholeWord: false,
+    regex: false,
+  });
+  const [searchAll, setSearchAll] = useState(false);
+  const [allDocs, setAllDocs] = useState<Record<string, SiddurDoc>>({});
   const [matchIdx, setMatchIdx] = useState(-1);
   const [replaceInfo, setReplaceInfo] = useState('');
   const contentRef = useRef<HTMLElement>(null);
+  // Cross-nusach navigation that must wait for the target doc to load.
+  const pendingNav = useRef<MatchResult | null>(null);
 
   // annotations
   const [annotateMode, setAnnotateMode] = useState(false);
@@ -286,16 +303,43 @@ export function SiddurText() {
         if (ignore) return;
         setDoc(d);
         setEdited(false);
-        const first = d.tree.children?.[0];
-        setSelectedPath(first ? 'root/0' : 'root');
-        setSelectedNode(first ?? d.tree);
-        setSelectedTrail([]); // first/root sit at the top level
+        const nav = pendingNav.current;
+        if (nav && nav.key === d.key) {
+          pendingNav.current = null;
+          const node = findByPath(d.tree, nav.trail);
+          setSelectedPath('');
+          setSelectedNode(node ?? d.tree);
+          setSelectedTrail(nav.trail.slice(0, -1));
+        } else {
+          const first = d.tree.children?.[0];
+          setSelectedPath(first ? 'root/0' : 'root');
+          setSelectedNode(first ?? d.tree);
+          setSelectedTrail([]); // first/root sit at the top level
+        }
       })
       .catch((e) => !ignore && setError({ scope: active.key, msg: String(e.message ?? e) }));
     return () => {
       ignore = true;
     };
   }, [active]);
+
+  // When "search all nuschaot" is on, lazily fetch + cache every nusach doc.
+  useEffect(() => {
+    if (!searchAll || !index) return;
+    let ignore = false;
+    for (const n of index.nuschaot) {
+      if (allDocs[n.key]) continue;
+      fetch(`${BASE}/${n.file}`)
+        .then((r) => (r.ok ? (r.json() as Promise<SiddurDoc>) : null))
+        .then((d) => {
+          if (!ignore && d) setAllDocs((prev) => ({ ...prev, [d.key]: d }));
+        })
+        .catch(() => undefined);
+    }
+    return () => {
+      ignore = true;
+    };
+  }, [searchAll, index, allDocs]);
 
   const loading = !!active && doc?.key !== active.key && error?.scope !== active.key;
   const currentDoc = doc && active && doc.key === active.key ? doc : null;
@@ -307,6 +351,50 @@ export function SiddurText() {
   const matchCount = useMemo(
     () => (findRegex && selectedNode ? countMatches(selectedNode, findRegex) : 0),
     [findRegex, selectedNode],
+  );
+
+  // Results list: current nusach, or all nuschaot when enabled.
+  const results = useMemo(() => {
+    if (!findRegex || !index) return [];
+    const docs: SiddurDoc[] = searchAll
+      ? index.nuschaot
+          .map((n) => (n.key === active?.key ? currentDoc : allDocs[n.key]))
+          .filter((d): d is SiddurDoc => !!d)
+      : currentDoc
+        ? [currentDoc]
+        : [];
+    return docs.flatMap((d) => collectMatches(d.tree, findRegex, d.key, 300));
+  }, [findRegex, searchAll, allDocs, currentDoc, index, active]);
+
+  const scrollPending = useRef(false);
+  useEffect(() => {
+    if (!scrollPending.current) return;
+    scrollPending.current = false;
+    requestAnimationFrame(() => {
+      contentRef.current?.querySelector('mark')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+  }, [selectedNode]);
+
+  const handleResultSelect = useCallback(
+    (r: MatchResult) => {
+      scrollPending.current = true;
+      const target = r.key === active?.key ? currentDoc : allDocs[r.key];
+      if (r.key !== active?.key) {
+        const entry = index?.nuschaot.find((n) => n.key === r.key);
+        if (entry) {
+          pendingNav.current = r;
+          setActive(entry);
+          return;
+        }
+      }
+      if (target) {
+        const node = findByPath(target.tree, r.trail);
+        setSelectedPath('');
+        setSelectedNode(node ?? target.tree);
+        setSelectedTrail(r.trail.slice(0, -1));
+      }
+    },
+    [active, currentDoc, allDocs, index],
   );
 
   const handleSelect = useCallback((path: string, node: SiddurNode, trail: string[]) => {
@@ -467,10 +555,23 @@ export function SiddurText() {
             ניקוד
           </label>
           <label title="מילה שלמה">
-            <input type="checkbox" checked={opts.wholeWord} onChange={(e) => setOpts({ ...opts, wholeWord: e.target.checked })} />
+            <input type="checkbox" checked={opts.wholeWord} disabled={opts.regex} onChange={(e) => setOpts({ ...opts, wholeWord: e.target.checked })} />
             מילה
           </label>
+          <label title="ביטוי רגולרי (regex)">
+            <input type="checkbox" checked={opts.regex} onChange={(e) => setOpts({ ...opts, regex: e.target.checked })} />
+            regex
+          </label>
+          <label title="חיפוש בכל הנוסחים">
+            <input type="checkbox" checked={searchAll} onChange={(e) => { setSearchAll(e.target.checked); if (e.target.checked) setPanel('results'); }} />
+            כל הנוסחים
+          </label>
         </div>
+        {findText.trim() && (
+          <button className={`results-btn ${panel === 'results' ? 'active' : ''}`} onClick={() => setPanel('results')}>
+            תוצאות ({results.length}{results.length >= 300 ? '+' : ''})
+          </button>
+        )}
         {replaceInfo && <span className="replace-info">{replaceInfo}</span>}
       </div>
 
@@ -502,6 +603,36 @@ export function SiddurText() {
                       <button onClick={() => handleMissingSelect(m)}>
                         <span className="missing-title">⚠ {m.heTitle || m.enTitle}</span>
                         <span className="missing-trail">{m.path.join(' › ')}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {currentDoc && panel === 'results' && (
+            <div className="results-panel">
+              <h4>
+                תוצאות חיפוש {searchAll ? '(כל הנוסחים)' : ''} — {results.length}
+                {results.length >= 300 ? '+' : ''}
+              </h4>
+              {!findText.trim() ? (
+                <p className="results-empty">הקלד חיפוש למעלה</p>
+              ) : results.length === 0 ? (
+                <p className="results-empty">אין תוצאות</p>
+              ) : (
+                <ul className="results-list">
+                  {results.map((r, i) => (
+                    <li key={i}>
+                      <button onClick={() => handleResultSelect(r)}>
+                        {searchAll && (
+                          <span className="result-nusach">
+                            {index.nuschaot.find((n) => n.key === r.key)?.nusachHe ?? r.key}
+                          </span>
+                        )}
+                        <span className="result-trail">{r.trail.join(' › ')}</span>
+                        <span className="result-snippet">{r.line.slice(0, 90)}</span>
                       </button>
                     </li>
                   ))}

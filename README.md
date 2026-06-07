@@ -43,8 +43,10 @@ additions inside the kept weekday prayers.
 ### Features
 
 - **Find & replace** at the top — highlight matches with next/prev navigation
-  and a match count, options for match-case / ignore-nikkud / whole-word, and
-  "replace all" across the whole nusach. Edited text flows into the download.
+  and a match count; options for match-case / ignore-nikkud / whole-word /
+  **regex** / **search all nuschaot**; a clickable **results list** (jumps
+  straight to the match, across nuschaot when enabled); and "replace all" across
+  the whole nusach. Edited text flows into the download.
 - **Icon annotations** — toggle ✎ *סימון* mode, click any line, and mark the
   start of a bracha with one or two ritual-instruction icons (bow, stand, sit,
   congregation, chazan, both, lulav, aloud, silent, three-steps) joined by an

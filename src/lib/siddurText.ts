@@ -4,6 +4,7 @@ export interface FindOptions {
   matchCase: boolean;
   ignoreNikkud: boolean;
   wholeWord: boolean;
+  regex: boolean;
 }
 
 const NIKKUD = '[\\u0591-\\u05C7]*';
@@ -15,16 +16,48 @@ function escapeRegExp(s: string): string {
 /** Build a RegExp for find/replace honouring the chosen options. */
 export function buildFindRegex(find: string, opts: FindOptions, global: boolean): RegExp | null {
   if (!find) return null;
-  let body = opts.ignoreNikkud
-    ? [...find].map(escapeRegExp).join(NIKKUD)
-    : escapeRegExp(find);
-  if (opts.wholeWord) body = `(?<![\\p{L}\\p{N}])(?:${body})(?![\\p{L}\\p{N}])`;
+  let body: string;
+  if (opts.regex) {
+    body = find; // user supplies the pattern verbatim
+  } else {
+    body = opts.ignoreNikkud ? [...find].map(escapeRegExp).join(NIKKUD) : escapeRegExp(find);
+    if (opts.wholeWord) body = `(?<![\\p{L}\\p{N}])(?:${body})(?![\\p{L}\\p{N}])`;
+  }
   const flags = `${global ? 'g' : ''}${opts.matchCase ? '' : 'i'}u`;
   try {
     return new RegExp(body, flags);
   } catch {
     return null;
   }
+}
+
+export interface MatchResult {
+  key: string;
+  trail: string[]; // absolute heTitle trail to the line's section (incl. it)
+  lineIndex: number;
+  line: string;
+}
+
+/** Collect matching lines across a tree, with their absolute section trail. */
+export function collectMatches(
+  tree: SiddurNode,
+  re: RegExp,
+  key: string,
+  limit = 500,
+): MatchResult[] {
+  const out: MatchResult[] = [];
+  const g = new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`);
+  const visit = (node: SiddurNode, trail: string[]) => {
+    const here = node.heTitle ? [...trail, node.heTitle] : trail;
+    (node.lines ?? []).forEach((line, i) => {
+      if (out.length >= limit) return;
+      g.lastIndex = 0;
+      if (g.test(line)) out.push({ key, trail: here, lineIndex: i, line });
+    });
+    for (const c of node.children ?? []) visit(c, here);
+  };
+  visit(tree, []);
+  return out;
 }
 
 /** Map a function over every line in a tree, returning a new tree. */

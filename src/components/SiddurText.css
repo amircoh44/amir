@@ -176,6 +176,50 @@
   font-size: 0.82rem;
   color: #6fcf97;
 }
+.results-btn {
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #34343e;
+  border-radius: 7px;
+  background: #1d1d25;
+  color: #cfcfd6;
+  cursor: pointer;
+  font-weight: 600;
+}
+.results-btn.active { background: #2a2a55; border-color: #3a5cff; color: #fff; }
+
+.results-panel h4 { margin: 0 0 0.5rem; color: #9db4ff; }
+.results-empty { color: #9a9aa6; font-size: 0.9rem; }
+.results-list { list-style: none; margin: 0; padding: 0; }
+.results-list button {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  text-align: start;
+  gap: 2px;
+  padding: 0.4rem 0.5rem;
+  margin-bottom: 0.3rem;
+  border: 1px solid #2c2c34;
+  border-radius: 7px;
+  background: #16161e;
+  color: #e8e8ea;
+  cursor: pointer;
+}
+.results-list button:hover { border-color: #5b8cff; background: #1c1c30; }
+.result-nusach {
+  align-self: flex-start;
+  font-size: 0.65rem;
+  background: #3a3a55;
+  color: #cdd6ff;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.result-trail { font-size: 0.68rem; color: #8a8a96; }
+.result-snippet {
+  font-family: 'Frank Ruhl Libre', 'David Libre', serif;
+  font-size: 0.92rem;
+  color: #dcdce2;
+  line-height: 1.5;
+}
 
 mark {
   background: #ffd54a;
