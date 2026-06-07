@@ -1,6 +1,6 @@
 {
   "name": "Siddur Text",
-  "generated": "2026-06-06T01:05:14.129Z",
+  "generated": "2026-06-07T04:00:46.136Z",
   "nuschaot": [
     {
       "key": "ashkenaz",
@@ -8,7 +8,7 @@
       "heTitle": "סידור אשכנז",
       "nusachHe": "נוסח אשכנז",
       "source": "https://www.sefaria.org/Siddur_Ashkenaz",
-      "lines": 1372,
+      "lines": 1813,
       "missing": 2,
       "excluded": 2,
       "file": "ashkenaz/ashkenaz.json",
@@ -20,9 +20,9 @@
       "heTitle": "סידור ספרד",
       "nusachHe": "נוסח ספרד",
       "source": "https://www.sefaria.org/Siddur_Sefard",
-      "lines": 2429,
+      "lines": 2883,
       "missing": 0,
-      "excluded": 22,
+      "excluded": 21,
       "file": "sefard/sefard.json",
       "text": "sefard/sefard.txt"
     },
@@ -32,9 +32,9 @@
       "heTitle": "סידור נוסח עדות המזרח",
       "nusachHe": "נוסח עדות המזרח",
       "source": "https://www.sefaria.org/Siddur_Edot_HaMizrach",
-      "lines": 1597,
+      "lines": 1774,
       "missing": 0,
-      "excluded": 14,
+      "excluded": 13,
       "file": "edot-hamizrach/edot-hamizrach.json",
       "text": "edot-hamizrach/edot-hamizrach.txt"
     },

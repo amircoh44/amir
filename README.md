@@ -28,12 +28,13 @@ The text is filtered to a **weekday + blessings + minor-occasion** scope
 
 - **Included:** weekday Shacharit/Mincha/Maariv, all blessings (food, wedding,
   priestly, lifecycle), Rosh Chodesh (new month) + Birkat HaLevana, the month of
-  Nissan incl. **Birkat HaIlanot** (tree blessing), **Chanukah**, **Purim**, and
-  Chol HaMoed / Tu BiShvat additions (which appear inline in the weekday
-  services).
-- **Excluded:** Shabbat services, and the full festival / Yom Tov services
-  (Shalosh Regalim, Pesach Haggadah, Sukkot/Lulav, Shavuot, Simchat Torah,
-  Dew/Rain, festival piyutim), plus fast days and festival-prep orders.
+  Nissan incl. **Birkat HaIlanot** (tree blessing), **Chanukah**, **Purim**,
+  **all fast days** (Tzom Gedalia, 10 Tevet, Ta'anit Esther, 17 Tammuz, Tisha
+  b'Av, …), and Chol HaMoed / Tu BiShvat additions (which appear inline in the
+  weekday services).
+- **Excluded:** Shabbat services, the full festival / Yom Tov services (Shalosh
+  Regalim, Pesach Haggadah, Sukkot/Lulav, Shavuot, Simchat Torah, Dew/Rain,
+  festival piyutim), and **Yom Kippur** (incl. Kapparot).
 
 Notes: Sefaria's **Ashkenaz** siddur has no wedding blessings. **Tu BiShvat** and
 **Chol HaMoed** have no standalone order in Sefaria — they appear only as inline
@@ -41,8 +42,13 @@ additions inside the kept weekday prayers.
 
 ### Features
 
-- **Search widget** at the top — filter the table of contents by section title,
-  or search the full prayer text (matches are highlighted).
+- **Find & replace** at the top — highlight matches with next/prev navigation
+  and a match count, options for match-case / ignore-nikkud / whole-word, and
+  "replace all" across the whole nusach. Edited text flows into the download.
+- **Icon annotations** — toggle ✎ *סימון* mode, click any line, and mark the
+  start of a bracha with one or two ritual-instruction icons (bow, stand, sit,
+  congregation, chazan, both, lulav, aloud, silent, three-steps) joined by an
+  *and* (＋) / *or* (／) connector. Markings persist per nusach in localStorage.
 - **Missing-text tab** — lists any section that has a heading but no Hebrew text
   in the source; such sections are also flagged with ⚠ in the directory.
 - **Download** the Hebrew-only plain-text file for the selected nusach.

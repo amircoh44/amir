@@ -52,10 +52,10 @@ const FILTERS = {
   ashkenaz: {
     // Clean nested structure: Weekday / Shabbat / Festivals / Berachot / Kaddish.
     dropTop: ['Shabbat', 'שבת'],
-    // Festivals holds Rosh Chodesh + Chanukah — keep those, drop the rest.
+    // Festivals holds Rosh Chodesh + Chanukah + Selichot (fast days) — keep those.
     keepWithin: {
       match: ['Festivals', 'חגים'],
-      keepChildren: ['ראש חודש', 'Rosh Chodesh', 'חנוכה', 'Chanukah'],
+      keepChildren: ['ראש חודש', 'Rosh Chodesh', 'חנוכה', 'Chanukah', 'סליחות', 'Selichot'],
     },
   },
   sefard: {
@@ -64,18 +64,18 @@ const FILTERS = {
       'קבלת שבת', 'תפילת ערבית של שבת', 'סעודת ליל שבת', 'שחרית של שבת', 'מוסף של שבת',
       'סעודת שבת', 'מנחה לשבת קודש', 'סעודה שלישית', 'למוצאי שבת', 'סדר נטילת לולב',
       'לשלש רגלים', 'הגדה של פסח', 'סוכות', 'שמחת תורה', 'שבועות', 'יוצרות',
-      'תעניות ואבלות', 'סדר הקריאות',
+      'סדר הקריאות',
     ],
   },
   'edot-hamizrach': {
     dropTop: [
       'סדר הדלקת נרות שבת', 'שיר השירים', 'קבלת שבת', 'ערבית של שבת', 'סדר ליל שבת',
       'שחרית של שבת', 'מוסף של שבת', 'סדר סעודה שניה', 'מנחה של שבת',
-      'משניות שבת לסעודה שלישית', 'מוצאי שבת', 'תפילה לשלש רגלים',
-      'תעניות ואבילות', 'משניות לשבת',
+      'משניות שבת לסעודה שלישית', 'מוצאי שבת', 'תפילה לשלש רגלים', 'משניות לשבת',
     ],
   },
   chabad: {
+    // Kapparot (סדר כפרות) stays out — it is Yom Kippur-eve content.
     dropTop: ['לולב', 'מוסף לשלש רגלים', 'סדר התרת נדרים', 'סדר כפרות'],
   },
 };

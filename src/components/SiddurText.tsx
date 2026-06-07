@@ -1,11 +1,21 @@
-import { createElement, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import type { MissingEntry, NusachEntry, SiddurDoc, SiddurIndex, SiddurNode } from '../types/siddur';
+import { useAnnotations, type AnnotationMap } from '../hooks/useAnnotations';
+import { ICON_BY_ID, SIDDUR_ICONS, type Annotation, type Connector } from './siddurIcons';
+import { buildFindRegex, countMatches, mapTreeLines, treeToText, type FindOptions } from '../lib/siddurText';
 import './SiddurText.css';
 
-// Vite serves files in /public from the site root.
 const BASE = `${import.meta.env.BASE_URL}siddur`;
-
-type SearchScope = 'titles' | 'text';
 type Panel = 'directory' | 'missing';
 
 /** A leaf with no Hebrew text is "missing". */
@@ -13,23 +23,6 @@ function isMissing(node: SiddurNode): boolean {
   return !node.children?.length && !(node.lines && node.lines.length > 0);
 }
 
-/** Filter a tree by query. Titles scope keeps whole matching subtrees;
- *  text scope keeps leaves whose lines contain the query. */
-function filterTree(node: SiddurNode, q: string, scope: SearchScope): SiddurNode | null {
-  if (!q) return node;
-  const titleHit =
-    (node.heTitle ?? '').includes(q) || (node.enTitle ?? '').toLowerCase().includes(q.toLowerCase());
-  if (scope === 'titles' && titleHit) return node;
-  if (node.children?.length) {
-    const kids = node.children.map((c) => filterTree(c, q, scope)).filter(Boolean) as SiddurNode[];
-    return kids.length ? { ...node, children: kids } : null;
-  }
-  if (scope === 'titles') return titleHit ? node : null;
-  const textHit = (node.lines ?? []).some((l) => l.includes(q));
-  return textHit ? node : null;
-}
-
-/** Locate a node by its heTitle path (as recorded for missing entries). */
 function findByPath(root: SiddurNode, path: string[]): SiddurNode | null {
   let cur: SiddurNode | undefined = root;
   for (const title of path) {
@@ -39,65 +32,197 @@ function findByPath(root: SiddurNode, path: string[]): SiddurNode | null {
   return cur ?? null;
 }
 
-/** Split a line on the query, wrapping matches in <mark>. */
-function highlight(line: string, q: string) {
-  if (!q) return line;
-  const parts = line.split(q);
-  if (parts.length === 1) return line;
-  return parts.flatMap((p, i) =>
-    i === 0 ? [p] : [<mark key={i}>{q}</mark>, p],
+const lineId = (trail: string[], i: number) => `${trail.join('›')}#${i}`;
+
+// ---- annotation context (avoids deep prop drilling through TextNode) --------
+interface AnnotCtx {
+  annotations: AnnotationMap;
+  annotateMode: boolean;
+  pickerId: string | null;
+  setPickerId: (id: string | null) => void;
+  updateAnnot: (id: string, a: Annotation | null) => void;
+  findRegex: RegExp | null;
+}
+const Ctx = createContext<AnnotCtx | null>(null);
+
+/** Split a line on a regex, wrapping matches in <mark>. */
+function highlight(line: string, re: RegExp | null) {
+  if (!re) return line;
+  const g = new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`);
+  const out: ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let k = 0;
+  while ((m = g.exec(line))) {
+    if (m.index > last) out.push(line.slice(last, m.index));
+    out.push(<mark key={k++}>{m[0]}</mark>);
+    last = m.index + m[0].length;
+    if (m.index === g.lastIndex) g.lastIndex++;
+  }
+  if (last < line.length) out.push(line.slice(last));
+  return out;
+}
+
+function IconBadges({ a }: { a: Annotation }) {
+  const s1 = ICON_BY_ID[a.i1]?.symbol;
+  const s2 = a.i2 ? ICON_BY_ID[a.i2]?.symbol : undefined;
+  return (
+    <span className="line-icons" title="סימון">
+      {s1}
+      {s2 && <span className="conn">{a.conn ?? '+'}</span>}
+      {s2}
+    </span>
+  );
+}
+
+function IconPicker({
+  value,
+  onChange,
+  onClose,
+}: {
+  value: Annotation | undefined;
+  onChange: (a: Annotation | null) => void;
+  onClose: () => void;
+}) {
+  const a = value;
+  const pick = (id: string) => {
+    if (!a) onChange({ i1: id });
+    else if (!a.i2 && a.i1 !== id) onChange({ ...a, i2: id });
+    else onChange({ i1: id }); // reset to a single icon
+  };
+  const cycleConn = () => {
+    if (!a?.i2) return;
+    const next: Record<string, Connector | undefined> = { '+': '/', '/': undefined } as const;
+    onChange({ ...a, conn: a.conn ? next[a.conn] : '+' });
+  };
+  return (
+    <div className="icon-picker" onClick={(e) => e.stopPropagation()}>
+      <div className="picker-current">
+        {a ? (
+          <>
+            <button className="slot" title="הסר סמל" onClick={() => onChange(a.i2 ? { i1: a.i2 } : null)}>
+              {ICON_BY_ID[a.i1]?.symbol}
+            </button>
+            <button className="conn-btn" onClick={cycleConn} disabled={!a.i2} title="לוגיקה בין הסמלים (וגם / או)">
+              {a.i2 ? (a.conn ?? '+') : '·'}
+            </button>
+            <button
+              className="slot"
+              title={a.i2 ? 'הסר סמל' : 'בחר סמל שני מהרשימה'}
+              onClick={() => a.i2 && onChange({ i1: a.i1 })}
+            >
+              {a.i2 ? ICON_BY_ID[a.i2]?.symbol : '＋'}
+            </button>
+          </>
+        ) : (
+          <span className="picker-hint">בחר סמל אחד או שניים:</span>
+        )}
+      </div>
+      <div className="picker-grid">
+        {SIDDUR_ICONS.map((ic) => (
+          <button key={ic.id} className="picker-icon" title={ic.label} onClick={() => pick(ic.id)}>
+            <span>{ic.symbol}</span>
+            <small>{ic.label}</small>
+          </button>
+        ))}
+      </div>
+      <div className="picker-actions">
+        <button className="picker-clear" onClick={() => onChange(null)}>🗑 נקה</button>
+        <button className="picker-done" onClick={onClose}>סיום</button>
+      </div>
+    </div>
+  );
+}
+
+function Line({ id, line }: { id: string; line: string }) {
+  const ctx = useContext(Ctx)!;
+  const a = ctx.annotations[id];
+  const picking = ctx.pickerId === id;
+  return (
+    <div className="line-wrap">
+      <p
+        className={`text-line ${ctx.annotateMode ? 'annotatable' : ''} ${picking ? 'picking' : ''}`}
+        onClick={ctx.annotateMode ? () => ctx.setPickerId(picking ? null : id) : undefined}
+      >
+        {a && <IconBadges a={a} />}
+        {highlight(line, ctx.findRegex)}
+      </p>
+      {picking && (
+        <IconPicker
+          value={a}
+          onChange={(na) => ctx.updateAnnot(id, na)}
+          onClose={() => ctx.setPickerId(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function TextNode({ node, depth, trail }: { node: SiddurNode; depth: number; trail: string[] }) {
+  const headingTag = `h${Math.min(depth + 2, 6)}`;
+  const here = node.heTitle ? [...trail, node.heTitle] : trail;
+  return (
+    <section className="text-section">
+      {node.heTitle && createElement(headingTag, { className: 'text-heading' }, node.heTitle)}
+      {isMissing(node) && <p className="text-missing">⚠ אין טקסט במקור (text missing in source)</p>}
+      {node.lines?.map((line, i) => (
+        <Line key={i} id={lineId(here, i)} line={line} />
+      ))}
+      {node.children?.map((child, i) => (
+        <TextNode key={i} node={child} depth={depth + 1} trail={here} />
+      ))}
+    </section>
   );
 }
 
 function DirectoryNode({
   node,
   path,
+  trail,
   selectedPath,
-  forceOpen,
+  annotations,
   onSelect,
 }: {
   node: SiddurNode;
   path: string;
+  trail: string[];
   selectedPath: string;
-  forceOpen: boolean;
-  onSelect: (path: string, node: SiddurNode) => void;
+  annotations: AnnotationMap;
+  onSelect: (path: string, node: SiddurNode, trail: string[]) => void;
 }) {
   const [open, setOpen] = useState(path.split('/').length <= 1);
-  const expanded = forceOpen || open;
   const hasChildren = !!node.children?.length;
   const label = node.heTitle || node.enTitle || '—';
   const missing = isMissing(node);
+  const childTrail = node.heTitle ? [...trail, node.heTitle] : trail;
 
   return (
     <li className="dir-item">
       <div className={`dir-row ${selectedPath === path ? 'selected' : ''}`}>
         {hasChildren ? (
-          <button
-            className="dir-toggle"
-            aria-label={expanded ? 'Collapse' : 'Expand'}
-            onClick={() => setOpen((o) => !o)}
-          >
-            {expanded ? '▾' : '▸'}
+          <button className="dir-toggle" onClick={() => setOpen((o) => !o)}>
+            {open ? '▾' : '▸'}
           </button>
         ) : (
           <span className="dir-toggle leaf">{missing ? '⚠' : '•'}</span>
         )}
         <button
           className={`dir-label ${missing ? 'missing' : ''}`}
-          onClick={() => onSelect(path, node)}
+          onClick={() => onSelect(path, node, trail)}
         >
           {label}
         </button>
       </div>
-      {hasChildren && expanded && (
+      {hasChildren && open && (
         <ul className="dir-children">
           {node.children!.map((child, i) => (
             <DirectoryNode
               key={`${path}/${i}`}
               node={child}
               path={`${path}/${i}`}
+              trail={childTrail}
               selectedPath={selectedPath}
-              forceOpen={forceOpen}
+              annotations={annotations}
               onSelect={onSelect}
             />
           ))}
@@ -107,39 +232,30 @@ function DirectoryNode({
   );
 }
 
-function TextNode({ node, depth, query }: { node: SiddurNode; depth: number; query: string }) {
-  const headingTag = `h${Math.min(depth + 2, 6)}`;
-  const missing = isMissing(node);
-  return (
-    <section className="text-section">
-      {node.heTitle &&
-        createElement(headingTag, { className: 'text-heading' }, node.heTitle)}
-      {missing && <p className="text-missing">⚠ אין טקסט במקור (text missing in source)</p>}
-      {node.lines?.map((line, i) => (
-        <p className="text-line" key={i}>
-          {highlight(line, query)}
-        </p>
-      ))}
-      {node.children?.map((child, i) => (
-        <TextNode key={i} node={child} depth={depth + 1} query={query} />
-      ))}
-    </section>
-  );
-}
-
 export function SiddurText() {
   const [index, setIndex] = useState<SiddurIndex | null>(null);
   const [active, setActive] = useState<NusachEntry | null>(null);
   const [doc, setDoc] = useState<SiddurDoc | null>(null);
+  const [edited, setEdited] = useState(false);
   const [selectedPath, setSelectedPath] = useState('root');
   const [selectedNode, setSelectedNode] = useState<SiddurNode | null>(null);
+  const [selectedTrail, setSelectedTrail] = useState<string[]>([]);
   const [error, setError] = useState<{ scope: string; msg: string } | null>(null);
-
-  const [query, setQuery] = useState('');
-  const [searchScope, setSearchScope] = useState<SearchScope>('titles');
   const [panel, setPanel] = useState<Panel>('directory');
 
-  // Load the catalog of nuschaot once.
+  // find / replace
+  const [findText, setFindText] = useState('');
+  const [replaceText, setReplaceText] = useState('');
+  const [opts, setOpts] = useState<FindOptions>({ matchCase: false, ignoreNikkud: true, wholeWord: false });
+  const [matchIdx, setMatchIdx] = useState(-1);
+  const [replaceInfo, setReplaceInfo] = useState('');
+  const contentRef = useRef<HTMLElement>(null);
+
+  // annotations
+  const [annotateMode, setAnnotateMode] = useState(false);
+  const [pickerId, setPickerId] = useState<string | null>(null);
+  const { map: annotations, update: updateAnnot, clearAll: clearAnnots } = useAnnotations(active?.key);
+
   useEffect(() => {
     let ignore = false;
     fetch(`${BASE}/index.json`)
@@ -158,7 +274,6 @@ export function SiddurText() {
     };
   }, []);
 
-  // Load the selected nusach's text whenever it changes.
   useEffect(() => {
     if (!active) return;
     let ignore = false;
@@ -170,9 +285,11 @@ export function SiddurText() {
       .then((d) => {
         if (ignore) return;
         setDoc(d);
+        setEdited(false);
         const first = d.tree.children?.[0];
         setSelectedPath(first ? 'root/0' : 'root');
         setSelectedNode(first ?? d.tree);
+        setSelectedTrail([]); // first/root sit at the top level
       })
       .catch((e) => !ignore && setError({ scope: active.key, msg: String(e.message ?? e) }));
     return () => {
@@ -181,48 +298,98 @@ export function SiddurText() {
   }, [active]);
 
   const loading = !!active && doc?.key !== active.key && error?.scope !== active.key;
+  const currentDoc = doc && active && doc.key === active.key ? doc : null;
+  const activeError = error?.scope === active?.key ? error : null;
 
-  const handleSelect = useCallback((path: string, node: SiddurNode) => {
+  const findRegex = useMemo(() => buildFindRegex(findText.trim(), opts, false), [findText, opts]);
+
+  // Derive the match total from the displayed section (no DOM / effect needed).
+  const matchCount = useMemo(
+    () => (findRegex && selectedNode ? countMatches(selectedNode, findRegex) : 0),
+    [findRegex, selectedNode],
+  );
+
+  const handleSelect = useCallback((path: string, node: SiddurNode, trail: string[]) => {
     setSelectedPath(path);
     setSelectedNode(node);
+    setSelectedTrail(trail);
+    setPickerId(null);
+    setMatchIdx(-1);
   }, []);
 
   const handleMissingSelect = useCallback(
     (entry: MissingEntry) => {
-      if (!doc) return;
-      const node = findByPath(doc.tree, entry.path) ?? { heTitle: entry.heTitle, lines: [] };
+      if (!currentDoc) return;
+      const node = findByPath(currentDoc.tree, entry.path) ?? { heTitle: entry.heTitle, lines: [] };
       setSelectedPath('');
       setSelectedNode(node);
+      setSelectedTrail(entry.path.slice(0, -1));
       setPanel('directory');
     },
-    [doc],
+    [currentDoc],
   );
+
+  const jump = useCallback((dir: 1 | -1) => {
+    const marks = contentRef.current?.querySelectorAll<HTMLElement>('mark');
+    if (!marks || !marks.length) return;
+    setMatchIdx((prev) => {
+      const n = (prev + dir + marks.length) % marks.length;
+      marks.forEach((x) => x.classList.remove('current'));
+      marks[n].classList.add('current');
+      marks[n].scrollIntoView({ block: 'center', behavior: 'smooth' });
+      return n;
+    });
+  }, []);
+
+  const handleReplaceAll = useCallback(() => {
+    if (!currentDoc || !findText.trim()) return;
+    const re = buildFindRegex(findText.trim(), opts, true);
+    if (!re) return;
+    const before = countMatches(currentDoc.tree, re);
+    if (!before) {
+      setReplaceInfo('אין התאמות');
+      return;
+    }
+    const fn = (line: string) => line.replace(re, replaceText);
+    setDoc({ ...currentDoc, tree: mapTreeLines(currentDoc.tree, fn) });
+    setSelectedNode((prev) => (prev ? mapTreeLines(prev, fn) : prev));
+    setEdited(true);
+    setReplaceInfo(`הוחלפו ${before} מופעים`);
+  }, [currentDoc, findText, replaceText, opts]);
 
   const handleDownload = useCallback(() => {
     if (!active) return;
-    const a = document.createElement('a');
-    a.href = `${BASE}/${active.text}`;
-    a.download = `${active.key}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }, [active]);
+    if (edited && currentDoc) {
+      const text = treeToText(currentDoc.tree, currentDoc.heTitle);
+      const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${active.key}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } else {
+      const a = document.createElement('a');
+      a.href = `${BASE}/${active.text}`;
+      a.download = `${active.key}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+  }, [active, edited, currentDoc]);
 
-  // Filtered tree for the directory (live search).
-  const currentDoc = doc && active && doc.key === active.key ? doc : null;
-  const filteredTree = useMemo(() => {
-    if (!currentDoc) return null;
-    return filterTree(currentDoc.tree, query.trim(), searchScope);
-  }, [currentDoc, query, searchScope]);
+  if (error?.scope === 'index' && !index) return <div className="siddur error">⚠ {error.msg}</div>;
+  if (!index) return <div className="siddur loading">Loading Siddur Text…</div>;
 
-  const activeError = error?.scope === active?.key ? error : null;
-
-  if (error?.scope === 'index' && !index) {
-    return <div className="siddur error">⚠ {error.msg}</div>;
-  }
-  if (!index) {
-    return <div className="siddur loading">Loading Siddur Text…</div>;
-  }
+  const ctxValue: AnnotCtx = {
+    annotations,
+    annotateMode,
+    pickerId,
+    setPickerId,
+    updateAnnot,
+    findRegex,
+  };
 
   return (
     <div className="siddur">
@@ -236,8 +403,8 @@ export function SiddurText() {
               className={`nusach-tab ${active?.key === n.key ? 'active' : ''}`}
               onClick={() => {
                 setActive(n);
-                setQuery('');
                 setPanel('directory');
+                setReplaceInfo('');
               }}
             >
               <span className="nusach-he">{n.nusachHe}</span>
@@ -246,59 +413,86 @@ export function SiddurText() {
           ))}
         </div>
         <div className="siddur-meta">
-          <span>{(currentDoc ? active?.lines ?? 0 : 0).toLocaleString()} שורות</span>
+          <button
+            className={`mode-btn ${annotateMode ? 'active' : ''}`}
+            onClick={() => {
+              setAnnotateMode((m) => !m);
+              setPickerId(null);
+            }}
+            title="סימון קטעים בסמלים"
+          >
+            ✎ סימון {annotateMode ? '(פעיל)' : ''}
+          </button>
           <button className="download-btn" onClick={handleDownload} disabled={!active}>
-            ⬇ הורד טקסט עברי
+            ⬇ הורד טקסט עברי{edited ? ' *' : ''}
           </button>
         </div>
       </div>
 
-      {/* Search / find widget */}
-      <div className="siddur-search" dir="rtl">
-        <span className="search-icon">🔎</span>
+      {/* Find & replace */}
+      <div className="siddur-find" dir="rtl">
         <input
-          className="search-input"
+          className="find-input"
           type="search"
-          placeholder="חיפוש בסידור…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          placeholder="חיפוש…"
+          value={findText}
+          onChange={(e) => {
+            setFindText(e.target.value);
+            setMatchIdx(-1);
+          }}
+          onKeyDown={(e) => e.key === 'Enter' && jump(e.shiftKey ? -1 : 1)}
         />
-        <label className="search-scope">
-          חפש ב:
-          <select value={searchScope} onChange={(e) => setSearchScope(e.target.value as SearchScope)}>
-            <option value="titles">כותרות הקטעים</option>
-            <option value="text">תוכן התפילה</option>
-          </select>
-        </label>
-        <div className="panel-toggle">
-          <button
-            className={panel === 'directory' ? 'active' : ''}
-            onClick={() => setPanel('directory')}
-          >
-            תוכן עניינים
-          </button>
-          <button
-            className={`${panel === 'missing' ? 'active' : ''} ${active && active.missing > 0 ? 'has-missing' : ''}`}
-            onClick={() => setPanel('missing')}
-          >
-            טקסט חסר{active ? ` (${active.missing})` : ''}
-          </button>
+        <input
+          className="find-input replace"
+          type="text"
+          placeholder="החלפה…"
+          value={replaceText}
+          onChange={(e) => setReplaceText(e.target.value)}
+        />
+        <div className="find-nav">
+          <button onClick={() => jump(-1)} disabled={!matchCount} title="הקודם">▲</button>
+          <span className="find-count">{matchCount ? `${matchIdx + 1}/${matchCount}` : '0'}</span>
+          <button onClick={() => jump(1)} disabled={!matchCount} title="הבא">▼</button>
         </div>
-        {query && (
-          <button className="search-clear" onClick={() => setQuery('')}>
-            ✕ נקה
-          </button>
-        )}
+        <button className="replace-btn" onClick={handleReplaceAll} disabled={!findText.trim()}>
+          החלף הכל
+        </button>
+        <div className="find-opts">
+          <label title="התאמת אותיות גדולות/קטנות">
+            <input type="checkbox" checked={opts.matchCase} onChange={(e) => setOpts({ ...opts, matchCase: e.target.checked })} />
+            Aa
+          </label>
+          <label title="התעלם מניקוד">
+            <input type="checkbox" checked={opts.ignoreNikkud} onChange={(e) => setOpts({ ...opts, ignoreNikkud: e.target.checked })} />
+            ניקוד
+          </label>
+          <label title="מילה שלמה">
+            <input type="checkbox" checked={opts.wholeWord} onChange={(e) => setOpts({ ...opts, wholeWord: e.target.checked })} />
+            מילה
+          </label>
+        </div>
+        {replaceInfo && <span className="replace-info">{replaceInfo}</span>}
       </div>
 
       <div className="siddur-body" dir="rtl">
         <aside className="siddur-directory">
+          <div className="panel-toggle">
+            <button className={panel === 'directory' ? 'active' : ''} onClick={() => setPanel('directory')}>
+              תוכן עניינים
+            </button>
+            <button
+              className={`${panel === 'missing' ? 'active' : ''} ${active && active.missing > 0 ? 'has-missing' : ''}`}
+              onClick={() => setPanel('missing')}
+            >
+              טקסט חסר{active ? ` (${active.missing})` : ''}
+            </button>
+          </div>
+
           {loading && <div className="dir-loading">טוען…</div>}
           {activeError && !loading && <div className="dir-loading error">⚠ {activeError.msg}</div>}
 
           {currentDoc && panel === 'missing' && (
             <div className="missing-panel">
-              <h4>סעיפים ללא טקסט במקור</h4>
               {currentDoc.missing.length === 0 ? (
                 <p className="missing-empty">✓ אין טקסט חסר בנוסח זה</p>
               ) : (
@@ -321,36 +515,39 @@ export function SiddurText() {
               <li className="dir-item">
                 <div className={`dir-row ${selectedPath === 'root' ? 'selected' : ''}`}>
                   <span className="dir-toggle leaf">📖</span>
-                  <button
-                    className="dir-label root"
-                    onClick={() => handleSelect('root', currentDoc.tree)}
-                  >
+                  <button className="dir-label root" onClick={() => handleSelect('root', currentDoc.tree, [])}>
                     {currentDoc.heTitle}
                   </button>
                 </div>
               </li>
-              {filteredTree?.children?.length ? (
-                filteredTree.children.map((child, i) => (
-                  <DirectoryNode
-                    key={`root/${i}`}
-                    node={child}
-                    path={`root/${i}`}
-                    selectedPath={selectedPath}
-                    forceOpen={!!query.trim()}
-                    onSelect={handleSelect}
-                  />
-                ))
-              ) : query.trim() ? (
-                <li className="dir-noresults">אין תוצאות עבור “{query}”</li>
-              ) : null}
+              {currentDoc.tree.children?.map((child, i) => (
+                <DirectoryNode
+                  key={`root/${i}`}
+                  node={child}
+                  path={`root/${i}`}
+                  trail={[]}
+                  selectedPath={selectedPath}
+                  annotations={annotations}
+                  onSelect={handleSelect}
+                />
+              ))}
             </ul>
+          )}
+
+          {annotateMode && (
+            <div className="annot-help">
+              מצב סימון פעיל: לחץ על שורה כדי להוסיף סמלים בתחילתה.
+              <button className="annot-clear" onClick={clearAnnots}>נקה את כל הסימונים</button>
+            </div>
           )}
         </aside>
 
-        <main className="siddur-content">
+        <main className="siddur-content" ref={contentRef}>
           {currentDoc && selectedNode ? (
             <article className="hebrew-text">
-              <TextNode node={selectedNode} depth={0} query={searchScope === 'text' ? query.trim() : ''} />
+              <Ctx.Provider value={ctxValue}>
+                <TextNode node={selectedNode} depth={0} trail={selectedTrail} />
+              </Ctx.Provider>
               <footer className="text-source">
                 מקור:{' '}
                 <a href={currentDoc.source} target="_blank" rel="noreferrer">
