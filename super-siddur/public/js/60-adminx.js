@@ -26,7 +26,11 @@ function syncFromServer() {
     }
   }).catch(() => {});
   fetch("/api/settings").then((r) => (r.ok ? r.json() : null)).then((cfg) => {
-    if (cfg && cfg.branding) { state.branding = cfg.branding; saveState(); applySplash(); }
+    if (!cfg) return;
+    if (cfg.branding) { state.branding = cfg.branding; applySplash(); }
+    if (cfg.audiences && Array.isArray(cfg.audiences.list)) { state.audienceDefs = cfg.audiences.list; }
+    saveState();
+    const app = $("#app"); if (app && app.style.visibility !== "hidden") render();
   }).catch(() => {});
   fetch("/api/icons").then((r) => (r.ok ? r.json() : [])).then((list) => {
     const m = {}; (list || []).forEach((i) => { m[i.key] = i.url; });
@@ -42,6 +46,12 @@ function saveContentToServer() {
 function saveSettingsToServer() {
   return fetch("/api/settings/branding", { method: "PUT", headers: jsonHeaders(), body: JSON.stringify({ value: state.branding || {} }) })
     .then((r) => r.json().then((j) => ({ ok: r.ok, j })).catch(() => ({ ok: r.ok, j: {} })));
+}
+/* Publish the custom-audience definitions to the server (admins with settings.edit). */
+function publishAudiences() {
+  if (!hasPerm("settings.edit")) return;
+  fetch("/api/settings/audiences", { method: "PUT", headers: jsonHeaders(), body: JSON.stringify({ value: { list: state.audienceDefs || [] } }) })
+    .then((r) => { if (r.ok) toast("Audiences published"); }).catch(() => {});
 }
 
 function publishBtnFlow(btn, fn, okMsg) {

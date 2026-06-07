@@ -30,6 +30,24 @@ function admProfile(w){
   $("#apEng").addEventListener("input",e=>{state.userEngName=e.target.value;saveState();});
   $("#apHeb").addEventListener("input",e=>{state.userHebName=e.target.value;saveState();});
   $("#apBday").addEventListener("input",e=>{if(!e.target.value){state.birthday=null;saveState();$("#apHebBday").textContent="No birthday set.";return;}const[y,m,d]=e.target.value.split("-").map(Number);const h=gregToHeb(y,m,d);h.gregYMD=e.target.value;state.birthday=h;saveState();$("#apHebBday").textContent=`Hebrew birthday: ${gematria(h.day)} ${monthHe(h.month,h.year)} \u2014 Hebrew age ${computeHebAge(h)}`;});
+  /* Gender — drives gendered blessings */
+  const pickRow=(opts,curVal,onPick)=>{const r=el("div","");r.style.cssText="display:flex;gap:.5rem;flex-wrap:wrap;margin:.3rem 0";opts.forEach(([v,l])=>{const on=curVal===v;const b=el("button","");b.style.cssText="padding:.5rem .9rem;border-radius:.5rem;font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--sans);border:1px solid "+(on?"var(--accent)":"var(--line)")+";background:"+(on?"color-mix(in srgb,var(--accent) 14%,transparent)":"var(--surface2)")+";color:"+(on?"var(--accent)":"var(--ink2)");b.textContent=l;b.onclick=()=>onPick(v);r.appendChild(b);});return r;};
+  const gh=el("div","");gh.style.cssText="font-family:var(--display);font-size:1.05rem;font-weight:600;color:var(--ink);margin:1.4rem 0 .3rem";gh.textContent="Gender";w.appendChild(gh);
+  w.appendChild(el("div","note","Sets gendered blessings — men say שֶּלֹּא עָשַׂנִי אִשָּׁה, women say שֶעָשַׂנִי כִּרְצוֹנוֹ. Leave unset to show both."));
+  w.appendChild(pickRow([["male","Man"],["female","Woman"],["","Prefer not to say"]],state.gender||"",v=>{state.gender=v;saveState();paintAdmin();if(typeof render==="function")render();}));
+
+  /* Custom audiences — membership + (admin) definitions */
+  const defs=state.audienceDefs||[];
+  const ah=el("div","");ah.style.cssText="font-family:var(--display);font-size:1.05rem;font-weight:600;color:var(--ink);margin:1.2rem 0 .3rem";ah.textContent="Audiences";w.appendChild(ah);
+  w.appendChild(el("div","note","Custom groups (e.g. Kohen, Levi, Mourner). Tick the ones that apply to you; content and icons tagged to a group appear only for its members."));
+  if(defs.length){const arow=el("div","");arow.style.cssText="display:flex;gap:.5rem;flex-wrap:wrap;margin:.3rem 0";defs.forEach(d=>{const on=!!(state.audiences&&state.audiences[d.key]);const b=el("button","");b.style.cssText="padding:.5rem .9rem;border-radius:.5rem;font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--sans);border:1px solid "+(on?"var(--accent)":"var(--line)")+";background:"+(on?"color-mix(in srgb,var(--accent) 14%,transparent)":"var(--surface2)")+";color:"+(on?"var(--accent)":"var(--ink2)");b.textContent=d.label||d.key;b.onclick=()=>{state.audiences=Object.assign({},state.audiences);state.audiences[d.key]=!on;saveState();paintAdmin();if(typeof render==="function")render();};arow.appendChild(b);});w.appendChild(arow);}
+  else{w.appendChild(el("div","note","No custom audiences defined yet."));}
+  if(typeof hasPerm==="function"&&hasPerm("settings.edit")){
+    w.appendChild(el("div","note","Admin: define audiences (published to everyone)."));
+    defs.forEach((d,idx)=>{const r=el("div","");r.style.cssText="display:flex;align-items:center;gap:.5rem;margin:.2rem 0";r.innerHTML=`<span style="flex:1;font-size:.85rem"><b>${esc(d.label||d.key)}</b> <span style="color:var(--muted)">(${esc(d.key)})</span></span>`;const rm=el("button","arr-mini");rm.style.color="#d9534f";rm.textContent="✕";rm.onclick=()=>{state.audienceDefs=(state.audienceDefs||[]).filter((_,j)=>j!==idx);saveState();if(typeof publishAudiences==="function")publishAudiences();paintAdmin();};r.appendChild(rm);w.appendChild(r);});
+    const f=el("div","field");f.style.marginTop=".4rem";const key=el("input");key.placeholder="key (e.g. kohen)";key.style.cssText="width:100%;margin-bottom:.3rem";const lbl=el("input");lbl.placeholder="label (e.g. Kohen)";lbl.style.cssText="width:100%;margin-bottom:.3rem";const add=el("button","btn-primary","Add audience");add.onclick=()=>{const k=key.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g,"");if(!k){toast("Enter a key");return;}const arr=(state.audienceDefs||[]).slice();if(arr.some(d=>d.key===k)){toast("Key already exists");return;}arr.push({key:k,label:lbl.value.trim()||k});state.audienceDefs=arr;saveState();if(typeof publishAudiences==="function")publishAudiences();paintAdmin();};f.appendChild(key);f.appendChild(lbl);f.appendChild(add);w.appendChild(f);
+  }
+
   /* Install / offline */
   const ih=el("div","");ih.style.cssText="font-family:var(--display);font-size:1.05rem;font-weight:600;color:var(--ink);margin:1.4rem 0 .3rem";ih.textContent="Install & offline";w.appendChild(ih);
   const standalone=(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||window.navigator.standalone;

@@ -13,10 +13,25 @@ function buildImported(){
         id:"imp_"+d.nusach+"_"+sid+"_"+si,
         en:"",he:(sec.header&&sec.header.trim())||d.service,section:d.service,
         only:[d.nusach],imported:true,
-        blocks:sec.blocks.map(b=>b.k==="rubric"?{k:"rubric",text:b.t}:{k:"p",he:b.t})
+        blocks:sec.blocks.map(b=>{const o=b.k==="rubric"?{k:"rubric",text:b.t}:{k:"p",he:b.t};if(b.tr)o.tr=b.tr;if(b.en)o.en=b.en;if(b.cond)o.cond=b.cond;if(b.icon)o.icon=b.icon;if(b.tags)o.tags=b.tags;return o;})
       });
     });
   });
+}
+/* Write an edited imported prayer's blocks straight back into TEXTDATA (single source
+   of truth), so the Content tab can publish them. id = imp_<nusach>_<svcId>_<sectionIdx>. */
+function writeImportedBack(impId,cleanBlocks){
+  const parts=String(impId).split("_");
+  if(parts.length<4||parts[0]!=="imp")return false;
+  const nusach=parts[1],si=parseInt(parts[parts.length-1],10),sid=parts.slice(2,-1).join("_");
+  const doc=(window.TEXTDATA||[]).find(d=>d.nusach===nusach&&d.svcId===sid);
+  if(!doc||!doc.sections||!doc.sections[si])return false;
+  doc.sections[si].blocks=cleanBlocks.filter(b=>b.k==="rubric"||b.k==="p").map(b=>{
+    const o=b.k==="rubric"?{k:"rubric",t:b.text||""}:{k:"p",t:b.he||""};
+    if(b.tr)o.tr=b.tr;if(b.en)o.en=b.en;if(b.cond)o.cond=b.cond;if(b.icon)o.icon=b.icon;if(b.tags)o.tags=b.tags;
+    return o;
+  });
+  return true;
 }
 function textDocs(){return (window.TEXTDATA||[]);}
 function openTextIndex(){
@@ -184,6 +199,7 @@ function openPrayerEditor(svcId,prId){
     list.innerHTML="";
     if(!blocks.length){list.appendChild(el("div","note","No blocks yet. Add prayer text or an instruction below."));}
     blocks.forEach((b,i)=>{
+      if(b.region){b.cond=Object.assign({region:b.region},b.cond||{});delete b.region;} /* migrate legacy region → cond */
       const isRub=b.k==="rubric",isKav=b.k==="kavanah";
       const card=el("div","");card.style.cssText="background:var(--surface);border:1px solid var(--line);border-radius:.6rem;padding:.8rem;margin-bottom:.7rem"+(isRub?";border-left:3px solid var(--instr)":isKav?";border-left:3px solid var(--insert)":"");
       const top=el("div","");top.style.cssText="display:flex;align-items:center;gap:.4rem;margin-bottom:.55rem";
@@ -224,13 +240,10 @@ function openPrayerEditor(svcId,prId){
         card.appendChild(mkLabel("Hebrew"));card.appendChild(he);
         card.appendChild(mkLabel("Transliteration"));card.appendChild(tr);
         card.appendChild(mkLabel("English"));card.appendChild(en);
-        /* location gate: show this block everywhere / diaspora only / Israel only */
-        const rl=el("div","");rl.textContent="Show where";rl.style.cssText=miniLabel()+"margin-top:.5rem";card.appendChild(rl);
-        const rrow=el("div","");rrow.style.cssText="display:flex;gap:.4rem;flex-wrap:wrap";
-        [["","Everywhere"],["diaspora","Diaspora only"],["israel","Eretz Yisrael only"]].forEach(([val,label])=>{
-          const on=(b.region||"")===val;const rb=el("button","");rb.style.cssText="padding:.4rem .7rem;border-radius:.5rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:var(--sans);border:1px solid "+(on?"var(--accent)":"var(--line)")+";background:"+(on?"color-mix(in srgb,var(--accent) 14%,transparent)":"var(--surface2)")+";color:"+(on?"var(--accent)":"var(--ink2)");rb.textContent=label;rb.onclick=()=>{if(val)b.region=val;else delete b.region;paintBlocks();};rrow.appendChild(rb);
-        });
-        card.appendChild(rrow);
+        /* who sees this block + an optional conditional icon */
+        const cl=el("div","");cl.textContent="Conditions — who sees this block";cl.style.cssText=miniLabel()+"margin-top:.6rem";card.appendChild(cl);
+        condControls(card,()=>b.cond,(c)=>{if(c&&Object.keys(c).length)b.cond=c;else delete b.cond;});
+        iconControls(card,b);
       }
       list.appendChild(card);
     });
@@ -238,6 +251,43 @@ function openPrayerEditor(svcId,prId){
   function taCss(){return "width:100%;padding:.6rem .7rem;background:var(--surface2);border:1px solid var(--line);border-radius:.45rem;color:var(--ink);font-size:.92rem;outline:none;font-family:var(--sans);resize:vertical;margin-bottom:.5rem";}
   function miniLabel(){return "font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:.25rem";}
   function mkLabel(t){const d=el("div","");d.textContent=t;d.style.cssText=miniLabel();return d;}
+  function chipCss(on){return "padding:.4rem .7rem;border-radius:.5rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:var(--sans);border:1px solid "+(on?"var(--accent)":"var(--line)")+";background:"+(on?"color-mix(in srgb,var(--accent) 14%,transparent)":"var(--surface2)")+";color:"+(on?"var(--accent)":"var(--ink2)");}
+  /* Reusable condition builder (gender / location / minyan / custom audiences).
+     getC()/setC() read & write the condition object on a block or an icon. */
+  function condControls(card,getC,setC){
+    const c=()=>getC()||{};
+    const mk=(label,opts,cur,onPick)=>{
+      const lbl=el("div","");lbl.textContent=label;lbl.style.cssText=miniLabel()+"margin-top:.5rem";card.appendChild(lbl);
+      const row=el("div","");row.style.cssText="display:flex;gap:.4rem;flex-wrap:wrap";
+      opts.forEach(([val,t])=>{const bn=el("button","");bn.type="button";bn.style.cssText=chipCss(cur===val);bn.textContent=t;bn.onclick=()=>onPick(val);row.appendChild(bn);});
+      card.appendChild(row);
+    };
+    mk("Gender",[["","Everyone"],["male","Men only"],["female","Women only"]],c().gender||"",v=>{const x=Object.assign({},c());if(v)x.gender=v;else delete x.gender;setC(x);paintBlocks();});
+    mk("Location",[["","Anywhere"],["israel","Israel only"],["diaspora","Diaspora only"]],c().region||"",v=>{const x=Object.assign({},c());if(v)x.region=v;else delete x.region;setC(x);paintBlocks();});
+    mk("Minyan",[["","Any"],["yes","With minyan"],["no","Without minyan"]],c().minyan===true?"yes":c().minyan===false?"no":"",v=>{const x=Object.assign({},c());if(v==="yes")x.minyan=true;else if(v==="no")x.minyan=false;else delete x.minyan;setC(x);paintBlocks();});
+    const defs=state.audienceDefs||[];
+    if(defs.length){
+      const lbl=el("div","");lbl.textContent="Custom audiences (must belong to all selected)";lbl.style.cssText=miniLabel()+"margin-top:.5rem";card.appendChild(lbl);
+      const row=el("div","");row.style.cssText="display:flex;gap:.4rem;flex-wrap:wrap";
+      defs.forEach(d=>{const sel=(c().audiences||[]).includes(d.key);const bn=el("button","");bn.type="button";bn.style.cssText=chipCss(sel);bn.textContent=d.label||d.key;bn.onclick=()=>{const x=Object.assign({},c());const arr=(x.audiences||[]).slice();const j=arr.indexOf(d.key);if(j>=0)arr.splice(j,1);else arr.push(d.key);if(arr.length)x.audiences=arr;else delete x.audiences;setC(x);paintBlocks();};row.appendChild(bn);});
+      card.appendChild(row);
+    }
+  }
+  const ICON_KEYS=["stand","sit","bow","sun","dusk","moon","food","path","star","book"];
+  /* Optional per-block icon, with its own condition (e.g. show a "bow" icon only for men). */
+  function iconControls(card,b){
+    const lbl=el("div","");lbl.textContent="Icon (shown beside this block)";lbl.style.cssText=miniLabel()+"margin-top:.7rem";card.appendChild(lbl);
+    const keys=ICON_KEYS.concat(Object.keys(window.ICON_OVERRIDES||{}).filter(k=>ICON_KEYS.indexOf(k)<0));
+    const sel=el("select");sel.style.cssText=taCss()+"margin-bottom:.3rem";
+    sel.innerHTML=`<option value="">None</option>`+keys.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join("");
+    sel.value=(b.icon&&b.icon.key)||"";
+    sel.onchange=()=>{if(sel.value){b.icon=Object.assign({},b.icon||{},{key:sel.value});}else{delete b.icon;}paintBlocks();};
+    card.appendChild(sel);
+    if(b.icon&&b.icon.key){
+      const n=el("div","note","Show this icon only for:");n.style.cssText="margin:.2rem 0 0";card.appendChild(n);
+      condControls(card,()=>b.icon.cond,(c)=>{if(c&&Object.keys(c).length)b.icon.cond=c;else delete b.icon.cond;});
+    }
+  }
   paintBlocks();
   addTxt.onclick=()=>{blocks.push({k:"p",he:"",tr:"",en:""});paintBlocks();bodyScroll.scrollTop=bodyScroll.scrollHeight;};
   addRub.onclick=()=>{blocks.push({k:"rubric",text:""});paintBlocks();bodyScroll.scrollTop=bodyScroll.scrollHeight;};
@@ -249,15 +299,20 @@ function openPrayerEditor(svcId,prId){
       if(b.k==="rubric")return (b.text||"").trim();
       if(b.k==="kavanah"){const k=b.kav||{};return (k.found||"").trim()||(k.halachic||"").trim()||(k.kabbalistic||"").trim();}
       return (b.he||"").trim()||(b.en||"").trim()||(b.tr||"").trim();
-    }).map(b=>{const c=Object.assign({},b);delete c._showK;delete c.kavanah;if(!c.region)delete c.region;if(c.kav){const kk={};if((c.kav.found||"").trim())kk.found=c.kav.found.trim();if((c.kav.halachic||"").trim())kk.halachic=c.kav.halachic.trim();if((c.kav.kabbalistic||"").trim())kk.kabbalistic=c.kav.kabbalistic.trim();if(Object.keys(kk).length)c.kav=kk;else delete c.kav;}return c;});
+    }).map(b=>{const c=Object.assign({},b);delete c._showK;delete c.kavanah;if(!c.region)delete c.region;if(c.cond&&!Object.keys(c.cond).length)delete c.cond;if(c.icon&&!c.icon.key)delete c.icon;if(c.kav){const kk={};if((c.kav.found||"").trim())kk.found=c.kav.found.trim();if((c.kav.halachic||"").trim())kk.halachic=c.kav.halachic.trim();if((c.kav.kabbalistic||"").trim())kk.kabbalistic=c.kav.kabbalistic.trim();if(Object.keys(kk).length)c.kav=kk;else delete c.kav;}return c;});
     if(custom){
       const arr=state.customPrayers[svcId]||[];const idx=arr.findIndex(p=>p.id===prId);
       if(idx>=0)arr[idx]=Object.assign({},arr[idx],{en:en||"Untitled",he,section:meta.section,blocks:clean});
-    }else{
-      const rec={en,he,section:meta.section,blocks:clean};
-      if(targetNusach==="__all__"){state.prayerEdits[prayerKey(svcId,prId)]=rec;}
-      else{state.prayerEdits[svcId+"."+prId+"@"+targetNusach]=rec;}
+      saveState();ov.remove();render();toast("Saved");return;
     }
+    if(basePr.imported&&writeImportedBack(basePr.id,clean)){
+      /* edits to imported prayers are written straight into TEXTDATA so the Content
+         tab's "Save to server" publishes them (conditions/icons included) to everyone. */
+      buildImported();saveState();ov.remove();render();toast("Saved · publish via Content → Save to server");return;
+    }
+    const rec={en,he,section:meta.section,blocks:clean};
+    if(targetNusach==="__all__"){state.prayerEdits[prayerKey(svcId,prId)]=rec;}
+    else{state.prayerEdits[svcId+"."+prId+"@"+targetNusach]=rec;}
     saveState();ov.remove();render();toast(targetNusach==="__all__"?"Saved for all nusachot":"Saved for "+NUSACH_LABELS[targetNusach]);
   };
 }

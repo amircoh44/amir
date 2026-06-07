@@ -149,6 +149,45 @@ try {
   ok("'diaspora_only' tag also gates", (seed(R, { israelMode: "israel" }), R.ctx.blockVisible({ k: "p", he: "x", tags: ["diaspora_only"] })) === false);
 } catch (e) { ok("hebcal/region", false, e.message); }
 
+console.log("\n[I] Visibility conditions: gender / minyan / audiences + per-block icons");
+try {
+  // gender gating: unset shows both; set hides the mismatched blessing
+  seed(R, { gender: "" });
+  ok("unset gender shows men's blessing",  R.ctx.blockVisible({ k: "p", he: "shelo asani isha", cond: { gender: "male" } }) === true);
+  ok("unset gender shows women's blessing", R.ctx.blockVisible({ k: "p", he: "she'asani kirtzono", cond: { gender: "female" } }) === true);
+  seed(R, { gender: "male" });
+  ok("man sees men's blessing",  R.ctx.blockVisible({ k: "p", he: "x", cond: { gender: "male" } }) === true);
+  ok("man HIDES women's blessing", R.ctx.blockVisible({ k: "p", he: "x", cond: { gender: "female" } }) === false);
+  seed(R, { gender: "female" });
+  ok("woman sees women's blessing", R.ctx.blockVisible({ k: "p", he: "x", cond: { gender: "female" } }) === true);
+  ok("woman HIDES men's blessing",  R.ctx.blockVisible({ k: "p", he: "x", cond: { gender: "male" } }) === false);
+  // minyan
+  seed(R, { minyan: false });
+  ok("requires-minyan hidden w/o minyan", R.ctx.blockVisible({ k: "p", he: "x", cond: { minyan: true } }) === false);
+  seed(R, { minyan: true });
+  ok("requires-minyan shown w/ minyan", R.ctx.blockVisible({ k: "p", he: "x", cond: { minyan: true } }) === true);
+  // custom audiences: membership required
+  seed(R, { audiences: { kohen: true } });
+  ok("kohen-only shown to a kohen", R.ctx.blockVisible({ k: "p", he: "x", cond: { audiences: ["kohen"] } }) === true);
+  seed(R, { audiences: {} });
+  ok("kohen-only hidden from non-kohen", R.ctx.blockVisible({ k: "p", he: "x", cond: { audiences: ["kohen"] } }) === false);
+  // combined facets (all must hold)
+  seed(R, { gender: "male", israelMode: "israel" });
+  ok("combined cond all-true", R.ctx.blockVisible({ k: "p", he: "x", cond: { gender: "male", region: "israel" } }) === true);
+  ok("combined cond one-false", R.ctx.blockVisible({ k: "p", he: "x", cond: { gender: "male", region: "diaspora" } }) === false);
+  // per-block icon honours its own condition
+  seed(R, { gender: "female" });
+  ok("icon hidden when its cond fails", R.ctx.blockIconHtml({ key: "bow", cond: { gender: "male" } }) === "");
+  ok("icon shown when its cond passes", /svg|img/.test(R.ctx.blockIconHtml({ key: "bow", cond: { gender: "female" } })));
+  // buildImported carries cond/icon from TEXTDATA into render blocks
+  R.ctx.window.TEXTDATA = [{ nusach: "ashkenaz", svcId: "birchot", service: "Birchot", sections: [
+    { header: "h", blocks: [{ k: "p", t: "ברוך", cond: { gender: "female" }, icon: { key: "bow" } }] } ] }];
+  R.ctx.buildImported();
+  const imp = R.ctx.window.IMPORTED.birchot[0].blocks[0];
+  ok("buildImported preserves cond", imp.cond && imp.cond.gender === "female");
+  ok("buildImported preserves icon", imp.icon && imp.icon.key === "bow");
+} catch (e) { ok("conditions", false, e.message); }
+
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 if (diag.length) console.log("\n--- diagnostics ---\n" + diag.join("\n"));
 process.exit(fail ? 1 : 0);

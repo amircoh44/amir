@@ -447,6 +447,9 @@ const DEFAULTS={
   notifyPrayers:false,notifyMinutes:15,notifyWhich:{shacharit:true,mincha:true,maariv:true},
   insertRules:[],insertRulesDeleted:[],
   hideTachanun:false,womanMode:false,
+  gender:"",                // "male" | "female" | "" (unset → gendered blocks all show)
+  audiences:{},             // which custom audiences this user belongs to: {kohen:true,...}
+  audienceDefs:[],          // global audience definitions [{key,label}] (admin-managed, synced)
   coverSeen:0,
   showCover:true,           // user toggle: animated opening cover on launch
   branding:null,            // admin-set splash overrides {title1,title2,subtitle,bgImage,accent}
@@ -481,13 +484,32 @@ function postureIcon(tag){
 }
 function postureFromText(t){if(/\bstand(ing)?\b|recited standing|while standing|rise\b/i.test(t))return{tag:"stand",label:"Stand"};if(/\bsit(ting)?\b|recited sit|sit down|be seated|in bed/i.test(t))return{tag:"sit",label:"Sit"};if(/\bbow(ing)?\b|prostrat/i.test(t))return{tag:"bow",label:"Bow"};return null;}
 function pickHe(b){if(b.alt&&b.alt[state.nusach])return b.alt[state.nusach];return b.he;}
+/* ---- visibility conditions ----
+   A reusable condition gates content blocks AND per-block icons:
+     {gender:"male"|"female", region:"israel"|"diaspora", minyan:true|false, audiences:[key,...]}
+   Any unset facet is unconstrained. Gender only hides when the user has actually
+   chosen a different gender (unset shows both, so a man's & woman's blessing both
+   appear until gender is set). Custom audiences require membership in ALL listed. */
+function audienceActive(key){return !!(state.audiences&&state.audiences[key]);}
+function condMatches(c){
+  if(!c)return true;
+  if(c.gender&&state.gender&&c.gender!==state.gender)return false;
+  const inIsrael=(state.israelMode==="israel"||state.israelMode==="yerushalayim");
+  if(c.region==="israel"&&!inIsrael)return false;
+  if(c.region==="diaspora"&&inIsrael)return false;
+  if(c.minyan===true&&!state.minyan)return false;
+  if(c.minyan===false&&state.minyan)return false;
+  if(c.audiences&&c.audiences.length){for(let i=0;i<c.audiences.length;i++){if(!audienceActive(c.audiences[i]))return false;}}
+  return true;
+}
 function blockVisible(b){const tags=b.tags||[];if(tags.includes("requires_minyan")&&!state.minyan)return false;if(b.only&&!b.only.includes(state.nusach))return false;if(b.skip&&b.skip.includes(state.nusach))return false;
-  /* Location-gated blocks: e.g. Ashkenaz Maariv "Baruch Hashem L'Olam" before the
-     Amidah is said only outside Eretz Yisrael; festival inserts can be region-bound. */
+  /* Legacy region (b.region or a *_only tag) — e.g. Ashkenaz Maariv "Baruch Hashem
+     L'Olam" said only outside Eretz Yisrael. Newer blocks use b.cond instead. */
   const inIsrael=(state.israelMode==="israel"||state.israelMode==="yerushalayim");
   const region=b.region||(tags.includes("diaspora_only")?"diaspora":tags.includes("israel_only")?"israel":null);
   if(region==="diaspora"&&inIsrael)return false;
   if(region==="israel"&&!inIsrael)return false;
+  if(!condMatches(b.cond))return false;
   return true;}
 function prayerKey(svcId,prId){return svcId+"."+prId;}
 function importedFor(svcId){return ((window.IMPORTED&&window.IMPORTED[svcId])||[]).filter(p=>!p.only||p.only.includes(state.nusach));}
