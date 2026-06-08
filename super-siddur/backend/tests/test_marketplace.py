@@ -424,6 +424,11 @@ def test_personal_message_delivered_with_sender():
             "assignment_mode": "free", "payout_split": "pool", "gross_cents": 1000}
     rid = client.post("/api/market/requests", headers=_h(poster), json=body).json()["id"]
     aid = client.post(f"/api/market/requests/{rid}/accept", headers=_h(reciter), json={}).json()["id"]
+    # personal messages are OFF by default and must be explicitly enabled
+    atok = _admin_tok()
+    assert client.post(f"/api/market/requests/{rid}/message", headers=_h(poster),
+                       files={"file": ("m.webm", b"X", "audio/webm")}).status_code == 403
+    client.put("/api/market/admin/config", headers=_h(atok), json={"allow_poster_message": True})
     up = client.post(f"/api/market/requests/{rid}/message", headers=_h(poster),
                      files={"file": ("m.webm", b"GETWELL", "audio/webm")})
     assert up.status_code == 200, up.text

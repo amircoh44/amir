@@ -64,9 +64,10 @@ class PayoutConfig(Base):
     integrity_min_step_seconds: Mapped[float] = mapped_column(default=2.0)       # floor per step regardless of length
     # escrow — payouts are never instant; they sit a few days before release
     escrow_days: Mapped[int] = mapped_column(Integer, default=3)
-    # optional voice services (both off by default; admin opt-in)
+    # optional voice services (both off by default; admin opt-in, each separately controlled)
     allow_reciter_recording: Mapped[bool] = mapped_column(Boolean, default=False)
     allow_poster_request_recording: Mapped[bool] = mapped_column(Boolean, default=False)
+    allow_poster_message: Mapped[bool] = mapped_column(Boolean, default=False)
     recording_request_min_cents: Mapped[int] = mapped_column(Integer, default=10000)  # e.g. $100+
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 

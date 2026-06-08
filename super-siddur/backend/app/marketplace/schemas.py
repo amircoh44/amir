@@ -137,6 +137,7 @@ class ConfigIn(BaseModel):
     escrow_days: int | None = None
     allow_reciter_recording: bool | None = None
     allow_poster_request_recording: bool | None = None
+    allow_poster_message: bool | None = None
     recording_request_min_cents: int | None = None
 
 

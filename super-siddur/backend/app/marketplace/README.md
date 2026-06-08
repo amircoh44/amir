@@ -110,5 +110,9 @@ Money-free: states only (`live=false`); real movement is the Stripe phase.
   the reciter can `…/recording-request/decline`. No one is forced to be recorded.
 - *Personal message* — `POST /requests/{id}/message` (poster) → delivered to the
   reciter (`GET /assignments/{id}/message` shows **who sent it** + audio URL).
+  Disabled unless `allow_poster_message`.
+
+Each audio service is **separately controlled** and **defaults off**:
+`allow_reciter_recording`, `allow_poster_request_recording`, `allow_poster_message`.
 
 Audio bytes live on disk (`audio_dir`), capped at 20 MB/clip.

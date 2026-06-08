@@ -199,6 +199,8 @@ def get_recording_request(aid: int, user: MarketUser = Depends(current_user),
 @router.post("/requests/{rid}/message")
 def upload_message(rid: int, file: UploadFile = File(...), user: MarketUser = Depends(current_user),
                    db: Session = Depends(get_db)) -> dict:
+    if not _config(db).allow_poster_message:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Personal messages are not enabled")
     req = db.get(PrayerRequest, rid)
     if not req:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found")

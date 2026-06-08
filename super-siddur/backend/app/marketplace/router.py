@@ -404,7 +404,7 @@ def admin_get_config(admin: Admin = Depends(require("market.admin")), db: Sessio
         "suggested_presets_cents", "tzedaka_targets", "currency",
         "integrity_enabled", "integrity_max_words_per_sec", "integrity_min_step_seconds",
         "escrow_days", "allow_reciter_recording", "allow_poster_request_recording",
-        "recording_request_min_cents")}
+        "allow_poster_message", "recording_request_min_cents")}
 
 
 @router.put("/admin/config")
