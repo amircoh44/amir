@@ -64,6 +64,7 @@ function trackScroll(){
 }
 function render(){
   const stage=$("#stage");stage.innerHTML="";
+  stage.setAttribute("data-view",state.view||"home");
   document.querySelectorAll(".nav-tab").forEach(t=>t.classList.toggle("on",t.dataset.view===state.view||(state.view==="service"&&t.dataset.view==="prayers")||(state.view==="tehillim-read"&&t.dataset.view==="tehillim")));
   if(state.view==="home")renderHome(stage);
   else if(state.view==="service")renderService(stage,state.viewArg);

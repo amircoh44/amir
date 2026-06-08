@@ -433,7 +433,7 @@ const DEFAULTS={
   onboarded:false,userHebName:"",userEngName:"",birthday:null,
   loc:{name:"Denver, CO",lat:39.7392,lng:-104.9903,tz:"America/Denver"},
   israelMode:"diaspora",nusach:"ashkenaz",
-  theme:"warm",textSize:1.0,hebScale:1.0,enScale:1.0,
+  theme:"warm",textSize:1.0,hebScale:1.0,enScale:1.0,suppScale:1.0,
   timeFmt:"12",             // "12" = 12-hour US (9:05 AM), "24" = 24-hour military (21:05)
   translit:true,showInstr:true,showKavanot:true,hebrewOnly:false,minyan:false,
   kavLevels:{found:true,halachic:false,kabbalistic:false},
@@ -467,7 +467,7 @@ function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;",
 function $(sel){return document.querySelector(sel);}
 function toast(msg){const t=el("div","toast",esc(msg));document.body.appendChild(t);setTimeout(()=>t.remove(),2200);}
 const THEMES=[["warm","Warm","#0a0907","#d4a854"],["midnight","Midnight","#070a14","#7ba8c4"],["sage","Sage","#0d1411","#9fa97a"],["wine","Wine","#13070a","#b85870"],["mono","Mono","#0a0a0a","#e0e0e0"],["parchment","Parchment","#f4ede0","#7a4818"],["daylight","Daylight","#fafaf7","#7a4818"]];
-function applyTheme(){const cls="t-"+(state.theme||"warm");document.body.className=cls;document.documentElement.className=cls;document.documentElement.style.setProperty("--scale",state.textSize);document.documentElement.style.setProperty("--hscale",state.hebScale||1);document.documentElement.style.setProperty("--escale",state.enScale||1);}
+function applyTheme(){const cls="t-"+(state.theme||"warm");document.body.className=cls;document.documentElement.className=cls;document.documentElement.style.setProperty("--scale",state.textSize);document.documentElement.style.setProperty("--hscale",state.hebScale||1);document.documentElement.style.setProperty("--escale",state.enScale||1);document.documentElement.style.setProperty("--sscale",state.suppScale||1);}
 function favKey(s,p){return s+"."+p;}
 function isFav(s,p){return state.favorites.includes(favKey(s,p));}
 function toggleFav(s,p){const k=favKey(s,p);const i=state.favorites.indexOf(k);if(i>=0)state.favorites.splice(i,1);else state.favorites.push(k);saveState();}

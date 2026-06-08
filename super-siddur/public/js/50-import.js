@@ -67,7 +67,7 @@ function openTextDoc(i){
   d.sections.forEach(sec=>{
     if(sec.header){const h=el("div","");h.style.cssText="font-family:var(--display);font-size:1.15rem;font-weight:600;color:var(--accent);text-align:center;margin:1.4rem 0 .8rem;direction:rtl;font-family:var(--hebrew)";h.textContent=sec.header;body.appendChild(h);}
     sec.blocks.forEach(b=>{
-      if(b.k==="rubric"){const r=el("div","");r.style.cssText="font-size:calc(.9rem * var(--scale,1));color:var(--muted);font-style:italic;text-align:center;direction:rtl;font-family:var(--hebrew);margin:.8rem 0 .4rem";r.textContent=b.t;body.appendChild(r);}
+      if(b.k==="rubric"){const r=el("div","");r.style.cssText="font-size:calc(.9rem * var(--scale,1) * var(--sscale,1));color:var(--muted);font-style:italic;text-align:center;direction:rtl;font-family:var(--hebrew);margin:.8rem 0 .4rem";r.textContent=b.t;body.appendChild(r);}
       else{const p=el("div","");p.style.cssText="font-family:var(--hebrew);direction:rtl;text-align:right;font-size:calc(1.15rem * var(--scale,1));line-height:2;color:var(--ink);margin-bottom:.7rem";p.textContent=b.t;body.appendChild(p);}
     });
   });

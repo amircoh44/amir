@@ -238,6 +238,7 @@ function admDisplay(w){
   };
   mkSlider("hebScale","Hebrew size",true);
   mkSlider("enScale","English & transliteration size",false);
+  mkSlider("suppScale","Instructions & intentions size",false);
   /* toggles */
   const toggles=[["translit","Transliteration","Show romanized pronunciation under Hebrew"],["showInstr","Instructions","Show rubric guidance (stand, sit, bow)"],["showKavanot","Kavanot","Show meditative intentions where provided"],["hebrewOnly","Hebrew only","Hide English & transliteration for an immersive view"],["minyan","Praying with a minyan","Show prayers that require a quorum of ten"],["womanMode","Women's siddur","Hide tefillin and other men's-obligation prayers"],["hideTachanun","Skip Tachanun","Remove Tachanun \u2014 for a simcha in shul, a new baby, a chatan, etc."],["showCover","Opening cover","Show the animated book cover each time the app launches"]];
   toggles.forEach(([k,lbl,sub])=>{

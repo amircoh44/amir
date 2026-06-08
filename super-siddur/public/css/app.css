@@ -266,8 +266,8 @@ main{flex:1;padding:1rem 1rem 5rem;max-width:680px;margin:0 auto;width:100%}
 .he-text{font-family:var(--hebrew);direction:rtl;font-size:calc(1.3rem * var(--scale) * var(--hscale));line-height:2.05;color:var(--ink);font-weight:500;margin-bottom:.25rem;letter-spacing:.01em;word-spacing:.05em}
 .translit{font-style:italic;color:var(--muted);font-size:calc(.85rem * var(--scale) * var(--escale));line-height:1.6;margin-bottom:.2rem}
 .en-text{color:var(--ink2);font-size:calc(.93rem * var(--scale) * var(--escale));line-height:1.65}
-.rubric{font-family:var(--display);font-style:italic;color:var(--instr);font-size:.92rem;line-height:1.55;margin:.7rem 0 .45rem;padding-left:.3rem}
-.kavanah-card{margin:.55rem 0 .35rem;padding:.7rem .9rem;background:color-mix(in srgb,var(--insert) 8%,transparent);border:1px solid color-mix(in srgb,var(--insert) 22%,transparent);border-left:3px solid var(--insert);border-radius:.45rem;font-size:.84rem;line-height:1.55;color:var(--ink2);font-family:var(--display);font-style:italic}
+.rubric{font-family:var(--display);font-style:italic;color:var(--instr);font-size:calc(.92rem * var(--sscale,1));line-height:1.55;margin:.7rem 0 .45rem;padding-left:.3rem}
+.kavanah-card{margin:.55rem 0 .35rem;padding:.7rem .9rem;background:color-mix(in srgb,var(--insert) 8%,transparent);border:1px solid color-mix(in srgb,var(--insert) 22%,transparent);border-left:3px solid var(--insert);border-radius:.45rem;font-size:calc(.84rem * var(--sscale,1));line-height:1.55;color:var(--ink2);font-family:var(--display);font-style:italic}
 .kavanah-card .kav-lbl{font-family:var(--sans);font-style:normal;font-size:.58rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--insert);margin-bottom:.35rem}
 .nvar{display:inline-block;font-size:.56rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);padding:.1rem .4rem;border-radius:.5rem;margin-bottom:.3rem}
 .posture-tag{display:inline-flex;align-items:center;gap:.32em;padding:.18em .55em;border-radius:.8em;font-size:.68em;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-family:var(--sans);margin-right:.5em;vertical-align:.08em;font-style:normal}
@@ -417,4 +417,50 @@ main{flex:1;padding:1rem 1rem 5rem;max-width:680px;margin:0 auto;width:100%}
 .loc-result .ln{flex:1}
 .loc-result .ln b{display:block;font-size:.92rem;color:var(--ink)}
 .loc-result .ln small{color:var(--muted);font-size:.72rem}
-.note{font-size:.78rem;color:var(--muted);line-height:1.5;padding:.7rem .85rem;background:var(--surface2);border:1px solid var(--line);border-radius:.5rem;margin:.5rem 0}
+.note{font-size:calc(.78rem * var(--sscale,1));color:var(--muted);line-height:1.5;padding:.7rem .85rem;background:var(--surface2);border:1px solid var(--line);border-radius:.5rem;margin:.5rem 0}
+
+/* ============================ RESPONSIVE ============================
+   Phones keep the existing single column. Tablets/desktop get a more
+   comfortable reading measure, larger touch targets, a centered nav, and
+   multi-column where it genuinely helps (home/prayers cards, Tehillim grid).
+   Reading views (a prayer, a psalm, zmanim, compass) stay at a comfortable
+   max-width rather than stretching across the screen. */
+
+/* Tablet (iPad portrait) and up */
+@media (min-width:760px){
+  main{max-width:740px;padding:1.2rem 1.25rem 6rem}
+  .card{padding:1rem 1.2rem}
+  .div-card{padding:.95rem 1.1rem}
+  .nav-tab{font-size:.7rem;padding:.6rem}
+  .nav-tab .icon{width:1.45em;height:1.45em}
+  .sheet-body{max-width:720px}
+}
+
+/* Desktop / iPad landscape (iPad landscape viewport is 1024px): dashboards widen */
+@media (min-width:1000px){
+  /* home & prayers become a comfortable two-up dashboard */
+  #stage[data-view="home"],
+  #stage[data-view="prayers"]{max-width:1060px}
+  #stage[data-view="home"] .card-list,
+  #stage[data-view="prayers"] .card-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
+  #stage[data-view="home"] .card-list .card,
+  #stage[data-view="prayers"] .card-list .card{height:100%}
+  /* a touch more breathing room for reading views */
+  #stage[data-view="service"]{max-width:760px}
+  /* Tehillim chapter grid uses the width with larger, easier targets */
+  .teh-grid{grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:.45rem}
+  /* center the bottom nav so tabs aren't stretched across a wide screen */
+  .bottom-nav{justify-content:center;gap:.4rem}
+  .nav-tab{flex:0 0 8.5rem}
+  .sheet-body{max-width:760px}
+  /* pointer devices: clearer hover affordance */
+  .teh-cell{cursor:pointer}
+}
+
+/* Large desktop: cap the dashboard width so cards don't grow oversized */
+@media (min-width:1440px){
+  #stage[data-view="home"],
+  #stage[data-view="prayers"]{max-width:1140px}
+  #stage[data-view="home"] .card-list,
+  #stage[data-view="prayers"] .card-list{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
