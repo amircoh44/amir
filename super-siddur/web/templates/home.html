@@ -1,12 +1,28 @@
 {% extends "base.html" %}
 {% block content %}
-  <h1 class="page-title">Choose a nusach</h1>
+  <section class="hero">
+    <span class="he" dir="rtl" aria-hidden="true">סִדּוּר</span>
+    <h1>The Super <b>Siddur</b></h1>
+    <p>A complete siddur for every nusach — with Tehillim, zmanim, and the direction to Jerusalem. Beautiful on every screen.</p>
+  </section>
+
+  <div class="section-label">Choose a nusach</div>
   <div class="grid">
     {% for slug, label in nusachot %}
       <a class="card" href="{{ url_for('nusach', nusach=slug) }}">
-        <span class="card-t">{{ label }}</span>
+        <span><span class="card-t">{{ label }}</span><span class="card-s">Full service order</span></span>
         <span class="card-a">&rarr;</span>
       </a>
     {% endfor %}
+  </div>
+
+  <div class="section-label">Explore</div>
+  <div class="grid">
+    <a class="card" href="{{ url_for('tehillim_index') }}">
+      <span><span class="card-t">Tehillim</span><span class="card-s">All 150 Psalms</span></span><span class="card-a">&rarr;</span></a>
+    <a class="card" href="{{ url_for('zmanim') }}">
+      <span><span class="card-t">Zmanim</span><span class="card-s">Halachic times &amp; sha'ah zmanit clock</span></span><span class="card-a">&rarr;</span></a>
+    <a class="card" href="{{ url_for('kotel') }}">
+      <span><span class="card-t">Compass</span><span class="card-s">Direction to the Kotel</span></span><span class="card-a">&rarr;</span></a>
   </div>
 {% endblock %}

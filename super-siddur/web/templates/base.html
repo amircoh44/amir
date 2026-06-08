@@ -3,23 +3,52 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0b0a08">
   <title>{% block title %}The Super Siddur{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Frank+Ruhl+Libre:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='siddur.css') }}">
 </head>
 <body>
-  <header class="topbar">
-    <a class="brand" href="{{ url_for('home') }}">The Super <b>Siddur</b></a>
-    <nav class="mainnav">
-      <a href="{{ url_for('home') }}">Siddur</a>
-      <a href="{{ url_for('tehillim_index') }}">Tehillim</a>
-      <a href="{{ url_for('zmanim') }}">Zmanim</a>
-      <a href="{{ url_for('kotel') }}">Kotel</a>
+{% set ep = request.endpoint %}
+<div class="layout">
+  <aside class="sidebar">
+    <a class="brand" href="{{ url_for('home') }}">
+      <span class="brand-mark" dir="rtl">סִדּוּר</span>
+      <span class="brand-txt">The Super <b>Siddur</b></span>
+    </a>
+    <nav class="side-nav">
+      <a href="{{ url_for('home') }}" class="{{ 'on' if ep in ['home','nusach','service','prayer'] }}">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>Siddur</span></a>
+      <a href="{{ url_for('tehillim_index') }}" class="{{ 'on' if ep in ['tehillim_index','tehillim_chapter'] }}">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5z"/><path d="M2 17l10 5 10-5"/></svg><span>Tehillim</span></a>
+      <a href="{{ url_for('zmanim') }}" class="{{ 'on' if ep == 'zmanim' }}">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Zmanim</span></a>
+      <a href="{{ url_for('kotel') }}" class="{{ 'on' if ep == 'kotel' }}">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polygon points="15 9 11 13 9 15 13 11"/></svg><span>Compass</span></a>
     </nav>
-    {% block crumbs %}{% endblock %}
-  </header>
-  <main class="stage">
-    {% block content %}{% endblock %}
-  </main>
-  <footer class="foot"><span>Server-rendered · readable URLs</span></footer>
+    <div class="side-foot">Server-rendered<br>readable URLs</div>
+  </aside>
+
+  <div class="content">
+    <header class="topbar">
+      <a class="topbrand" href="{{ url_for('home') }}">The Super <b>Siddur</b></a>
+      <div class="crumbs">{% block crumbs %}{% endblock %}</div>
+    </header>
+    <main class="stage">
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="foot"><span>The Super Siddur · server-rendered</span></footer>
+  </div>
+</div>
+
+<nav class="mobile-nav">
+  <a href="{{ url_for('home') }}" class="{{ 'on' if ep in ['home','nusach','service','prayer'] }}"><svg class="ic" viewBox="0 0 24 24"><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>Siddur</span></a>
+  <a href="{{ url_for('tehillim_index') }}" class="{{ 'on' if ep in ['tehillim_index','tehillim_chapter'] }}"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5z"/><path d="M2 17l10 5 10-5"/></svg><span>Tehillim</span></a>
+  <a href="{{ url_for('zmanim') }}" class="{{ 'on' if ep == 'zmanim' }}"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Zmanim</span></a>
+  <a href="{{ url_for('kotel') }}" class="{{ 'on' if ep == 'kotel' }}"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polygon points="15 9 11 13 9 15 13 11"/></svg><span>Compass</span></a>
+</nav>
 </body>
 </html>
