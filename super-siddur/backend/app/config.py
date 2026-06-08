@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     # CORS origins (the app is same-origin in production; open for local dev).
     cors_origins: str = "*"
 
+    # Partner sync (B3): shared secret for server-to-server signing. Absent in
+    # phase 1 → NullPartnerClient records deliveries without any network call.
+    academy613_secret: str = ""
+
     @property
     def icons_dir(self) -> Path:
         return self.data_dir / "icons"

@@ -74,6 +74,22 @@ def current_user(token: str | None = Depends(market_oauth2), db: Session = Depen
     return user
 
 
+def optional_current_user(token: str | None = Depends(market_oauth2),
+                          db: Session = Depends(get_db)) -> MarketUser | None:
+    """Like current_user but returns None instead of 401 when unauthenticated —
+    for endpoints open to anyone with a share link, that attribute when signed in."""
+    if not token:
+        return None
+    data = _decode_market_token(token)
+    if not data:
+        return None
+    try:
+        user = db.get(MarketUser, int(data["sub"]))
+    except (KeyError, ValueError):
+        return None
+    return user if (user and user.active) else None
+
+
 def is_pro(user: MarketUser) -> bool:
     if user.membership not in ("pro", "pro_plus"):
         return False

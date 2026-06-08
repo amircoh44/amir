@@ -13,6 +13,8 @@ from fastapi.staticfiles import StaticFiles
 from .config import PUBLIC_DIR, get_settings
 from .routers import admins, auth, content, icons, settings as settings_router
 from .marketplace.router import router as marketplace_router
+from .marketplace.community import router as community_router
+from .marketplace.integrations import router as integrations_router
 from .seed import seed
 
 app = FastAPI(title="The Super Siddur", version="2.0.0")
@@ -48,6 +50,8 @@ app.include_router(settings_router.router)
 app.include_router(icons.router)
 app.include_router(admins.router)
 app.include_router(marketplace_router)
+app.include_router(community_router)
+app.include_router(integrations_router)
 
 
 # Static frontend last so /api/* wins. html=True serves index.html at "/".

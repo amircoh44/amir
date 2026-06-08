@@ -136,3 +136,86 @@ def test_marketplace_admin_permission_required():
     # a market user token must not be able to edit admin config
     user = _tok("rando@example.com")
     assert client.get("/api/market/admin/config", headers=_h(user)).status_code in (401, 403)
+
+
+# ---------------- B2: community / share-to-inspire ----------------
+def test_profile_private_by_default_and_section_feed_separation():
+    u = _tok("commit_men@example.com", name="Avi")
+    # private by default
+    prof = client.get("/api/market/community/profile", headers=_h(u)).json()
+    assert prof["public"] is False
+    # opt into the men's section
+    client.put("/api/market/community/profile", headers=_h(u),
+               json={"public": True, "display_name": "Avi", "section": "men"})
+    # a public commitment in the men's section
+    r = client.post("/api/market/community/commitments", headers=_h(u),
+                    json={"names": [{"name": "Chaim"}], "message": "Davening for Chaim — join me",
+                          "visibility": "public"})
+    assert r.status_code == 200, r.text
+    token = r.json()["share_token"]
+    # appears in the men's feed, NOT the women's feed (full separation)
+    men = client.get("/api/market/community/feed?section=men", headers=_h(u)).json()
+    women = client.get("/api/market/community/feed?section=women", headers=_h(u)).json()
+    assert any(x["share_token"] == token for x in men["items"])
+    assert all(x["share_token"] != token for x in women["items"])
+    assert "not a contest" in men["note"].lower()  # inspiration, not competition
+
+
+def test_public_commitment_requires_a_section():
+    u = _tok("nosection@example.com", name="X")  # profile.section stays "unspecified"
+    r = client.post("/api/market/community/commitments", headers=_h(u),
+                    json={"names": [{"name": "Y"}], "visibility": "public"})
+    assert r.status_code == 400  # must pick men's or women's section before public sharing
+
+
+def test_share_card_open_and_join_without_account():
+    u = _tok("sharer@example.com", name="Sharer")
+    client.put("/api/market/community/profile", headers=_h(u), json={"public": True, "section": "women"})
+    token = client.post("/api/market/community/commitments", headers=_h(u),
+                        json={"names": [{"name": "Leah"}], "visibility": "public",
+                              "message": "Join me"}).json()["share_token"]
+    # a friend opens the link with no account and joins
+    card = client.get(f"/api/market/community/c/{token}").json()
+    assert card["names"][0]["name"] == "Leah"
+    j = client.post(f"/api/market/community/c/{token}/join", json={"display_name": "Friend"})
+    assert j.status_code == 200 and j.json()["joining"] == 1
+    # a private card is not shareable
+    ptoken = client.post("/api/market/community/commitments", headers=_h(u),
+                         json={"names": [{"name": "Z"}], "visibility": "private"}).json()["share_token"]
+    assert client.get(f"/api/market/community/c/{ptoken}").status_code == 404
+
+
+# ---------------- B3: cross-app sync (613 Academy) ----------------
+def test_consent_gated_activity_sync():
+    u = _tok("sync@example.com", name="Syncer")
+    # partner is discoverable with its scopes
+    partners = client.get("/api/market/integrations/partners").json()["partners"]
+    assert any(p["key"] == "academy613" for p in partners)
+    # no consent yet → nothing syncs
+    ev = client.post("/api/market/integrations/activity", headers=_h(u),
+                     json={"type": "service.completed", "payload": {"service": "mincha"}}).json()
+    assert ev["delivered_to"] == []
+    # bad scope rejected
+    bad = client.post("/api/market/integrations/academy613/consent", headers=_h(u),
+                      json={"scopes": ["not.a.scope"], "external_id": "ext-1"})
+    assert bad.status_code == 400
+    # grant scoped consent (external_id = identity from the server-to-server link)
+    g = client.post("/api/market/integrations/academy613/consent", headers=_h(u),
+                    json={"scopes": ["service.completed"], "external_id": "academy-user-42"})
+    assert g.status_code == 200
+    # consent screen shows exactly what syncs
+    cons = client.get("/api/market/integrations/academy613/consent", headers=_h(u)).json()
+    assert cons["granted"] and cons["syncs"][0]["key"] == "service.completed"
+    # davening Mincha now reflects to the partner
+    ev = client.post("/api/market/integrations/activity", headers=_h(u),
+                     json={"type": "service.completed", "payload": {"service": "mincha"}}).json()
+    assert any(d["partner"] == "academy613" for d in ev["delivered_to"])
+    # an out-of-scope activity does NOT sync
+    ev2 = client.post("/api/market/integrations/activity", headers=_h(u),
+                      json={"type": "tehillim.read", "payload": {"chapters": [1]}}).json()
+    assert ev2["delivered_to"] == []
+    # revoke → syncing stops
+    client.delete("/api/market/integrations/academy613/consent", headers=_h(u))
+    ev3 = client.post("/api/market/integrations/activity", headers=_h(u),
+                      json={"type": "service.completed", "payload": {"service": "mincha"}}).json()
+    assert ev3["delivered_to"] == []

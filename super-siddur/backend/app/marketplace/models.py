@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base
@@ -136,4 +136,79 @@ class Pledge(Base):
     provider_ref: Mapped[str] = mapped_column(String(128), default="")
     status: Mapped[str] = mapped_column(String(16), default="intent")  # intent | captured | released | refunded
     live: Mapped[bool] = mapped_column(Boolean, default=False)         # did real money move?
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# ===================== B2: community / share-to-inspire =====================
+class CommunityProfile(Base):
+    """Per-user public-profile settings. PRIVATE BY DEFAULT (public=False).
+    `section` keeps the men's and women's public spaces fully separated."""
+    __tablename__ = "market_profiles"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"), primary_key=True)
+    public: Mapped[bool] = mapped_column(Boolean, default=False)          # opt-in visibility
+    display_name: Mapped[str] = mapped_column(String(120), default="")    # alias shown publicly
+    section: Mapped[str] = mapped_column(String(16), default="unspecified")  # men | women | unspecified
+    bio: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class Commitment(Base):
+    """'I committed to daven for someone — join me.' Framed as inspiration, not
+    a ranking. There is deliberately no score/leaderboard model here."""
+    __tablename__ = "market_commitments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"), index=True)
+    names: Mapped[list] = mapped_column(JSON, default=list)               # [{name, mother, note}]
+    scope_kind: Mapped[str] = mapped_column(String(24), default="custom")
+    scope_detail: Mapped[dict] = mapped_column(JSON, default=dict)
+    message: Mapped[str] = mapped_column(Text, default="")                # "I'm davening for ___ — join me"
+    section: Mapped[str] = mapped_column(String(16), default="unspecified")  # men | women | unspecified
+    visibility: Mapped[str] = mapped_column(String(16), default="private")   # private | unlisted | public
+    share_token: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class CommitmentJoin(Base):
+    """Someone answering 'join me' on a commitment. A count of *joiners*, never
+    presented as a competitive score."""
+    __tablename__ = "market_commitment_joins"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    commitment_id: Mapped[int] = mapped_column(ForeignKey("market_commitments.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("market_users.id", ondelete="SET NULL"), nullable=True)
+    display_name: Mapped[str] = mapped_column(String(120), default="")
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# ===================== B3: cross-app sync (613 Academy) =====================
+class IntegrationConsent(Base):
+    """Explicit, opt-in consent to sync activity to a partner app. No user-visible
+    API keys: linking is server-to-server; the user only grants/revokes consent
+    and sees exactly which scopes sync."""
+    __tablename__ = "market_integration_consents"
+    __table_args__ = (UniqueConstraint("user_id", "partner", name="uq_consent_user_partner"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"), index=True)
+    partner: Mapped[str] = mapped_column(String(32), default="academy613")
+    scopes: Mapped[list] = mapped_column(JSON, default=list)              # e.g. ["service.completed","tehillim.read"]
+    external_id: Mapped[str] = mapped_column(String(128), default="")     # the user's id in the partner app
+    status: Mapped[str] = mapped_column(String(16), default="granted")    # granted | revoked
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    revoked_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ActivityEvent(Base):
+    """A siddur activity (e.g. service.completed: mincha). Forwarded to consented
+    partners; `deliveries` records per-partner outcome for auditing."""
+    __tablename__ = "market_activity"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"), index=True)
+    type: Mapped[str] = mapped_column(String(48), default="")            # service.completed | tehillim.read | commitment.created
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    deliveries: Mapped[list] = mapped_column(JSON, default=list)         # [{partner,status,ref,live}]
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)

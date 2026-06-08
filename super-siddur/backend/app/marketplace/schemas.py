@@ -131,3 +131,35 @@ class ConfigIn(BaseModel):
     suggested_presets_cents: list[int] | None = None
     tzedaka_targets: list[dict] | None = None
     currency: str | None = None
+
+
+# ---- B2: community ----
+class ProfileIn(BaseModel):
+    public: bool | None = None
+    display_name: str | None = None
+    section: str | None = None            # men | women | unspecified
+    bio: str | None = None
+
+
+class CommitmentIn(BaseModel):
+    names: list[NameIn] = Field(default_factory=list)
+    scope_kind: str = "custom"
+    scope_detail: dict = Field(default_factory=dict)
+    message: str = ""                     # "I'm davening for ___ — join me"
+    section: str | None = None            # defaults to the user's profile section
+    visibility: str = "private"           # private | unlisted | public
+
+
+class JoinIn(BaseModel):
+    display_name: str = ""
+
+
+# ---- B3: integrations / consent ----
+class ConsentIn(BaseModel):
+    scopes: list[str] = Field(default_factory=list)   # subset of the partner's allowed scopes
+    external_id: str = ""                              # the user's id in the partner app
+
+
+class ActivityIn(BaseModel):
+    type: str                                          # e.g. "service.completed"
+    payload: dict = Field(default_factory=dict)        # e.g. {"service": "mincha"}

@@ -53,3 +53,22 @@ Implement `StripeConnectProvider(PaymentProvider)` and swap `_provider`:
 `requests/{id}/accept`, `assignments/{id}/complete`,
 `requests/{id}/completions`, `broadcasts`, `broadcasts/active`,
 `admin/config` (GET/PUT).
+
+## B2 — Community / share-to-inspire (`community.py`)
+- Public profiles are **opt-in, private by default** (`CommunityProfile.public=False`).
+- The **men's and women's public sections are fully separated** by `section`; the
+  `/community/feed` endpoint serves exactly one section and never mixes them.
+- Built around **commitments** ("I'm davening for ___ — join me") and **shareable
+  cards** (`/community/c/{token}`, openable with no account), not a leaderboard.
+  Joiners are counted only as momentum ("davening with you"), never a rank — and
+  the tone copy says so. There is no score/ranking model.
+
+## B3 — Cross-app sync, 613 Academy (`integrations.py`, `partners.py`)
+- **No user-visible API keys**: accounts link server-to-server; the user only
+  grants/revokes **scoped consent** and sees exactly what syncs.
+- `/integrations/{partner}/consent` (GET/POST/DELETE) + `/integrations/activity`:
+  recording an activity (e.g. `service.completed: mincha`) forwards it to every
+  consented partner whose granted scopes include that type — automatically.
+- Delivery is signed (HMAC) server-to-server via `PartnerClient`; phase 1 uses
+  `NullPartnerClient` (records, no network). A real Academy613Client swaps in.
+- Nothing syncs without an active grant; revocation stops it immediately.
