@@ -305,10 +305,16 @@ function openPrayerEditor(svcId,prId){
       if(idx>=0)arr[idx]=Object.assign({},arr[idx],{en:en||"Untitled",he,section:meta.section,blocks:clean});
       saveState();ov.remove();render();toast("Saved");return;
     }
-    if(basePr.imported&&writeImportedBack(basePr.id,clean)){
+    if(basePr.imported){
       /* edits to imported prayers are written straight into TEXTDATA so the Content
          tab's "Save to server" publishes them (conditions/icons included) to everyone. */
-      buildImported();saveState();ov.remove();render();toast("Saved · publish via Content → Save to server");return;
+      const origBlocks=JSON.parse(JSON.stringify(basePr.blocks||[]));
+      if(writeImportedBack(basePr.id,clean)){
+        buildImported();saveState();ov.remove();render();
+        /* offer to push the Hebrew/translation change to matching sections */
+        if(!(typeof offerPropagate==="function"&&offerPropagate(basePr.id,origBlocks)))toast("Saved · publish via Content → Save to server");
+        return;
+      }
     }
     const rec={en,he,section:meta.section,blocks:clean};
     if(targetNusach==="__all__"){state.prayerEdits[prayerKey(svcId,prId)]=rec;}

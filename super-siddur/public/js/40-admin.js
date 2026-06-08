@@ -348,6 +348,9 @@ function admArrange(w){
   const reset=el("button","btn-ghost");reset.textContent="Reset this service to default order";reset.style.margin=".8rem 0 0";
   reset.onclick=()=>{delete state.order[arrSvcId];delete state.hidden[arrSvcId];saveState();paintArrange(arrSvcId);toast("Reset to default");};
   w.appendChild(reset);
+  if(state.pushLog&&state.pushLog.filter(e=>!e.undone).length&&typeof openPushLog==="function"){
+    const ul=el("button","btn-ghost");ul.textContent="↩ Recent text pushes (undo)";ul.style.margin=".5rem 0 0";ul.onclick=()=>{closeSheet("admSheet");openPushLog();};w.appendChild(ul);
+  }
   paintArrange(arrSvcId);
 }
 function paintArrange(svcId){
