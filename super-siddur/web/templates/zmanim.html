@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Zmanim · {{ name }}{% endblock %}
+{% block crumbs %}<nav class="crumbs"><a href="{{ url_for('home') }}">Home</a> / <span>Zmanim</span></nav>{% endblock %}
+{% block content %}
+  <h1 class="page-title">Zmanim <span class="he-title" dir="rtl">זְמַנִּים</span></h1>
+  <p class="sub">{{ name }} · {{ date }}</p>
+
+  {% if hal %}
+  <div class="hclock-wrap" id="hclock"
+       data-netz="{{ hal.netz }}" data-shkia="{{ hal.shkia }}" data-now="{{ now_min }}">
+    <svg class="hclock" viewBox="0 0 200 200" aria-label="Halachic clock">
+      <circle cx="100" cy="100" r="94" class="hc-rim"/>
+      <circle cx="100" cy="100" r="86" class="hc-face"/>
+      {% for i in range(12) %}
+        <line class="hc-tick" x1="100" y1="16" x2="100" y2="24"
+              transform="rotate({{ i * 30 }} 100 100)"/>
+        <text class="hc-num" x="100" y="34" text-anchor="middle"
+              transform="rotate({{ i * 30 }} 100 100) rotate({{ -i * 30 }} 100 34)">{{ i if i else 12 }}</text>
+      {% endfor %}
+      <text class="hc-cap-top" x="100" y="64" text-anchor="middle" dir="rtl">שָׁעָה זְמַנִּית</text>
+      <text class="hc-cap-bot" x="100" y="148" text-anchor="middle">SHA'AH ZMANIT</text>
+      <line id="hhand" class="hc-hour" x1="100" y1="100" x2="100" y2="56"
+            transform="rotate({{ '%.2f'|format(hal.hours * 30) }} 100 100)"/>
+      <line id="mhand" class="hc-min" x1="100" y1="100" x2="100" y2="34"
+            transform="rotate({{ '%.2f'|format(hal.minutes_into * 6) }} 100 100)"/>
+      <circle cx="100" cy="100" r="5" class="hc-hub"/>
+    </svg>
+
+    <div class="hc-readout">
+      <div class="hc-big"><b id="shaahCur">{{ hal.shaah_cur_min|round|int }} min</b>
+        <span>current <b>sha'ah zmanit</b> · <span id="periodLbl">{{ hal.period }}</span></span></div>
+      <div class="hc-big"><b id="dakahCur">{{ '%.2f'|format(hal.dakah_cur_min) }} min</b>
+        <span>one <b>da'kah zmanit</b> (sha'ah ÷ 60)</span></div>
+      <div class="hc-grid">
+        <div><span>Now</span><b>{{ now_hm }}</b></div>
+        <div><span>Halachic hour</span><b><span id="hourNum">{{ hal.hour_num }}</span> of 12</b></div>
+        <div><span>Day sha'ah / da'kah</span><b>{{ hal.shaah_day_min|round|int }} / {{ '%.2f'|format(hal.dakah_day_min) }} min</b></div>
+        <div><span>Night sha'ah / da'kah</span><b>{{ hal.shaah_night_min|round|int }} / {{ '%.2f'|format(hal.dakah_night_min) }} min</b></div>
+      </div>
+      <div class="hc-note">GRA · sunrise→sunset · {{ name }}</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <form class="loc-form" method="get" action="{{ url_for('zmanim') }}">
+    <select name="loc" onchange="if(this.value){var p=this.value.split('|');document.querySelector('[name=name]').value=p[0];document.querySelector('[name=lat]').value=p[1];document.querySelector('[name=lng]').value=p[2];document.querySelector('[name=tz]').value=p[3];}">
+      <option value="">Pick a city…</option>
+      {% for cn, clat, clng, ctz in cities %}<option value="{{ cn }}|{{ clat }}|{{ clng }}|{{ ctz }}">{{ cn }}</option>{% endfor %}
+    </select>
+    <input name="name" value="{{ name }}" placeholder="Name">
+    <input name="lat" value="{{ lat }}" placeholder="Lat">
+    <input name="lng" value="{{ lng }}" placeholder="Lng">
+    <input name="tz" value="{{ tz }}" placeholder="Timezone">
+    <input name="date" type="date" value="{{ date }}">
+    <button type="submit">Show</button>
+  </form>
+
+  <table class="zman-table">
+    {% for label, time in rows %}<tr><td>{{ label }}</td><td class="zt">{{ time }}</td></tr>{% endfor %}
+  </table>
+
+  {% if hal %}
+  <script>
+  (function(){
+    var el=document.getElementById('hclock'); if(!el) return;
+    var netz=+el.dataset.netz, shkia=+el.dataset.shkia, now0=+el.dataset.now;
+    var t0=(window.performance&&performance.now)?performance.now():Date.now();
+    function state(now){
+      var dayLen=shkia-netz, nightLen=1440-dayLen, sd=dayLen/12, sn=nightLen/12;
+      var period, shaah, elapsed;
+      if(now>=netz && now<shkia){period='day'; shaah=sd; elapsed=now-netz;}
+      else{period='night'; shaah=sn; elapsed=(now>=shkia)?now-shkia:now+1440-shkia;}
+      var hours=Math.max(0,Math.min(12, shaah?elapsed/shaah:0));
+      return {period:period, shaah:shaah, hours:hours,
+              hourNum:Math.min(12,Math.floor(hours)+1), minInto:(hours-Math.floor(hours))*60};
+    }
+    function setA(id,val){var n=document.getElementById(id); if(n) n.setAttribute('transform',val);}
+    function setT(id,val){var n=document.getElementById(id); if(n) n.textContent=val;}
+    function tick(){
+      var base=(window.performance&&performance.now)?performance.now():Date.now();
+      var now=(now0 + (base-t0)/60000) % 1440;                 // live minutes-of-day
+      var s=state(now);
+      setA('hhand','rotate('+(s.hours*30)+' 100 100)');
+      setA('mhand','rotate('+(s.minInto*6)+' 100 100)');       // minute hand moves per da'kah zmanit
+      setT('shaahCur', Math.round(s.shaah)+' min');
+      setT('dakahCur', (s.shaah/60).toFixed(2)+' min');
+      setT('hourNum', s.hourNum);
+      setT('periodLbl', s.period);
+    }
+    tick(); setInterval(tick, 250);
+  })();
+  </script>
+  {% endif %}
+{% endblock %}

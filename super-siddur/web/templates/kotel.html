@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Direction to the Kotel · {{ name }}{% endblock %}
+{% block crumbs %}<nav class="crumbs"><a href="{{ url_for('home') }}">Home</a> / <span>Kotel</span></nav>{% endblock %}
+{% block content %}
+  <h1 class="page-title">Direction to the Kotel</h1>
+  <p class="sub">{{ name }} → Jerusalem</p>
+  <div class="kotel-readout"><div class="deg">{{ bearing }}°</div><div class="dir">{{ compass }}</div></div>
+  <form class="loc-form" method="get" action="{{ url_for('kotel') }}">
+    <select name="loc" onchange="if(this.value){var p=this.value.split('|');document.querySelector('[name=name]').value=p[0];document.querySelector('[name=lat]').value=p[1];document.querySelector('[name=lng]').value=p[2];}">
+      <option value="">Pick a city…</option>
+      {% for cn, clat, clng, ctz in cities %}<option value="{{ cn }}|{{ clat }}|{{ clng }}">{{ cn }}</option>{% endfor %}
+    </select>
+    <input name="name" value="{{ name }}" placeholder="Name">
+    <input name="lat" value="{{ lat }}" placeholder="Lat">
+    <input name="lng" value="{{ lng }}" placeholder="Lng">
+    <button type="submit">Show</button>
+  </form>
+  <p class="sub">Face this compass bearing (degrees from true north) to daven toward Jerusalem.</p>
+{% endblock %}

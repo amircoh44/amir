@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Tehillim{% endblock %}
+{% block crumbs %}<nav class="crumbs"><a href="{{ url_for('home') }}">Home</a> / <span>Tehillim</span></nav>{% endblock %}
+{% block content %}
+  <h1 class="page-title">Tehillim</h1>
+  <p class="sub">Psalms of David · {{ embedded|length }} bundled, the rest load online</p>
+  {% for label, lo, hi in books %}
+    <div class="teh-book">{{ label }} · {{ lo }}–{{ hi }}</div>
+    <div class="teh-grid">
+      {% for n in range(lo, hi + 1) %}
+        <a class="teh-cell{% if n in embedded %} on{% endif %}" href="{{ url_for('tehillim_chapter', n=n) }}">{{ n }}</a>
+      {% endfor %}
+    </div>
+  {% endfor %}
+{% endblock %}

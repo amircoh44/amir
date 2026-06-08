@@ -50,3 +50,57 @@ a{color:inherit;text-decoration:none}
 .pg.next{margin-left:auto;text-align:right}
 
 .foot{padding:1.4rem;text-align:center;color:var(--muted);font-size:.78rem;border-top:1px solid var(--line)}
+
+/* main nav */
+.mainnav{display:flex;gap:.2rem;flex-wrap:wrap}
+.mainnav a{padding:.4rem .7rem;border-radius:.45rem;color:var(--ink2);font-size:.85rem;font-weight:600}
+.mainnav a:hover{background:var(--surface2);color:var(--accent)}
+
+/* tehillim */
+.teh-book{font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:1.2rem 0 .5rem}
+.teh-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:.35rem}
+.teh-cell{display:grid;place-items:center;height:2.6rem;background:var(--surface);border:1px solid var(--line);border-radius:.5rem;color:var(--ink2);font-variant-numeric:tabular-nums}
+.teh-cell:hover{border-color:var(--accent);color:var(--accent)}
+.teh-cell.on{border-color:color-mix(in srgb,var(--accent) 45%,transparent);color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.vnum{display:inline-block;min-width:1.4em;color:var(--accent);font-size:.7em;vertical-align:.2em;margin-left:.4em;font-family:ui-monospace,monospace}
+
+/* forms */
+.loc-form{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0 1.4rem}
+.loc-form select,.loc-form input,.loc-form button{padding:.55rem .7rem;background:var(--surface);border:1px solid var(--line);border-radius:.5rem;color:var(--ink);font:inherit;font-size:.9rem}
+.loc-form input[name=lat],.loc-form input[name=lng]{width:6.5rem}
+.loc-form button{background:var(--accent);color:var(--on-accent);font-weight:700;cursor:pointer;border-color:transparent}
+
+/* zmanim table */
+.zman-table{width:100%;border-collapse:collapse}
+.zman-table td{padding:.8rem .4rem;border-bottom:1px solid var(--line)}
+.zman-table .zt{text-align:right;font-family:ui-monospace,monospace;color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* kotel */
+.kotel-readout{text-align:center;margin:1.4rem 0;padding:1.4rem;background:var(--surface);border:1px solid var(--line);border-radius:.9rem}
+.kotel-readout .deg{font-family:var(--display);font-size:3rem;font-weight:700;color:var(--accent);line-height:1}
+.kotel-readout .dir{color:var(--ink2);letter-spacing:.1em;margin-top:.2rem}
+
+/* halachic (sha'ah / da'kah zmanit) clock */
+.he-title{font-family:var(--hebrew);color:var(--accent);font-size:.7em;margin-right:.4rem}
+.hclock-wrap{display:grid;grid-template-columns:1fr;gap:1.2rem;align-items:center;margin:1rem 0 1.6rem;
+  padding:1.2rem;background:var(--surface);border:1px solid var(--line);border-radius:1rem}
+@media(min-width:640px){.hclock-wrap{grid-template-columns:240px 1fr}}
+.hclock{width:100%;max-width:240px;margin:0 auto;display:block}
+.hc-rim{fill:none;stroke:var(--accent);stroke-width:6;opacity:.85}
+.hc-face{fill:var(--surface2)}
+.hc-tick{stroke:var(--accent);stroke-width:2;opacity:.5}
+.hc-num{fill:var(--ink2);font-size:9px;font-family:var(--display)}
+.hc-cap-top{fill:var(--accent);font-size:7px;font-family:var(--hebrew);opacity:.85}
+.hc-cap-bot{fill:var(--muted);font-size:5px;letter-spacing:.18em;font-family:var(--sans)}
+.hc-hour{stroke:var(--ink);stroke-width:4;stroke-linecap:round}
+.hc-min{stroke:var(--accent);stroke-width:2.4;stroke-linecap:round}
+.hc-hub{fill:var(--accent)}
+.hc-readout{display:flex;flex-direction:column;gap:.5rem}
+.hc-big{display:flex;align-items:baseline;gap:.6rem}
+.hc-big b{font-family:var(--display);font-size:1.7rem;color:var(--accent);font-weight:700;line-height:1}
+.hc-big span{color:var(--ink2);font-size:.85rem}
+.hc-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem .9rem;margin-top:.3rem}
+.hc-grid div{display:flex;flex-direction:column}
+.hc-grid span{font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.hc-grid b{font-family:ui-monospace,monospace;color:var(--ink);font-variant-numeric:tabular-nums}
+.hc-note{font-size:.72rem;color:var(--muted);margin-top:.3rem}

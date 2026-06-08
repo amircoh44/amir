@@ -9,6 +9,12 @@
 <body>
   <header class="topbar">
     <a class="brand" href="{{ url_for('home') }}">The Super <b>Siddur</b></a>
+    <nav class="mainnav">
+      <a href="{{ url_for('home') }}">Siddur</a>
+      <a href="{{ url_for('tehillim_index') }}">Tehillim</a>
+      <a href="{{ url_for('zmanim') }}">Zmanim</a>
+      <a href="{{ url_for('kotel') }}">Kotel</a>
+    </nav>
     {% block crumbs %}{% endblock %}
   </header>
   <main class="stage">
