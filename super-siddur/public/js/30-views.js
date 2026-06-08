@@ -248,6 +248,13 @@ function renderService(stage,arg){
       bar.appendChild(tch);
     }
   }
+  if(state.editMode){
+    const ab=el("button","mini-select"+((typeof audioTracksForSvc==="function"&&audioTracksForSvc(svcId).length)?" on-edit":""));
+    ab.innerHTML=`<svg class="icon ic" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M3 10v4h4l5 5V5L7 10H3z"/><path d="M16 8a5 5 0 0 1 0 8"/></svg><span>Daven audio</span>`;
+    if(typeof audioTracksForSvc==="function"&&audioTracksForSvc(svcId).length)ab.style.cssText="border-color:var(--accent);color:var(--accent)";
+    ab.onclick=()=>{if(typeof openAudioAuthor==="function")openAudioAuthor(svcId);};
+    bar.appendChild(ab);
+  }
   stage.appendChild(bar);
 
   const dwm=el("button","");dwm.style.cssText="display:flex;align-items:center;gap:.7rem;padding:.85rem 1.1rem;background:color-mix(in srgb,var(--accent) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-radius:.6rem;color:var(--accent);cursor:pointer;font-family:var(--sans);font-weight:600;font-size:.88rem;margin-bottom:1rem;width:100%;text-align:left";dwm.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1.2em;height:1.2em;flex:none"><polygon points="5 3 19 12 5 21 5 3"/></svg><div style="flex:1"><div style="font-size:.95rem">Daven With Me</div><div style="font-size:.72rem;color:var(--ink2);font-weight:500;margin-top:.1rem">Guided, block-by-block, with focus</div></div><svg class="icon" viewBox="0 0 24 24" style="width:1em"><path d="M9 6l6 6-6 6"/></svg>`;dwm.onclick=()=>startDaven(svcId);stage.appendChild(dwm);
@@ -645,17 +652,36 @@ function renderKavanot(b,wrap){
 
 /* ====== DAVEN WITH ME ====== */
 let dm={svcId:null,blocks:[],idx:0};
+/* Flatten a service into Daven blocks. Each block is tagged with its owning
+   prayer id (pid) and its index within that prayer's normalized blocks (bi);
+   a header block uses bi:-1. These (pid,bi) pairs are stable identifiers that
+   audio sync cues bind to, so cues survive toggle changes that hide blocks.
+   Pass onlyPids to limit to a subset of prayers (used by the audio authoring UI). */
+function buildDavenBlocks(svcId,onlyPids){
+  const prayers=orderedPrayers(svcId);const blocks=[];
+  prayers.forEach(pr=>{
+    if(onlyPids&&onlyPids.length&&!onlyPids.includes(pr.id))return;
+    blocks.push({k:"header",en:pr.en,he:pr.he,section:pr.section,pid:pr.id,bi:-1});
+    normalizeBlocks(pr.blocks).forEach((b,bi)=>{
+      if(b.k==="rubric"&&!state.showInstr)return;
+      if(b.k==="kavanah"&&!state.showKavanot)return;
+      if(b.k!=="rubric"&&b.k!=="kavanah"&&!blockVisible(b))return;
+      blocks.push(Object.assign({},b,{pid:pr.id,bi:bi}));
+    });
+  });
+  return blocks;
+}
 function startDaven(svcId){
-  const prayers=orderedPrayers(svcId);if(!prayers.length)return;
-  const blocks=[];
-  prayers.forEach(pr=>{blocks.push({k:"header",en:pr.en,he:pr.he,section:pr.section});normalizeBlocks(pr.blocks).forEach(b=>{if(b.k==="rubric"&&!state.showInstr)return;if(b.k==="kavanah"&&!state.showKavanot)return;if(b.k!=="rubric"&&b.k!=="kavanah"&&!blockVisible(b))return;blocks.push(b);});});
-  if(!blocks.length)return;
-  dm={svcId,blocks,idx:0};const svc=svcById(svcId);$("#dmTitle").textContent=svc.en;$("#daven").classList.add("show");paintDaven();
+  const blocks=buildDavenBlocks(svcId);if(!blocks.length)return;
+  dm={svcId,blocks,idx:0};const svc=svcById(svcId);$("#dmTitle").textContent=svc.en;$("#daven").classList.add("show");
+  if(typeof davenAudioReset==="function")davenAudioReset();
+  paintDaven();
+  if(typeof davenAudioInit==="function")davenAudioInit();
 }
 function paintDaven(){
   const c=$("#dmContent");c.innerHTML="";
   dm.blocks.forEach((b,i)=>{
-    const card=el("div","dm-block");if(i<dm.idx)card.classList.add("past");else if(i===dm.idx)card.classList.add("current");
+    const card=el("div","dm-block");card.dataset.i=i;if(b.pid!=null)card.dataset.pid=b.pid;if(b.bi!=null)card.dataset.bi=b.bi;if(i<dm.idx)card.classList.add("past");else if(i===dm.idx)card.classList.add("current");
     if(b.k==="header"){card.innerHTML=`<div style="font-size:.62rem;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:.3rem">${esc(b.section||"Main")}</div><div style="font-family:var(--display);font-size:1.5rem;font-weight:600;color:var(--ink);letter-spacing:-.01em">${esc(b.en)} <span style="font-family:var(--hebrew);direction:rtl;color:var(--accent);font-size:.85em">${esc(b.he)}</span></div>`;}
     else if(b.k==="rubric"){const post=postureOf(b);let postHtml="";if(post)postHtml=`<span class="posture-tag ${post.tag}">${postureIcon(post.tag)}<span>${post.label}</span></span>`;card.innerHTML=`<div class="rubric">${postHtml}${esc(b.text||"")}</div>`;}
     else if(b.k==="kavanah"){renderKavanot(b,card);}
@@ -666,6 +692,7 @@ function paintDaven(){
   setTimeout(()=>{const cur=c.querySelector(".current");if(cur&&cur.scrollIntoView)cur.scrollIntoView({behavior:"smooth",block:"center"});},50);
   $("#dmPrev").style.opacity=dm.idx===0?".3":"1";
   $("#dmNext").innerHTML=dm.idx>=dm.blocks.length-1?'Done <svg class="icon" viewBox="0 0 24 24" style="width:1em"><path d="M20 6L9 17l-5-5"/></svg>':'Next <svg class="icon" viewBox="0 0 24 24" style="width:1em"><path d="M9 6l6 6-6 6"/></svg>';
+  if(typeof davenAudioAfterPaint==="function")davenAudioAfterPaint();
 }
 function dmNext(){if(dm.idx>=dm.blocks.length-1){$("#daven").classList.remove("show");haptic([20,80,20]);toast("Tefillah complete");return;}dm.idx++;haptic(10);paintDaven();}
 function dmPrev(){if(dm.idx>0){dm.idx--;paintDaven();}}
