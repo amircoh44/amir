@@ -58,7 +58,8 @@ if (fs.existsSync(ORIG)) {
   console.log("\n[C] Parity vs original");
   const probes = [
     ["todayHeb", (c) => { const t = c.todayHeb(new Date(Date.UTC(2026, 5, 7))); return t.year + "|" + t.month + "|" + t.day; }],
-    ["zmanim", (c) => { const z = c.computeZmanim(new Date(Date.UTC(2026, 5, 7)), { lat: 31.78, lng: 35.22, tz: "Asia/Jerusalem" }); return c.hmFmt(z.netz) + "/" + c.hmFmt(z.shkia); }],
+    // Compare the raw zmanim computation (format-independent: hmFmt display intentionally differs from the pre-refactor baseline).
+    ["zmanim", (c) => { const z = c.computeZmanim(new Date(Date.UTC(2026, 5, 7)), { lat: 31.78, lng: 35.22, tz: "Asia/Jerusalem" }); return Math.round(z.netz) + "/" + Math.round(z.shkia); }],
     ["gematria", (c) => c.gematria(5786)],
     ["services", (c) => String(c.allServices().length)],
     ["bearingToKotel", (c) => String(Math.round(c.bearingToKotel(40.7, -74)))],
@@ -187,6 +188,23 @@ try {
   ok("buildImported preserves cond", imp.cond && imp.cond.gender === "female");
   ok("buildImported preserves icon", imp.icon && imp.icon.key === "bow");
 } catch (e) { ok("conditions", false, e.message); }
+
+console.log("\n[J] Time format (12h US / 24h military) + women's-siddur gating");
+try {
+  seed(R, { timeFmt: "12" });
+  ok("12h strips leading zero (9:05 AM)", R.ctx.hmFmt(9 * 60 + 5) === "9:05 AM");
+  ok("12h midnight is 12:00 AM (never 00:00)", R.ctx.hmFmt(0) === "12:00 AM");
+  ok("12h noon is 12:00 PM", R.ctx.hmFmt(12 * 60) === "12:00 PM");
+  ok("12h afternoon (1:05 PM)", R.ctx.hmFmt(13 * 60 + 5) === "1:05 PM");
+  seed(R, { timeFmt: "24" });
+  ok("24h no leading zero (9:05)", R.ctx.hmFmt(9 * 60 + 5) === "9:05");
+  ok("24h evening (21:05)", R.ctx.hmFmt(21 * 60 + 5) === "21:05");
+  ok("24h midnight is 0:00 (not 00:00)", R.ctx.hmFmt(0) === "0:00");
+  // women's-siddur display toggle reveals female content / hides male content
+  seed(R, { gender: "", womanMode: true });
+  ok("women's-siddur mode shows women's blessing", R.ctx.blockVisible({ k: "p", he: "x", cond: { gender: "female" } }) === true);
+  ok("women's-siddur mode hides men's blessing", R.ctx.blockVisible({ k: "p", he: "x", cond: { gender: "male" } }) === false);
+} catch (e) { ok("time format / women siddur", false, e.message); }
 
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 if (diag.length) console.log("\n--- diagnostics ---\n" + diag.join("\n"));

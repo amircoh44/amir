@@ -434,6 +434,7 @@ const DEFAULTS={
   loc:{name:"Denver, CO",lat:39.7392,lng:-104.9903,tz:"America/Denver"},
   israelMode:"diaspora",nusach:"ashkenaz",
   theme:"warm",textSize:1.0,hebScale:1.0,enScale:1.0,
+  timeFmt:"12",             // "12" = 12-hour US (9:05 AM), "24" = 24-hour military (21:05)
   translit:true,showInstr:true,showKavanot:true,hebrewOnly:false,minyan:false,
   kavLevels:{found:true,halachic:false,kabbalistic:false},
   view:"home",viewArg:null,
@@ -493,7 +494,9 @@ function pickHe(b){if(b.alt&&b.alt[state.nusach])return b.alt[state.nusach];retu
 function audienceActive(key){return !!(state.audiences&&state.audiences[key]);}
 function condMatches(c){
   if(!c)return true;
-  if(c.gender&&state.gender&&c.gender!==state.gender)return false;
+  /* effective gender: explicit profile gender, or the "Women's siddur" display toggle */
+  const eg=state.gender||(state.womanMode?"female":"");
+  if(c.gender&&eg&&c.gender!==eg)return false;
   const inIsrael=(state.israelMode==="israel"||state.israelMode==="yerushalayim");
   if(c.region==="israel"&&!inIsrael)return false;
   if(c.region==="diaspora"&&inIsrael)return false;

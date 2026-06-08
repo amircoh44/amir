@@ -220,6 +220,10 @@ function admDisplay(w){
   const ts=el("div","field");ts.innerHTML=`<label>Overall text size</label>`;const seg=el("div","seg");
   [["0.9","Small"],["1","Default"],["1.15","Large"],["1.3","XL"]].forEach(([v,lbl])=>{const b=el("button",Math.abs(state.textSize-(+v))<0.03?"on":"");b.textContent=lbl;b.onclick=()=>{state.textSize=+v;saveState();applyTheme();paintAdmin();};seg.appendChild(b);});
   ts.appendChild(seg);w.appendChild(ts);
+  /* time format — 12-hour US vs 24-hour military, applies wherever times appear */
+  const tf=el("div","field");tf.innerHTML=`<label>Time format</label>`;const tseg=el("div","seg");
+  [["12","12-hour (US)"],["24","24-hour (military)"]].forEach(([v,lbl])=>{const b=el("button",(state.timeFmt||"12")===v?"on":"");b.textContent=lbl;b.onclick=()=>{state.timeFmt=v;saveState();paintAdmin();if(typeof render==="function"&&(state.view==="zmanim"||state.view==="home"))render();};tseg.appendChild(b);});
+  tf.appendChild(tseg);w.appendChild(tf);
   /* separate Hebrew + English sliders */
   const mkSlider=(key,label,he)=>{
     const f=el("div","field");

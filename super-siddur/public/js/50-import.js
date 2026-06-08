@@ -181,11 +181,11 @@ function openPrayerEditor(svcId,prId){
   const fHe=el("div","field hebrew");fHe.style.marginBottom="0";fHe.innerHTML=`<label>Title (Hebrew)</label><input id="peHe" value="${esc(meta.he)}">`;hd.appendChild(fHe);
   ov.appendChild(hd);
   /* body */
-  const bodyScroll=el("div","");bodyScroll.style.cssText="flex:1;overflow-y:auto;padding:1rem 1.1rem 7rem";
+  const bodyScroll=el("div","");bodyScroll.style.cssText="flex:1;min-height:0;overflow-y:auto;padding:1rem 1.1rem 1.5rem";
   const list=el("div","");bodyScroll.appendChild(list);
   ov.appendChild(bodyScroll);
   /* footer */
-  const ft=el("div","");ft.style.cssText="position:absolute;left:0;right:0;bottom:0;padding:.8rem 1.1rem;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line);display:flex;gap:.5rem;flex-wrap:wrap";
+  const ft=el("div","");ft.style.cssText="flex:none;padding:.8rem 1.1rem;background:var(--surface);border-top:1px solid var(--line);display:flex;gap:.5rem;flex-wrap:wrap;max-height:42vh;overflow-y:auto";
   const addTxt=el("button","btn-ghost");addTxt.style.margin="0";addTxt.style.flex="1 1 30%";addTxt.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M12 5v14M5 12h14"/></svg> Prayer text`;
   const addRub=el("button","btn-ghost");addRub.style.margin="0";addRub.style.flex="1 1 30%";addRub.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M4 6h10M4 12h16M4 18h7"/></svg> Instruction`;
   const addKav=el("button","btn-ghost");addKav.style.margin="0";addKav.style.flex="1 1 30%";addKav.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M12 3a4 4 0 0 1 4 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 0 1 4-4zM10 18h4M11 21h2"/></svg> Kavanah`;
@@ -262,7 +262,7 @@ function openPrayerEditor(svcId,prId){
       opts.forEach(([val,t])=>{const bn=el("button","");bn.type="button";bn.style.cssText=chipCss(cur===val);bn.textContent=t;bn.onclick=()=>onPick(val);row.appendChild(bn);});
       card.appendChild(row);
     };
-    mk("Gender",[["","Everyone"],["male","Men only"],["female","Women only"]],c().gender||"",v=>{const x=Object.assign({},c());if(v)x.gender=v;else delete x.gender;setC(x);paintBlocks();});
+    mk("Audience (siddur)",[["","Everyone"],["male","Men's siddur"],["female","Women's siddur"]],c().gender||"",v=>{const x=Object.assign({},c());if(v)x.gender=v;else delete x.gender;setC(x);paintBlocks();});
     mk("Location",[["","Anywhere"],["israel","Israel only"],["diaspora","Diaspora only"]],c().region||"",v=>{const x=Object.assign({},c());if(v)x.region=v;else delete x.region;setC(x);paintBlocks();});
     mk("Minyan",[["","Any"],["yes","With minyan"],["no","Without minyan"]],c().minyan===true?"yes":c().minyan===false?"no":"",v=>{const x=Object.assign({},c());if(v==="yes")x.minyan=true;else if(v==="no")x.minyan=false;else delete x.minyan;setC(x);paintBlocks();});
     const defs=state.audienceDefs||[];
