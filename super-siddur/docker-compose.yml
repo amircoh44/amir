@@ -15,6 +15,9 @@ services:
     volumes:
       # Persist the SQLite DB + uploaded icons across rebuilds.
       - siddur-data:/app/data
+      # Live front-end: edit/pull on the host, refresh the browser — no rebuild.
+      - ./public:/app/public:ro
+      - ./web:/app/web:ro
     ports:
       # Expose only to localhost; put nginx (below) in front for TLS.
       - "127.0.0.1:8080:8080"
