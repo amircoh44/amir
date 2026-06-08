@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     # phase 1 → NullPartnerClient records deliveries without any network call.
     academy613_secret: str = ""
 
+    # Google one-tap login. Verifies ID tokens via Google's tokeninfo endpoint.
+    # google_dev_mode decodes tokens WITHOUT verifying (local/dev/test only).
+    google_client_id: str = ""
+    google_dev_mode: bool = False
+
     @property
     def icons_dir(self) -> Path:
         return self.data_dir / "icons"

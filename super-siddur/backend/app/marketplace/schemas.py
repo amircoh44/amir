@@ -182,3 +182,17 @@ class PrefsIn(BaseModel):
 # ---- fulfillment queue / integrity ----
 class ConfirmIn(BaseModel):
     text: str = ""    # a brief note about the tefillah, to clear a fast-advance flag
+
+
+# ---- login & security ----
+class GoogleIn(BaseModel):
+    id_token: str
+
+
+class TwoFAIn(BaseModel):
+    challenge: str
+    code: str
+
+
+class CodeIn(BaseModel):
+    code: str

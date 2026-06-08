@@ -19,8 +19,8 @@ from ..models import Admin
 from ..security import hash_password, require, verify_password
 import uuid
 
-from .auth import (create_market_token, current_user, get_user_by_email, is_pro,
-                   optional_current_user, require_pro)
+from .auth import (create_market_token, create_mfa_challenge, current_user,
+                   get_user_by_email, is_pro, optional_current_user, require_pro)
 from .models import (Assignment, Broadcast, Commitment, CommitmentJoin,
                      MarketUser, Notification, PayoutConfig, Payout, Pledge,
                      PrayerRequest)
@@ -85,7 +85,8 @@ def _enqueue_alerts(db: Session, req: PrayerRequest) -> None:
 def _user_out(u: MarketUser) -> dict:
     return {"id": u.id, "email": u.email, "name": u.name, "membership": u.membership,
             "membership_until": u.membership_until, "credit_cents": u.credit_cents,
-            "kyc_status": u.kyc_status, "is_pro": is_pro(u)}
+            "kyc_status": u.kyc_status, "is_pro": is_pro(u), "mfa_enabled": u.mfa_enabled,
+            "google_linked": bool(u.google_sub)}
 
 
 def _request_out(db: Session, r: PrayerRequest) -> dict:
@@ -118,8 +119,10 @@ def register(body: RegisterIn, db: Session = Depends(get_db)) -> dict:
 @router.post("/auth/login")
 def login(body: LoginIn, db: Session = Depends(get_db)) -> dict:
     u = get_user_by_email(db, body.email.lower())
-    if not u or not verify_password(body.password, u.password_hash) or not u.active:
+    if not u or not u.password_hash or not verify_password(body.password, u.password_hash) or not u.active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
+    if u.mfa_enabled and u.totp_secret:          # optional 2FA: hand back a challenge
+        return {"mfa_required": True, "challenge": create_mfa_challenge(u)}
     return {"access_token": create_market_token(u), "token_type": "bearer"}
 
 

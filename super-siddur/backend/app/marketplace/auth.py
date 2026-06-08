@@ -106,3 +106,95 @@ def require_pro(user: MarketUser = Depends(current_user)) -> MarketUser:
         # 402 Payment Required — the client should surface the Pro upsell.
         raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, "Pro membership required")
     return user
+
+
+# ===================== Google one-tap + optional 2FA (TOTP) =====================
+import base64 as _b64mod
+import hashlib as _hashlib
+import hmac as _hmac
+import os
+import struct as _struct
+import time as _time
+import urllib.parse as _uparse
+import urllib.request as _urequest
+
+
+def verify_google_id_token(token: str) -> dict | None:
+    """Return verified Google claims, or None. In dev mode the payload is decoded
+    without signature verification (NEVER use in production). In production it is
+    verified through Google's tokeninfo endpoint and checked against the configured
+    client id."""
+    s = get_settings()
+    if not token:
+        return None
+    if s.google_dev_mode:
+        try:
+            return json.loads(_b64d(token.split(".")[1]))
+        except (ValueError, IndexError, json.JSONDecodeError):
+            return None
+    try:
+        url = "https://oauth2.googleapis.com/tokeninfo?" + _uparse.urlencode({"id_token": token})
+        with _urequest.urlopen(url, timeout=8) as r:  # noqa: S310 (fixed https host)
+            data = json.loads(r.read())
+    except Exception:  # noqa: BLE001 (network/parse → treat as invalid)
+        return None
+    if s.google_client_id and data.get("aud") != s.google_client_id:
+        return None
+    if data.get("iss") not in ("accounts.google.com", "https://accounts.google.com"):
+        return None
+    return data
+
+
+# ---- TOTP (RFC 6238), stdlib only ----
+def gen_totp_secret() -> str:
+    return _b64mod.b32encode(os.urandom(20)).decode().rstrip("=")
+
+
+def _totp_at(secret: str, t: float, step: int = 30, digits: int = 6) -> str:
+    pad = "=" * ((8 - len(secret) % 8) % 8)
+    key = _b64mod.b32decode(secret + pad)
+    msg = _struct.pack(">Q", int(t // step))
+    h = _hmac.new(key, msg, _hashlib.sha1).digest()
+    o = h[-1] & 0x0F
+    code = (_struct.unpack(">I", h[o:o + 4])[0] & 0x7FFFFFFF) % (10 ** digits)
+    return str(code).zfill(digits)
+
+
+def verify_totp(secret: str, code: str, window: int = 1) -> bool:
+    if not secret or not code:
+        return False
+    code = str(code).strip()
+    now = _time.time()
+    return any(_totp_at(secret, now + w * 30) == code for w in range(-window, window + 1))
+
+
+def otpauth_uri(secret: str, email: str, issuer: str = "Super Siddur") -> str:
+    return (f"otpauth://totp/{_uparse.quote(issuer)}:{_uparse.quote(email)}"
+            f"?secret={secret}&issuer={_uparse.quote(issuer)}&digits=6&period=30")
+
+
+# ---- short-lived 2FA challenge token (kind="mfa") ----
+def create_mfa_challenge(user: MarketUser) -> str:
+    now = int(dt.datetime.now(dt.timezone.utc).timestamp())
+    header = {"alg": "HS256", "typ": "JWT"}
+    payload = {"sub": str(user.id), "kind": "mfa", "iat": now, "exp": now + 300}  # 5 minutes
+    signing_input = _b64(json.dumps(header, separators=(",", ":")).encode()) + "." + \
+        _b64(json.dumps(payload, separators=(",", ":")).encode())
+    sig = _hmac.new(get_settings().jwt_secret.encode(), signing_input.encode(), _hashlib.sha256).digest()
+    return signing_input + "." + _b64(sig)
+
+
+def decode_mfa_challenge(token: str) -> dict | None:
+    try:
+        signing_input, sig_b64 = token.rsplit(".", 1)
+        expected = _hmac.new(get_settings().jwt_secret.encode(), signing_input.encode(), _hashlib.sha256).digest()
+        if not _hmac.compare_digest(_b64d(sig_b64), expected):
+            return None
+        payload = json.loads(_b64d(signing_input.split(".", 1)[1]))
+        if payload.get("kind") != "mfa":
+            return None
+        if int(payload.get("exp", 0)) < int(dt.datetime.now(dt.timezone.utc).timestamp()):
+            return None
+        return payload
+    except (ValueError, KeyError, json.JSONDecodeError):
+        return None

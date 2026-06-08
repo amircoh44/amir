@@ -478,3 +478,57 @@ def test_personal_dashboard_aggregates_everything():
     assert any(x["name"] == "Amit" for x in d["davening_for"])           # who I'm davening for
     assert any(x["who"] == "Helper" for x in d["praying_for_me"])        # who's davening for me
     assert len(d["pledges"]) >= 1                                         # payment history
+
+
+# ---------------- Login & security: Google + optional 2FA ----------------
+def test_google_one_tap_login():
+    import base64 as _b64, json as _json
+    import app.config as cfg
+    os.environ["SIDDUR_GOOGLE_DEV_MODE"] = "true"     # decode without network (dev/test only)
+    cfg.get_settings.cache_clear()
+    try:
+        def _seg(d):
+            return _b64.urlsafe_b64encode(_json.dumps(d).encode()).rstrip(b"=").decode()
+        claims = {"email": "guser@example.com", "name": "G User", "sub": "google-123",
+                  "iss": "accounts.google.com"}
+        id_token = _seg({"alg": "none"}) + "." + _seg(claims) + ".sig"
+        r = client.post("/api/market/auth/google", json={"id_token": id_token})
+        assert r.status_code == 200, r.text
+        me = client.get("/api/market/me", headers=_h(r.json()["access_token"])).json()
+        assert me["email"] == "guser@example.com" and me["google_linked"] is True
+        # posting is still open without any login (login only unlocks the personal zone)
+        anon = client.post("/api/market/requests", json={
+            "names": [{"name": "Z"}], "scope_kind": "chapters", "scope_detail": {"chapters": [1]},
+            "reciter_mode": "single", "expected_reciters": 1, "assignment_mode": "free",
+            "payout_split": "pool", "gross_cents": 200})
+        assert anon.status_code == 200
+    finally:
+        os.environ.pop("SIDDUR_GOOGLE_DEV_MODE", None)
+        cfg.get_settings.cache_clear()
+
+
+def test_optional_2fa_login_challenge():
+    import time
+    from app.marketplace.auth import _totp_at
+    u = _tok("mfauser@example.com", name="MFA")
+    # 2FA is OFF by default; enabling it is a deliberate choice
+    s = client.post("/api/market/me/2fa/setup", headers=_h(u)).json()
+    secret = s["secret"]
+    assert s["otpauth_uri"].startswith("otpauth://totp/")
+    en = client.post("/api/market/me/2fa/enable", headers=_h(u),
+                     json={"code": _totp_at(secret, time.time())})
+    assert en.json()["mfa_enabled"] is True
+    # password login now returns a challenge instead of a token
+    lg = client.post("/api/market/auth/login",
+                     json={"email": "mfauser@example.com", "password": "password123"}).json()
+    assert lg.get("mfa_required") is True and "access_token" not in lg
+    # wrong code rejected; correct TOTP completes the login
+    assert client.post("/api/market/auth/2fa",
+                       json={"challenge": lg["challenge"], "code": "000000"}).status_code == 401
+    fin = client.post("/api/market/auth/2fa",
+                      json={"challenge": lg["challenge"], "code": _totp_at(secret, time.time())})
+    assert fin.status_code == 200 and "access_token" in fin.json()
+    # the user can turn 2FA back off
+    dis = client.post("/api/market/me/2fa/disable", headers=_h(u),
+                      json={"code": _totp_at(secret, time.time())})
+    assert dis.json()["mfa_enabled"] is False

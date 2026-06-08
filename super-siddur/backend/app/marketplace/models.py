@@ -27,6 +27,11 @@ class MarketUser(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     membership: Mapped[str] = mapped_column(String(32), default="free")     # free | pro | pro_plus
     membership_until: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # login & security
+    google_sub: Mapped[str] = mapped_column(String(64), default="")         # Google account id (one-tap login)
+    totp_secret: Mapped[str] = mapped_column(String(64), default="")        # active 2FA secret
+    totp_pending: Mapped[str] = mapped_column(String(64), default="")       # secret awaiting confirmation
+    mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)       # optional 2FA, off by default
     # reciter preferences for matching alerts (portions, languages, max load, notify channels)
     prefs: Mapped[dict] = mapped_column(JSON, default=dict)
     payout_method: Mapped[dict] = mapped_column(JSON, default=dict)         # destination details (tzedaka/credit/cash)
