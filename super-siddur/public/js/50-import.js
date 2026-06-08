@@ -190,6 +190,10 @@ function openPrayerEditor(svcId,prId){
   const addRub=el("button","btn-ghost");addRub.style.margin="0";addRub.style.flex="1 1 30%";addRub.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M4 6h10M4 12h16M4 18h7"/></svg> Instruction`;
   const addKav=el("button","btn-ghost");addKav.style.margin="0";addKav.style.flex="1 1 30%";addKav.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M12 3a4 4 0 0 1 4 4c0 2-2 3-2 5h-4c0-2-2-3-2-5a4 4 0 0 1 4-4zM10 18h4M11 21h2"/></svg> Kavanah`;
   ft.appendChild(addTxt);ft.appendChild(addRub);ft.appendChild(addKav);
+  /* Fill canonical English from Sefaria (public-domain), mapped onto prayer blocks */
+  const addSef=el("button","btn-ghost");addSef.style.cssText="margin:0;flex:1 1 30%";addSef.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> English · Sefaria`;
+  addSef.onclick=()=>{if(typeof openSefariaDialog!=="function"){toast("Translation module not loaded");return;}openSefariaDialog(meta.en,(segs)=>{const n=(typeof mapSegmentsToEnglish==="function")?mapSegmentsToEnglish(blocks,segs):0;paintBlocks();toast(n?("Filled English on "+n+" block"+(n>1?"s":"")+" · review & Save"):"No prayer-text blocks to fill");});};
+  ft.appendChild(addSef);
   if(custom){const del=el("button","btn-ghost");del.style.cssText="margin:0;flex:1 1 30%;color:#d9534f;border-color:color-mix(in srgb,#d9534f 40%,transparent)";del.textContent="Delete prayer";del.onclick=()=>{if(!confirm("Delete this prayer? This cannot be undone."))return;state.customPrayers[svcId]=(state.customPrayers[svcId]||[]).filter(p=>p.id!==prId);if(state.hidden[svcId])state.hidden[svcId]=state.hidden[svcId].filter(x=>x!==prId);if(state.order[svcId])state.order[svcId]=state.order[svcId].filter(x=>x!==prId);saveState();ov.remove();render();};ft.appendChild(del);}
   else{const rst=el("button","btn-ghost");rst.style.cssText="margin:0;flex:1 1 30%";rst.textContent="Reset to original";rst.onclick=()=>{delete state.prayerEdits[prayerKey(svcId,prId)];delete state.prayerEdits[svcId+"."+prId+"@"+state.nusach];saveState();ov.remove();render();toast("Reset to original");};ft.appendChild(rst);}
   ov.appendChild(ft);
@@ -239,7 +243,9 @@ function openPrayerEditor(svcId,prId){
         const en=el("textarea");en.value=b.en||"";en.placeholder="English translation (optional)";en.rows=2;en.style.cssText=taCss();en.addEventListener("input",e=>b.en=e.target.value);
         card.appendChild(mkLabel("Hebrew"));card.appendChild(he);
         card.appendChild(mkLabel("Transliteration"));card.appendChild(tr);
-        card.appendChild(mkLabel("English"));card.appendChild(en);
+        const enLbl=el("div","");enLbl.style.cssText=miniLabel()+"display:flex;align-items:center;gap:.4rem";
+        enLbl.innerHTML="English"+((b.en||"").trim()?"":` <span style="color:#c9912f;background:color-mix(in srgb,#c9912f 16%,transparent);font-size:.56rem;letter-spacing:.06em;padding:.1rem .4rem;border-radius:.3rem;text-transform:none;font-weight:700">needs English</span>`);
+        card.appendChild(enLbl);card.appendChild(en);
         /* who sees this block + an optional conditional icon */
         const cl=el("div","");cl.textContent="Conditions — who sees this block";cl.style.cssText=miniLabel()+"margin-top:.6rem";card.appendChild(cl);
         condControls(card,()=>b.cond,(c)=>{if(c&&Object.keys(c).length)b.cond=c;else delete b.cond;});

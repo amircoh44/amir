@@ -1,5 +1,5 @@
 /* The Super Siddur — service worker. Offline-first app shell. */
-const CACHE = "siddur-v25";
+const CACHE = "siddur-v26";
 const SHELL = [
   "/",
   "/index.html",
@@ -14,6 +14,7 @@ const SHELL = [
   "/js/40-admin.js",
   "/js/45-audio.js",
   "/js/47-propagate.js",
+  "/js/48-translate.js",
   "/js/50-import.js",
   "/js/60-adminx.js",
   "/manifest.webmanifest",
