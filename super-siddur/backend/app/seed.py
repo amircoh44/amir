@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from .config import PUBLIC_DIR, get_settings
 from .db import Base, SessionLocal, engine
 from .models import Admin, Content
+from .marketplace import models as _marketplace_models  # noqa: F401  (register tables for create_all)
+from .marketplace.models import PayoutConfig
 from .security import get_admin_by_email, hash_password
 
 
@@ -40,6 +42,9 @@ def seed() -> None:
         # Content (seed once from the bundle).
         if db.get(Content, 1) is None:
             db.add(Content(id=1, docs=_load_bundled_textdata()))
+        # Marketplace payout config (defaults: 20% cut, tzedaka-routed).
+        if db.get(PayoutConfig, 1) is None:
+            db.add(PayoutConfig(id=1))
         db.commit()
     finally:
         db.close()

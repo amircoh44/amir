@@ -1,0 +1,139 @@
+"""Marketplace ORM models — isolated tables, cleanly separable from the core app.
+
+Money-free phase: pledges are recorded as intents; no real funds move. The
+payout breakdown is stored on each pledge for a transparent, auditable trail.
+"""
+from __future__ import annotations
+
+import datetime as dt
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from ..db import Base
+
+
+def _now() -> dt.datetime:
+    return dt.datetime.now(dt.timezone.utc)
+
+
+class MarketUser(Base):
+    """An end-user of the marketplace (poster and/or reciter)."""
+    __tablename__ = "market_users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), default="")
+    password_hash: Mapped[str] = mapped_column(String(255))
+    membership: Mapped[str] = mapped_column(String(32), default="free")     # free | pro | pro_plus
+    membership_until: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # reciter preferences for matching alerts (portions, languages, max load, notify channels)
+    prefs: Mapped[dict] = mapped_column(JSON, default=dict)
+    payout_method: Mapped[dict] = mapped_column(JSON, default=dict)         # destination details (tzedaka/credit/cash)
+    credit_cents: Mapped[int] = mapped_column(Integer, default=0)           # in-app credit balance
+    kyc_status: Mapped[str] = mapped_column(String(16), default="none")     # none | pending | verified
+    provider_customer_ref: Mapped[str] = mapped_column(String(128), default="")  # e.g. Stripe customer id (phase 2)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class PayoutConfig(Base):
+    """Singleton (id=1) of admin-editable rates and policy. All rates configurable."""
+    __tablename__ = "market_config"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # membership / broadcast pricing
+    pro_price_cents: Mapped[int] = mapped_column(Integer, default=399)          # $3.99/mo
+    pro_plus_price_cents: Mapped[int] = mapped_column(Integer, default=999)     # higher tier
+    broadcast_price_cents: Mapped[int] = mapped_column(Integer, default=20000)  # ~$200/mo premium broadcast
+    # fees & cut (percentages stored as floats 0..1)
+    processor_fee_pct: Mapped[float] = mapped_column(default=0.029)
+    processor_fee_flat_cents: Mapped[int] = mapped_column(Integer, default=30)
+    appstore_fee_pct: Mapped[float] = mapped_column(default=0.30)
+    platform_cut_pct: Mapped[float] = mapped_column(default=0.20)               # default 20%
+    platform_cut_max_pct: Mapped[float] = mapped_column(default=0.50)           # adjustable up to ~50%
+    # policy
+    payout_mode: Mapped[str] = mapped_column(String(16), default="tzedaka")     # tzedaka | credit | cash
+    min_pledge_cents: Mapped[int] = mapped_column(Integer, default=100)
+    suggested_presets_cents: Mapped[list] = mapped_column(JSON, default=lambda: [180, 360, 1000, 1800])
+    tzedaka_targets: Mapped[list] = mapped_column(JSON, default=list)           # [{key,label}]
+    currency: Mapped[str] = mapped_column(String(8), default="usd")
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class PrayerRequest(Base):
+    """A poster's request for prayers on one or more names."""
+    __tablename__ = "market_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    poster_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(255), default="")
+    names: Mapped[list] = mapped_column(JSON, default=list)        # [{name, mother, note}]
+    # what is wanted
+    scope_kind: Mapped[str] = mapped_column(String(24), default="chapters")  # tehillim_all|chapters|letters|verses|sequence|custom
+    scope_detail: Mapped[dict] = mapped_column(JSON, default=dict)           # {chapters:[...], letters:[...], sequence:"refuah", ...}
+    # who recites
+    reciter_mode: Mapped[str] = mapped_column(String(16), default="group")   # single | group
+    expected_reciters: Mapped[int] = mapped_column(Integer, default=1)
+    assignment_mode: Mapped[str] = mapped_column(String(16), default="free") # free | random
+    # pricing
+    payout_split: Mapped[str] = mapped_column(String(16), default="pool")    # per_reciter | pool
+    gross_cents: Mapped[int] = mapped_column(Integer, default=0)             # total the poster pledges
+    unit_price_cents: Mapped[int] = mapped_column(Integer, default=0)        # per-reciter price (per_reciter mode)
+    via_app_store: Mapped[bool] = mapped_column(Boolean, default=False)
+    payout_mode: Mapped[str] = mapped_column(String(16), default="tzedaka")
+    tzedaka_target: Mapped[str] = mapped_column(String(64), default="")
+    # lifecycle
+    status: Mapped[str] = mapped_column(String(16), default="open")          # open | in_progress | completed | cancelled
+    deadline: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Assignment(Base):
+    """A reciter accepting (a portion of) a request, and marking it done."""
+    __tablename__ = "market_assignments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    request_id: Mapped[int] = mapped_column(ForeignKey("market_requests.id", ondelete="CASCADE"), index=True)
+    reciter_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"), index=True)
+    portion: Mapped[dict] = mapped_column(JSON, default=dict)        # assigned chapters/letters/verses
+    status: Mapped[str] = mapped_column(String(16), default="accepted")  # accepted | completed | abandoned
+    note: Mapped[str] = mapped_column(Text, default="")
+    accepted_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    completed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Broadcast(Base):
+    """Premium siddur-wide broadcast: a name shown to all users for a period."""
+    __tablename__ = "market_broadcasts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    sponsor_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"), index=True)
+    names: Mapped[list] = mapped_column(JSON, default=list)
+    message: Mapped[str] = mapped_column(Text, default="")
+    scope_kind: Mapped[str] = mapped_column(String(24), default="custom")
+    scope_detail: Mapped[dict] = mapped_column(JSON, default=dict)
+    price_cents: Mapped[int] = mapped_column(Integer, default=0)
+    start_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    end_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending")  # pending | active | ended | cancelled
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Pledge(Base):
+    """A recorded pledge/charge intent with its full payout breakdown (audit trail).
+    Money-free phase: status stays 'intent' and `live` is false."""
+    __tablename__ = "market_pledges"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    payer_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"), index=True)
+    request_id: Mapped[int | None] = mapped_column(ForeignKey("market_requests.id", ondelete="SET NULL"), nullable=True, index=True)
+    broadcast_id: Mapped[int | None] = mapped_column(ForeignKey("market_broadcasts.id", ondelete="SET NULL"), nullable=True)
+    kind: Mapped[str] = mapped_column(String(16), default="request")    # request | broadcast | membership
+    amount_cents: Mapped[int] = mapped_column(Integer, default=0)
+    breakdown: Mapped[dict] = mapped_column(JSON, default=dict)         # output of compute_payout
+    provider: Mapped[str] = mapped_column(String(24), default="null")
+    provider_ref: Mapped[str] = mapped_column(String(128), default="")
+    status: Mapped[str] = mapped_column(String(16), default="intent")  # intent | captured | released | refunded
+    live: Mapped[bool] = mapped_column(Boolean, default=False)         # did real money move?
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)

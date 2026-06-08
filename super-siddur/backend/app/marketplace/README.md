@@ -1,0 +1,55 @@
+# Marketplace — "Daven for a name" (Part B)
+
+Isolated package inside the FastAPI backend. **Phase 1 is money-free**: the full
+domain, jobs board, completion tracking, and a transparent payout engine work
+end-to-end, but no real money moves. A Stripe Connect provider drops in later
+behind one interface without touching the domain.
+
+## What ships now (phase 1, tested)
+- **Accounts** (`auth.py`) — market end-users (poster/reciter), reusing the core
+  app's PBKDF2 + HS256 crypto. Tokens carry `kind="market"`.
+- **Membership** — Pro / Pro+ tiers gate posting & accepting (`require_pro`,
+  HTTP 402 → upsell). Phase 1 activates Pro on subscribe **without charging**.
+- **Payout engine** (`payout.py`) — pure, deterministic, fully configurable.
+  Fees first (processor → app-store), then platform cut from the net (default
+  **20%**, hard-capped **50%**), then equal split among reciters. Every cent is
+  accounted for; the breakdown is stored on each pledge for audit.
+- **Jobs board** (`router.py`) — create requests (names + scope:
+  `tehillim_all | chapters | letters | verses | sequence | custom`; reciter
+  mode single/group; split per-reciter/pool; assignment free/random), browse
+  the feed, accept (with random portion assignment), mark "I said it", and the
+  poster sees who fulfilled it.
+- **Premium broadcast** — siddur-wide name for a period (`/broadcasts`,
+  `/broadcasts/active` for the app to display).
+- **Admin config** (`market.admin` permission) — all rates/policy editable;
+  the platform cut is clamped to the hard 50% ceiling server-side.
+- **Pledges** recorded as **intents** via `NullPaymentProvider` (`payments.py`);
+  `live=false`, status `intent`.
+
+## Configurable, not hard-coded
+`PayoutConfig` (singleton row) holds every rate: pro/pro+/broadcast prices,
+processor %+flat, app-store %, platform cut % and its max, payout mode
+(`tzedaka` default / `credit` / `cash`), min pledge, suggested presets, tzedaka
+targets, currency. The halachic payout model is therefore a setting, awaiting
+rabbinic sign-off — never baked into the flows.
+
+## Phase 2 — payments (Stripe Connect), deferred by decision
+Implement `StripeConnectProvider(PaymentProvider)` and swap `_provider`:
+- charge posters; hold/escrow; **Connect payouts** to reciters/tzedaka
+- **KYC** onboarding (`onboard_recipient`) and **1099** tax reporting via Connect
+- Pro / broadcast **subscriptions**; refunds (`refund`)
+- set membership active only on **successful** payment (remove phase-1 simulation)
+
+## Compliance still required before go-live (not code-only)
+- Verify **Apple/Google** rules on donations & person-to-person payments before
+  pricing is finalized — may force money outside IAP or as donations.
+- KYC / tax / refund flows validated with the processor.
+- **Rabbinic review** of the payout model; keep `payout_mode` defaulting to
+  tzedaka-routed until signed off.
+
+## API surface
+`/api/market/…` : `auth/register`, `auth/login`, `me`, `config`, `quote`,
+`membership/subscribe`, `requests` (POST/GET), `requests/{id}`,
+`requests/{id}/accept`, `assignments/{id}/complete`,
+`requests/{id}/completions`, `broadcasts`, `broadcasts/active`,
+`admin/config` (GET/PUT).

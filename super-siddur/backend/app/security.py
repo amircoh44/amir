@@ -27,6 +27,7 @@ ALL_PERMISSIONS = [
     "settings.edit",   # splash branding & site settings
     "icons.edit",      # upload / override / add custom icons
     "admins.manage",   # create / edit / remove admins
+    "market.admin",    # configure marketplace rates / payout policy
 ]
 
 oauth2 = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
