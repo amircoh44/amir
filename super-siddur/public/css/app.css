@@ -490,3 +490,38 @@ main{flex:1;padding:1rem 1rem 5rem;max-width:680px;margin:0 auto;width:100%}
   .pg-btn{min-width:3.3rem;height:3.3rem}
   .pg-btn.pg-next{font-size:1rem}
 }
+
+/* ===================== SETTINGS — menu / outline (no tab strip) ===================== */
+.adm-shell{display:block}
+.adm-shell .adm-content{display:none}
+.adm-shell.show-content .adm-menu{display:none}
+.adm-shell.show-content .adm-content{display:block}
+.adm-group-label{font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:1rem 0 .4rem .2rem}
+.adm-group-label:first-child{margin-top:.2rem}
+.adm-menu-item{display:flex;align-items:center;gap:.6rem;width:100%;text-align:left;padding:.85rem .85rem;margin-bottom:.3rem;border-radius:.55rem;background:var(--surface);border:1px solid var(--line);color:var(--ink);font-family:var(--sans);font-weight:600;font-size:.95rem;cursor:pointer;transition:all .15s var(--ease)}
+.adm-menu-item:hover{border-color:var(--line2)}
+.adm-menu-item.on{background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:color-mix(in srgb,var(--accent) 32%,transparent);color:var(--accent)}
+.adm-menu-item span{flex:1}
+.adm-menu-item .chev{opacity:.45;flex:none}
+.adm-content-head{display:flex;align-items:center;gap:.5rem;margin-bottom:.8rem}
+.adm-back{display:inline-flex;align-items:center;gap:.3rem;color:var(--muted);font-size:.85rem;cursor:pointer;background:transparent;border:0;padding:.3rem .4rem .3rem 0;flex:none}
+.adm-section-title{font-family:var(--display);font-size:1.2rem;font-weight:600;color:var(--ink)}
+
+/* Tablet & desktop: menu becomes a sidebar beside the content; both always shown */
+@media (min-width:760px){
+  #admSheet .sheet-body{max-width:940px}
+  .adm-shell{display:grid;grid-template-columns:14rem 1fr;gap:1.4rem;align-items:start}
+  .adm-shell .adm-menu,
+  .adm-shell.show-content .adm-menu,
+  .adm-shell .adm-content,
+  .adm-shell.show-content .adm-content{display:block}
+  .adm-menu{position:sticky;top:0}
+  .adm-menu-item .chev{display:none}     /* no drill-in chevron when the sidebar is persistent */
+  .adm-back{display:none}                /* no back button when both panes are visible */
+  .adm-content{min-width:0}              /* allow content to shrink, never force horizontal scroll */
+}
+/* Large desktop: a touch more room for the reading/content pane */
+@media (min-width:1200px){
+  #admSheet .sheet-body{max-width:1040px}
+  .adm-shell{grid-template-columns:15rem 1fr}
+}

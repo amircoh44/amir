@@ -1,25 +1,55 @@
 "use strict";
 /* Settings/admin panel + per-nusach prayer editor */
-function openAdmin(){admTab="profile";paintAdmin();$("#admSheet").classList.add("show");}
+let admPane="menu"; /* phone master-detail: "menu" | "content" (both shown on wide) */
+const ADM_GROUPS=[
+  ["Settings",[["profile","Profile"],["display","Display"],["people","Pray For"],["reminders","Reminders"],["nusachloc","Nusach & Location"]]],
+  ["Prayers",[["arrange","Edit prayers"],["inserts","Insertions"],["content","Content"]]],
+  ["Branding & Admin",[["splash","Splash"],["icons","Icons"],["admins","Admins"]]]
+];
+function admSectionLabel(k){for(const g of ADM_GROUPS)for(const it of g[1])if(it[0]===k)return it[1];return"";}
+function renderAdmSection(tab,wrap){
+  if(tab==="profile")admProfile(wrap);
+  else if(tab==="display")admDisplay(wrap);
+  else if(tab==="nusachloc")admNusachLoc(wrap);
+  else if(tab==="people")admPeople(wrap);
+  else if(tab==="reminders")admReminders(wrap);
+  else if(tab==="inserts")admInserts(wrap);
+  else if(tab==="arrange")admArrange(wrap);
+  else if(tab==="content")admContent(wrap);
+  else if(tab==="splash")admSplash(wrap);
+  else if(tab==="icons")admIcons(wrap);
+  else if(tab==="admins")admAdmins(wrap);
+  else admProfile(wrap);
+}
+function openAdmin(){admTab="profile";admPane="menu";paintAdmin();$("#admSheet").classList.add("show");}
 function paintAdmin(){
   const body=$("#admBody");body.innerHTML="";
-  const tabs=el("div","tabs");
-  [["profile","Profile"],["display","Display"],["people","Pray For"],["reminders","Reminders"],["inserts","Insertions"],["nusachloc","Nusach & Location"],["arrange","Edit"],["content","Content"],["splash","Splash"],["icons","Icons"],["admins","Admins"]].forEach(([k,lbl])=>{
-    const b=el("button",admTab===k?"on":"");b.textContent=lbl;b.onclick=()=>{admTab=k;paintAdmin();};tabs.appendChild(b);
+  const shell=el("div","adm-shell"+(admPane==="content"?" show-content":""));
+  /* --- menu / outline (no horizontal scrolling; sidebar on wide screens) --- */
+  const menu=el("div","adm-menu");
+  ADM_GROUPS.forEach(g=>{
+    const gl=el("div","adm-group-label");gl.textContent=g[0];menu.appendChild(gl);
+    g[1].forEach(it=>{
+      const[k,lbl]=it;
+      const b=el("button","adm-menu-item"+(admTab===k?" on":""));
+      b.innerHTML=`<span>${esc(lbl)}</span><svg class="icon chev" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M9 6l6 6-6 6"/></svg>`;
+      b.onclick=()=>{admTab=k;admPane="content";paintAdmin();const ab=$("#admBody");if(ab)ab.scrollTop=0;};
+      menu.appendChild(b);
+    });
   });
-  body.appendChild(tabs);
-  const wrap=el("div","");body.appendChild(wrap);
-  if(admTab==="profile")admProfile(wrap);
-  else if(admTab==="display")admDisplay(wrap);
-  else if(admTab==="nusachloc")admNusachLoc(wrap);
-  else if(admTab==="people")admPeople(wrap);
-  else if(admTab==="reminders")admReminders(wrap);
-  else if(admTab==="inserts")admInserts(wrap);
-  else if(admTab==="arrange")admArrange(wrap);
-  else if(admTab==="content")admContent(wrap);
-  else if(admTab==="splash")admSplash(wrap);
-  else if(admTab==="icons")admIcons(wrap);
-  else if(admTab==="admins")admAdmins(wrap);
+  shell.appendChild(menu);
+  /* --- selected section --- */
+  const content=el("div","adm-content");
+  const head=el("div","adm-content-head");
+  const back=el("button","adm-back");back.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M15 18l-6-6 6-6"/></svg> All settings`;
+  back.onclick=()=>{admPane="menu";paintAdmin();const ab=$("#admBody");if(ab)ab.scrollTop=0;};
+  head.appendChild(back);
+  const title=el("div","adm-section-title");title.textContent=admSectionLabel(admTab);head.appendChild(title);
+  content.appendChild(head);
+  const wrap=el("div","");content.appendChild(wrap);
+  renderAdmSection(admTab,wrap);
+  shell.appendChild(content);
+  body.appendChild(shell);
 }
 function admProfile(w){
   w.appendChild(el("div","note","Your name personalizes greetings, and your Hebrew birthday powers the birthday-psalm feature and age display."));
