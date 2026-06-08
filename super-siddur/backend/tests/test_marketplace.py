@@ -251,3 +251,84 @@ def test_prefs_alerts_and_matches():
     # the poster never gets a self-alert
     pnotes = client.get("/api/market/notifications", headers=_h(poster)).json()
     assert all(n["request_id"] not in (rid, rid2) for n in pnotes)
+
+
+# ---------------- Fulfillment queue + integrity engine ----------------
+def _pro(email, name):
+    t = _tok(email, name=name)
+    client.post("/api/market/membership/subscribe", headers=_h(t), json={"tier": "pro"})
+    return t
+
+
+def test_fulfillment_queue_flag_and_confirm():
+    atok = _admin_tok()
+    client.put("/api/market/admin/config", headers=_h(atok),
+               json={"integrity_enabled": True, "integrity_min_step_seconds": 2.0,
+                     "integrity_max_words_per_sec": 6.0})
+    poster = _pro("qposter@example.com", "QP")
+    reciter = _pro("qreciter@example.com", "QR")
+    body = {"title": "Tehillim", "names": [{"name": "Yael"}], "scope_kind": "chapters",
+            "scope_detail": {"chapters": [20, 121], "unit_words": {"20": 70, "121": 50}},
+            "reciter_mode": "single", "expected_reciters": 1, "assignment_mode": "free",
+            "payout_split": "pool", "gross_cents": 500}
+    rid = client.post("/api/market/requests", headers=_h(poster), json=body).json()["id"]
+    acc = client.post(f"/api/market/requests/{rid}/accept", headers=_h(reciter), json={}).json()
+    assert acc["steps"] == 2
+    aid = acc["id"]
+
+    # queue is built; start serves the first tefillah in order
+    st = client.post(f"/api/market/assignments/{aid}/start", headers=_h(reciter)).json()
+    sid0 = st["current"]["id"]
+    assert st["current"]["label"] == "Tehillim 20"
+
+    # marking it done instantly is impossibly fast -> gentle flag (no advance)
+    d = client.post(f"/api/market/steps/{sid0}/done", headers=_h(reciter)).json()
+    assert d["flagged"] is True and "quickly" in d["message"].lower()
+
+    # a too-short confirmation is rejected; a real one clears the flag and advances
+    assert client.post(f"/api/market/steps/{sid0}/confirm", headers=_h(reciter), json={"text": "ok"}).status_code == 400
+    c = client.post(f"/api/market/steps/{sid0}/confirm", headers=_h(reciter),
+                    json={"text": "Said Tehillim 20 with kavana for Yael's refuah"}).json()
+    assert c["completed"] is False and c["next"]["label"] == "Tehillim 121"
+    sid1 = c["next"]["id"]
+
+    # finishing the last step (also flagged then confirmed) completes the assignment
+    assert client.post(f"/api/market/steps/{sid1}/done", headers=_h(reciter)).json()["flagged"] is True
+    fin = client.post(f"/api/market/steps/{sid1}/confirm", headers=_h(reciter),
+                      json={"text": "Said Tehillim 121 b'kavana"}).json()
+    assert fin["completed"] is True
+    assert client.get(f"/api/market/assignments/{aid}/queue", headers=_h(reciter)).json()["status"] == "completed"
+
+
+def test_fulfillment_trust_passes_without_flags():
+    atok = _admin_tok()
+    client.put("/api/market/admin/config", headers=_h(atok), json={"integrity_enabled": False})
+    poster = _pro("qposter2@example.com", "QP2")
+    reciter = _pro("qreciter2@example.com", "QR2")
+    body = {"title": "Tehillim", "names": [{"name": "Dov"}], "scope_kind": "chapters",
+            "scope_detail": {"chapters": [1, 2]}, "reciter_mode": "single", "expected_reciters": 1,
+            "assignment_mode": "free", "payout_split": "pool", "gross_cents": 500}
+    rid = client.post("/api/market/requests", headers=_h(poster), json=body).json()["id"]
+    aid = client.post(f"/api/market/requests/{rid}/accept", headers=_h(reciter), json={}).json()["id"]
+    sid = client.post(f"/api/market/assignments/{aid}/start", headers=_h(reciter)).json()["current"]["id"]
+    # trust mode: instant done is accepted, queue advances and completes
+    d = client.post(f"/api/market/steps/{sid}/done", headers=_h(reciter)).json()
+    assert d["flagged"] is False and d["next"]["label"] == "Tehillim 2"
+    sid2 = d["next"]["id"]
+    assert client.post(f"/api/market/steps/{sid2}/done", headers=_h(reciter)).json()["completed"] is True
+    # restore default for other tests
+    client.put("/api/market/admin/config", headers=_h(atok), json={"integrity_enabled": True})
+
+
+def test_integrity_scope_is_only_the_step_timing():
+    # the integrity check only ever looks at step timing — never content/audio.
+    from app.marketplace.fulfillment import integrity_ok, min_seconds_for
+    from app.marketplace.models import JobStep, PayoutConfig
+    cfg = PayoutConfig(id=1, integrity_enabled=True, integrity_min_step_seconds=2.0,
+                       integrity_max_words_per_sec=6.0)
+    step = JobStep(est_words=60)                      # 60 words / 6 wps = 10s minimum
+    assert round(min_seconds_for(step, cfg)) == 10
+    assert integrity_ok(step, 1200, cfg)[0] is False  # 1.2s -> impossible
+    assert integrity_ok(step, 12000, cfg)[0] is True   # 12s -> fine
+    cfg.integrity_enabled = False
+    assert integrity_ok(step, 50, cfg)[0] is True      # disabled -> always trust

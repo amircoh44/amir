@@ -58,6 +58,10 @@ class PayoutConfig(Base):
     suggested_presets_cents: Mapped[list] = mapped_column(JSON, default=lambda: [180, 360, 1000, 1800])
     tzedaka_targets: Mapped[list] = mapped_column(JSON, default=list)           # [{key,label}]
     currency: Mapped[str] = mapped_column(String(8), default="usd")
+    # integrity engine — a quiet timing sanity check on the paid tefillah only
+    integrity_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    integrity_max_words_per_sec: Mapped[float] = mapped_column(default=6.0)      # faster than this is impossible
+    integrity_min_step_seconds: Mapped[float] = mapped_column(default=2.0)       # floor per step regardless of length
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
 
@@ -227,3 +231,26 @@ class Notification(Base):
     body: Mapped[str] = mapped_column(Text, default="")
     read: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class JobStep(Base):
+    """One queued tefillah within an assignment — read it, mark done, the next
+    appears. Trust-based: no proof required. The server stamps `served_at` and
+    measures `read_ms` so the integrity engine can sanity-check only the timing
+    of the paid tefillah. `est_words` (when known, from the poster's client) lets
+    the check be precise; otherwise only the per-step floor applies."""
+    __tablename__ = "market_job_steps"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    assignment_id: Mapped[int] = mapped_column(ForeignKey("market_assignments.id", ondelete="CASCADE"), index=True)
+    seq: Mapped[int] = mapped_column(Integer, default=0)              # order in the queue
+    unit_kind: Mapped[str] = mapped_column(String(16), default="chapter")  # chapter|verse|letter|whole
+    unit_ref: Mapped[str] = mapped_column(String(48), default="")     # e.g. "121" (Tehillim 121)
+    label: Mapped[str] = mapped_column(String(160), default="")
+    est_words: Mapped[int | None] = mapped_column(Integer, nullable=True)  # word count when known
+    status: Mapped[str] = mapped_column(String(16), default="pending")     # pending|active|done|flagged
+    served_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    done_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    read_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    flag_reason: Mapped[str] = mapped_column(String(200), default="")
+    confirmation: Mapped[str] = mapped_column(Text, default="")        # the brief reply that clears a flag

@@ -74,3 +74,22 @@ Implement `StripeConnectProvider(PaymentProvider)` and swap `_provider`:
 - Delivery is signed (HMAC) server-to-server via `PartnerClient`; phase 1 uses
   `NullPartnerClient` (records, no network). A real Academy613Client swaps in.
 - Nothing syncs without an active grant; revocation stops it immediately.
+
+## Fulfillment queue + integrity engine (`fulfillment.py`)
+Trust-based job completion. On accept, the poster's chosen tefillos are queued in
+order (`generate_steps`); the reciter reads one, marks "I said it", the next
+appears — until done. No proof, no recording.
+
+- `GET /assignments/{id}/queue`, `POST /assignments/{id}/start`,
+  `POST /steps/{id}/done`, `POST /steps/{id}/confirm`.
+- **Integrity engine** = a quiet *timing* check on the paid step only. The server
+  stamps `served_at` and measures `read_ms`; min plausible time =
+  `est_words / max_words_per_sec`, never below a per-step floor. If a step is
+  marked done impossibly fast it is **flagged** (not rejected): the queue pauses
+  and asks for a one-line note, which clears it and advances.
+- The reciter never supplies timing or length; `est_words` comes from the
+  poster's client (`scope_detail.unit_words`). With no length, only the floor
+  applies — so legitimate fast reading is never falsely flagged.
+- Scope is strictly the paid tefillah's steps; content, audio, and everything
+  outside the job are never inspected. All thresholds are admin-configurable
+  (`integrity_enabled`, `integrity_max_words_per_sec`, `integrity_min_step_seconds`).

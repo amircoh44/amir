@@ -21,6 +21,7 @@ from .auth import (create_market_token, current_user, get_user_by_email, is_pro,
                    require_pro)
 from .models import (Assignment, Broadcast, MarketUser, Notification,
                      PayoutConfig, Pledge, PrayerRequest)
+from .fulfillment import generate_steps
 from .payments import get_payment_provider
 from .payout import PLATFORM_CUT_HARD_MAX, Rates, compute_payout
 from .schemas import (AcceptIn, BroadcastIn, CompleteIn, ConfigIn, LoginIn,
@@ -315,8 +316,9 @@ def accept_request(rid: int, body: AcceptIn, user: MarketUser = Depends(require_
     db.add(a)
     db.commit()
     db.refresh(a)
+    n_steps = generate_steps(db, r, a)   # queue the exact tefillos in order
     return {"id": a.id, "request_id": rid, "portion": a.portion, "status": a.status,
-            "accepted_at": a.accepted_at}
+            "accepted_at": a.accepted_at, "steps": n_steps}
 
 
 @router.post("/assignments/{aid}/complete")
@@ -408,7 +410,8 @@ def admin_get_config(admin: Admin = Depends(require("market.admin")), db: Sessio
         "pro_price_cents", "pro_plus_price_cents", "broadcast_price_cents",
         "processor_fee_pct", "processor_fee_flat_cents", "appstore_fee_pct",
         "platform_cut_pct", "platform_cut_max_pct", "payout_mode", "min_pledge_cents",
-        "suggested_presets_cents", "tzedaka_targets", "currency")}
+        "suggested_presets_cents", "tzedaka_targets", "currency",
+        "integrity_enabled", "integrity_max_words_per_sec", "integrity_min_step_seconds")}
 
 
 @router.put("/admin/config")

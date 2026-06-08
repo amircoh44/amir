@@ -131,6 +131,9 @@ class ConfigIn(BaseModel):
     suggested_presets_cents: list[int] | None = None
     tzedaka_targets: list[dict] | None = None
     currency: str | None = None
+    integrity_enabled: bool | None = None
+    integrity_max_words_per_sec: float | None = None
+    integrity_min_step_seconds: float | None = None
 
 
 # ---- B2: community ----
@@ -168,3 +171,8 @@ class ActivityIn(BaseModel):
 class PrefsIn(BaseModel):
     job_scopes: list[str] | None = None   # which scope_kinds you want alerts for ([] / None = all)
     notify: bool | None = None            # opt in to in-app prayer-alerts
+
+
+# ---- fulfillment queue / integrity ----
+class ConfirmIn(BaseModel):
+    text: str = ""    # a brief note about the tefillah, to clear a fast-advance flag
