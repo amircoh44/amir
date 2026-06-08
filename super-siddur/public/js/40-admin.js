@@ -25,9 +25,12 @@ function openAdmin(){admTab="profile";admPane="menu";paintAdmin();$("#admSheet")
 function paintAdmin(){
   const body=$("#admBody");body.innerHTML="";
   const shell=el("div","adm-shell"+(admPane==="content"?" show-content":""));
-  /* --- menu / outline (no horizontal scrolling; sidebar on wide screens) --- */
+  /* --- menu / outline (admin groups hidden unless signed in) --- */
+  const _admin=(typeof _me!=="undefined"&&!!_me);
+  const _userTabs=["profile","display","people","reminders","nusachloc"];
+  if(!_admin&&_userTabs.indexOf(admTab)<0)admTab="profile";
   const menu=el("div","adm-menu");
-  ADM_GROUPS.forEach(g=>{
+  ADM_GROUPS.filter(g=>g[0]==="Settings"||_admin).forEach(g=>{
     const gl=el("div","adm-group-label");gl.textContent=g[0];menu.appendChild(gl);
     g[1].forEach(it=>{
       const[k,lbl]=it;

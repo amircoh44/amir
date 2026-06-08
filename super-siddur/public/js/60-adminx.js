@@ -370,3 +370,51 @@ function admAdmins(w) {
 
   adminAuthField(w);
 }
+
+/* ===== hidden admin access: secret #admin URL, or 7 taps on the title =====
+   Standard users see no admin options; the only way in is this hidden login. */
+function openAdminLogin() {
+  if (typeof _me !== "undefined" && _me) { if (typeof openAdmin === "function") openAdmin(); return; }
+  const old = document.getElementById("adminLoginModal"); if (old) old.remove();
+  const ov = el("div", ""); ov.id = "adminLoginModal";
+  ov.style.cssText = "position:fixed;inset:0;z-index:300;background:rgba(8,6,4,.82);backdrop-filter:blur(8px);display:grid;place-items:center;padding:1.2rem";
+  const card = el("div", ""); card.style.cssText = "width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line2);border-radius:.85rem;padding:1.5rem;box-shadow:0 20px 60px -12px rgba(0,0,0,.7)";
+  card.innerHTML = `<div style="font-family:var(--display);font-size:1.4rem;font-weight:600;color:var(--ink)">Admin sign in</div><div class="note" style="margin:.3rem 0 1.1rem">Restricted — authorized editors only.</div>`;
+  const ip = "width:100%;padding:.75rem .8rem;background:var(--surface2);border:1px solid var(--line);border-radius:.55rem;color:var(--ink);font:inherit;margin-bottom:.55rem;outline:none";
+  const em = el("input"); em.type = "email"; em.placeholder = "email"; em.autocomplete = "username"; em.style.cssText = ip;
+  const pw = el("input"); pw.type = "password"; pw.placeholder = "password"; pw.autocomplete = "current-password"; pw.style.cssText = ip;
+  const btn = el("button", "btn-primary", "Sign in"); btn.style.cssText = "width:100%;margin-top:.3rem";
+  const cx = el("button", "btn-ghost", "Cancel"); cx.style.cssText = "width:100%;margin-top:.5rem";
+  cx.onclick = () => ov.remove();
+  function submit() {
+    const o = btn.textContent; btn.textContent = "Signing in…"; btn.disabled = true;
+    fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: em.value.trim(), password: pw.value }) })
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then(({ ok, j }) => {
+        btn.disabled = false; btn.textContent = o;
+        if (ok && j.access_token) {
+          state.adminToken = j.access_token; saveState();
+          fetchMe().then(() => { ov.remove(); toast("Welcome, admin"); if (typeof render === "function") render(); if (typeof openAdmin === "function") openAdmin(); });
+        } else { toast("Sign in failed: " + ((j && j.detail) || "check credentials")); }
+      }).catch(() => { btn.disabled = false; btn.textContent = o; toast("Sign in failed (offline?)"); });
+  }
+  btn.onclick = submit; pw.onkeydown = (e) => { if (e.key === "Enter") submit(); };
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  card.appendChild(em); card.appendChild(pw); card.appendChild(btn); card.appendChild(cx); ov.appendChild(card); document.body.appendChild(ov);
+  if (location.hash === "#admin") { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} }
+  setTimeout(() => em.focus(), 60);
+}
+window.openAdminLogin = openAdminLogin;
+function _checkAdminHash() { if (location.hash === "#admin") openAdminLogin(); }
+window.addEventListener("hashchange", _checkAdminHash);
+(function wireHiddenAdmin() {
+  const go = () => {
+    _checkAdminHash();
+    const brand = document.querySelector(".brand");
+    if (brand && !brand._adminWired) {
+      brand._adminWired = true; let taps = 0, t0 = 0;
+      brand.addEventListener("click", () => { const now = Date.now(); if (now - t0 > 2500) taps = 0; t0 = now; taps++; if (taps >= 7) { taps = 0; openAdminLogin(); } });
+    }
+  };
+  if (document.readyState !== "loading") setTimeout(go, 300); else document.addEventListener("DOMContentLoaded", () => setTimeout(go, 300));
+})();

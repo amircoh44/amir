@@ -242,7 +242,7 @@ function renderService(stage,arg){
   bar.appendChild(rm);
   const exp=el("button","mini-select");exp.innerHTML=`<svg class="icon ic" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Expand all</span>`;
   if(mode==="scroll")bar.appendChild(exp);
-  const edt=el("button","mini-select"+(state.editMode?" on-edit":""));edt.innerHTML=`<svg class="icon ic" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg><span>${state.editMode?"Done editing":"Edit"}</span>`;if(state.editMode){edt.style.cssText="border-color:var(--accent);color:var(--accent)";}edt.onclick=()=>{state.editMode=!state.editMode;saveState();render();};bar.appendChild(edt);
+  const edt=el("button","mini-select"+(state.editMode?" on-edit":""));edt.innerHTML=`<svg class="icon ic" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg><span>${state.editMode?"Done editing":"Edit"}</span>`;if(state.editMode){edt.style.cssText="border-color:var(--accent);color:var(--accent)";}edt.onclick=()=>{state.editMode=!state.editMode;saveState();render();};if(typeof _me!=="undefined"&&_me)bar.appendChild(edt);
   /* Quick "Skip Tachanun" chip — only for daily services where Tachanun would otherwise be said today */
   if(["shacharit","mincha"].includes(svcId)){
     const plan=(typeof dayPlan==="function")?dayPlan(new Date(),state.israelMode):null;
