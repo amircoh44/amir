@@ -76,8 +76,9 @@ try:
     from web.app import app as _flask_app  # noqa: E402
 
     app.mount("/web", WSGIMiddleware(_flask_app))
-except Exception:  # noqa: BLE001  (front-end optional; never break the API)
-    pass
+    print("[siddur] Flask front-end mounted at /web", flush=True)
+except Exception as _e:  # noqa: BLE001  (front-end optional; never break the API)
+    print(f"[siddur] Flask front-end NOT mounted: {_e!r}", flush=True)
 
 
 # Static frontend last so /api/* and /web win. html=True serves index.html at "/".
