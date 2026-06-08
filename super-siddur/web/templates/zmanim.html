@@ -7,7 +7,7 @@
 
   {% if hal %}
   <div class="hclock-wrap" id="hclock"
-       data-netz="{{ hal.netz }}" data-shkia="{{ hal.shkia }}" data-now="{{ now_min }}">
+       data-start="{{ hal.day_start }}" data-end="{{ hal.day_end }}" data-now="{{ now_min }}">
     <svg class="hclock" viewBox="0 0 200 200" aria-label="Halachic clock">
       <circle cx="100" cy="100" r="94" class="hc-rim"/>
       <circle cx="100" cy="100" r="86" class="hc-face"/>
@@ -18,26 +18,31 @@
               transform="rotate({{ i * 30 }} 100 100) rotate({{ -i * 30 }} 100 34)">{{ i if i else 12 }}</text>
       {% endfor %}
       <text class="hc-cap-top" x="100" y="64" text-anchor="middle" dir="rtl">שָׁעָה זְמַנִּית</text>
+      <text id="clockTime" class="hc-cap-time" x="100" y="124" text-anchor="middle">{{ hal.halachic_time }}</text>
       <text class="hc-cap-bot" x="100" y="148" text-anchor="middle">SHA'AH ZMANIT</text>
       <line id="hhand" class="hc-hour" x1="100" y1="100" x2="100" y2="56"
-            transform="rotate({{ '%.2f'|format(hal.hours * 30) }} 100 100)"/>
+            transform="rotate({{ '%.2f'|format(hal.shaot * 30) }} 100 100)"/>
       <line id="mhand" class="hc-min" x1="100" y1="100" x2="100" y2="34"
-            transform="rotate({{ '%.2f'|format(hal.minutes_into * 6) }} 100 100)"/>
+            transform="rotate({{ '%.2f'|format(hal.dakah_into * 6) }} 100 100)"/>
       <circle cx="100" cy="100" r="5" class="hc-hub"/>
     </svg>
 
     <div class="hc-readout">
+      <div class="hc-times">
+        <div><span>Actual time</span><b id="actualTime">{{ now_hm }}</b></div>
+        <div><span>Halacha time (sha'ah : da'kah)</span><b id="halTime">{{ hal.halachic_time }}</b></div>
+      </div>
       <div class="hc-big"><b id="shaahCur">{{ hal.shaah_cur_min|round|int }} min</b>
         <span>current <b>sha'ah zmanit</b> · <span id="periodLbl">{{ hal.period }}</span></span></div>
       <div class="hc-big"><b id="dakahCur">{{ '%.2f'|format(hal.dakah_cur_min) }} min</b>
         <span>one <b>da'kah zmanit</b> (sha'ah ÷ 60)</span></div>
       <div class="hc-grid">
-        <div><span>Now</span><b>{{ now_hm }}</b></div>
         <div><span>Halachic hour</span><b><span id="hourNum">{{ hal.hour_num }}</span> of 12</b></div>
+        <div><span>Basis</span><b>{{ 'Alot → Tzeit' if hal.basis == 'alot-tzeit' else 'Sunrise → Sunset' }}</b></div>
         <div><span>Day sha'ah / da'kah</span><b>{{ hal.shaah_day_min|round|int }} / {{ '%.2f'|format(hal.dakah_day_min) }} min</b></div>
         <div><span>Night sha'ah / da'kah</span><b>{{ hal.shaah_night_min|round|int }} / {{ '%.2f'|format(hal.dakah_night_min) }} min</b></div>
       </div>
-      <div class="hc-note">GRA · sunrise→sunset · {{ name }}</div>
+      <div class="hc-note">Alot HaShachar → Tzeit HaKochavim ÷ 12 · {{ name }}</div>
     </div>
   </div>
   {% endif %}
@@ -63,16 +68,20 @@
   <script>
   (function(){
     var el=document.getElementById('hclock'); if(!el) return;
-    var netz=+el.dataset.netz, shkia=+el.dataset.shkia, now0=+el.dataset.now;
+    var start=+el.dataset.start, end=+el.dataset.end, now0=+el.dataset.now;  // alot, tzeit
     var t0=(window.performance&&performance.now)?performance.now():Date.now();
+    function pad(n){return (n<10?'0':'')+n;}
+    function fmt12(m){m=((Math.round(m)%1440)+1440)%1440;var h=Math.floor(m/60),mm=m%60;
+      var ap=h<12?'AM':'PM',h12=h%12||12; return h12+':'+pad(mm)+' '+ap;}
     function state(now){
-      var dayLen=shkia-netz, nightLen=1440-dayLen, sd=dayLen/12, sn=nightLen/12;
+      var dayLen=end-start, nightLen=1440-dayLen, sd=dayLen/12, sn=nightLen/12;
       var period, shaah, elapsed;
-      if(now>=netz && now<shkia){period='day'; shaah=sd; elapsed=now-netz;}
-      else{period='night'; shaah=sn; elapsed=(now>=shkia)?now-shkia:now+1440-shkia;}
-      var hours=Math.max(0,Math.min(12, shaah?elapsed/shaah:0));
-      return {period:period, shaah:shaah, hours:hours,
-              hourNum:Math.min(12,Math.floor(hours)+1), minInto:(hours-Math.floor(hours))*60};
+      if(now>=start && now<end){period='day'; shaah=sd; elapsed=now-start;}
+      else{period='night'; shaah=sn; elapsed=(now>=end)?now-end:now+1440-end;}
+      var shaot=Math.max(0,Math.min(12, shaah?elapsed/shaah:0));
+      var hf=Math.floor(shaot), dk=(shaot-hf)*60;
+      return {period:period, shaah:shaah, shaot:shaot, hourFloor:hf, dakah:dk,
+              hourNum:Math.min(12,hf+1)};
     }
     function setA(id,val){var n=document.getElementById(id); if(n) n.setAttribute('transform',val);}
     function setT(id,val){var n=document.getElementById(id); if(n) n.textContent=val;}
@@ -80,8 +89,12 @@
       var base=(window.performance&&performance.now)?performance.now():Date.now();
       var now=(now0 + (base-t0)/60000) % 1440;                 // live minutes-of-day
       var s=state(now);
-      setA('hhand','rotate('+(s.hours*30)+' 100 100)');
-      setA('mhand','rotate('+(s.minInto*6)+' 100 100)');       // minute hand moves per da'kah zmanit
+      setA('hhand','rotate('+(s.shaot*30)+' 100 100)');
+      setA('mhand','rotate('+(s.dakah*6)+' 100 100)');         // minute hand moves per da'kah zmanit
+      var halStr=s.hourFloor+':'+pad(Math.floor(s.dakah));
+      setT('clockTime', halStr);
+      setT('halTime', halStr);
+      setT('actualTime', fmt12(now));
       setT('shaahCur', Math.round(s.shaah)+' min');
       setT('dakahCur', (s.shaah/60).toFixed(2)+' min');
       setT('hourNum', s.hourNum);

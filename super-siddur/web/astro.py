@@ -122,36 +122,46 @@ def now_in_tz_min(tz: str) -> float:
 
 
 def halachic_state(z: dict, now_min: float) -> dict | None:
-    """Sha'ah zmanit (halachic hour) and da'kah zmanit (halachic minute = hour/60),
-    plus the current halachic position used to drive the clock hands.
+    """Sha'ah zmanit (halachic hour) and da'kah zmanit (halachic minute = sha'ah/60),
+    plus the current *halachic time* used to drive the clock hands.
 
-    Day is divided into 12 sha'ot from sunrise→sunset (GRA); night likewise from
-    sunset→sunrise. The minute hand advances one da'kah zmanit at a time, so it
-    completes a full revolution each sha'ah zmanit.
+    The halachic day runs **alot hashachar → tzeit hakochavim**, divided by 12 →
+    that is one sha'ah zmanit; one da'kah zmanit is a sha'ah ÷ 60. Night runs
+    tzeit → next alot, likewise ÷ 12. (If dawn/nightfall can't be computed at
+    extreme latitudes, falls back to sunrise→sunset.) The minute hand advances
+    one da'kah zmanit at a time, completing a revolution each sha'ah zmanit.
     """
+    alot, tzeit = z.get("alot"), z.get("tzeit")
     netz, shkia = z.get("netz"), z.get("shkia")
-    if netz is None or shkia is None or shkia <= netz:
+    if alot is not None and tzeit is not None and tzeit > alot:
+        day_start, day_end, basis = alot, tzeit, "alot-tzeit"
+    elif netz is not None and shkia is not None and shkia > netz:
+        day_start, day_end, basis = netz, shkia, "sunrise-sunset"
+    else:
         return None
-    day_len = shkia - netz
+
+    day_len = day_end - day_start
     night_len = 1440 - day_len
     shaah_day = day_len / 12.0
     shaah_night = night_len / 12.0
 
-    if netz <= now_min < shkia:
-        period, shaah, elapsed = "day", shaah_day, now_min - netz
+    if day_start <= now_min < day_end:
+        period, shaah, elapsed = "day", shaah_day, now_min - day_start
     else:
         period, shaah = "night", shaah_night
-        elapsed = (now_min - shkia) if now_min >= shkia else (now_min + 1440 - shkia)
+        elapsed = (now_min - day_end) if now_min >= day_end else (now_min + 1440 - day_end)
 
-    hours = max(0.0, min(12.0, elapsed / shaah)) if shaah else 0.0
-    hour_num = min(12, int(hours) + 1)
-    minutes_into = (hours - int(hours)) * 60.0  # da'kot into the current sha'ah
+    shaot = max(0.0, min(12.0, elapsed / shaah)) if shaah else 0.0   # halachic hours elapsed
+    hour_floor = int(shaot)
+    dakah_into = (shaot - hour_floor) * 60.0                         # da'kot into the current sha'ah
     return {
+        "basis": basis, "day_start": day_start, "day_end": day_end,
         "shaah_day_min": shaah_day, "shaah_night_min": shaah_night,
         "dakah_day_min": shaah_day / 60.0, "dakah_night_min": shaah_night / 60.0,
         "period": period, "shaah_cur_min": shaah, "dakah_cur_min": shaah / 60.0,
-        "hours": hours, "hour_num": hour_num, "minutes_into": minutes_into,
-        "netz": netz, "shkia": shkia,
+        "shaot": shaot, "hour_floor": hour_floor, "hour_num": min(12, hour_floor + 1),
+        "dakah_into": dakah_into,
+        "halachic_time": f"{hour_floor}:{int(dakah_into):02d}",      # sha'ah : da'kah
     }
 
 

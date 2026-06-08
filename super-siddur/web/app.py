@@ -125,7 +125,7 @@ def zmanim():
     hal = astro.halachic_state(z, now_min) if z else None
     return render_template("zmanim.html", rows=rows, name=name, lat=lat, lng=lng, tz=tz,
                            date=date.isoformat(), cities=CITIES, hal=hal,
-                           now_hm=astro.hm_fmt(now_min, "24"), now_min=round(now_min, 3))
+                           now_hm=astro.hm_fmt(now_min, "12"), now_min=round(now_min, 3))
 
 
 @app.route("/kotel")
