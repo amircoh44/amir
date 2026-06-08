@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ nusach_label(nusach) }} · Siddur{% endblock %}
+{% block crumbs %}<nav class="crumbs"><a href="{{ url_for('home') }}">Home</a> / <span>{{ nusach_label(nusach) }}</span></nav>{% endblock %}
+{% block content %}
+  <h1 class="page-title">{{ nusach_label(nusach) }}</h1>
+  <div class="grid">
+    {% for slug, name in services %}
+      <a class="card" href="{{ url_for('service', nusach=nusach, service=slug) }}">
+        <span class="card-t">{{ name }}</span>
+        <span class="card-a">&rarr;</span>
+      </a>
+    {% endfor %}
+  </div>
+{% endblock %}

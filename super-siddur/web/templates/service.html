@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ svc.name }} · {{ nusach_label(nusach) }}{% endblock %}
+{% block crumbs %}<nav class="crumbs"><a href="{{ url_for('home') }}">Home</a> / <a href="{{ url_for('nusach', nusach=nusach) }}">{{ nusach_label(nusach) }}</a> / <span>{{ svc.name }}</span></nav>{% endblock %}
+{% block content %}
+  <h1 class="page-title">{{ svc.name }}</h1>
+  <p class="sub">{{ nusach_label(nusach) }}</p>
+  <ol class="prayer-list">
+    {% for s in svc.sections %}
+      <li><a href="{{ url_for('prayer', nusach=nusach, service=svc.slug, prayer=s.slug) }}">
+        <span class="pl-he" dir="rtl">{{ s.header }}</span>
+        <span class="pl-slug">/{{ s.slug }}</span>
+      </a></li>
+    {% endfor %}
+  </ol>
+{% endblock %}

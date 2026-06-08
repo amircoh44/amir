@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1 class="page-title">Choose a nusach</h1>
+  <div class="grid">
+    {% for slug, label in nusachot %}
+      <a class="card" href="{{ url_for('nusach', nusach=slug) }}">
+        <span class="card-t">{{ label }}</span>
+        <span class="card-a">&rarr;</span>
+      </a>
+    {% endfor %}
+  </div>
+{% endblock %}

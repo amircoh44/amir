@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ sec.header }} · {{ svc.name }}{% endblock %}
+{% block crumbs %}<nav class="crumbs"><a href="{{ url_for('home') }}">Home</a> / <a href="{{ url_for('nusach', nusach=nusach) }}">{{ nusach_label(nusach) }}</a> / <a href="{{ url_for('service', nusach=nusach, service=svc.slug) }}">{{ svc.name }}</a> / <span>{{ sec.slug }}</span></nav>{% endblock %}
+{% block content %}
+  <article class="prayer-page">
+    <h1 class="prayer-head" dir="rtl">{{ sec.header }}</h1>
+    {% for b in sec.blocks %}
+      {% if b.k == 'rubric' %}
+        <div class="rubric" dir="rtl">{{ b.t }}</div>
+      {% else %}
+        <div class="block">
+          {% if b.t %}<div class="he" dir="rtl">{{ b.t }}</div>{% endif %}
+          {% if b.tr %}<div class="tr">{{ b.tr }}</div>{% endif %}
+          {% if b.en %}<div class="en">{{ b.en }}</div>{% endif %}
+        </div>
+      {% endif %}
+    {% endfor %}
+    <nav class="pager">
+      {% if prev %}<a class="pg prev" href="{{ url_for('prayer', nusach=nusach, service=svc.slug, prayer=prev.slug) }}">&larr; {{ prev.header }}</a>{% else %}<span></span>{% endif %}
+      {% if next %}<a class="pg next" href="{{ url_for('prayer', nusach=nusach, service=svc.slug, prayer=next.slug) }}">{{ next.header }} &rarr;</a>{% endif %}
+    </nav>
+  </article>
+{% endblock %}
