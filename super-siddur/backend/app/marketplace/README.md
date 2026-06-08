@@ -54,7 +54,16 @@ Implement `StripeConnectProvider(PaymentProvider)` and swap `_provider`:
 `requests/{id}/completions`, `broadcasts`, `broadcasts/active`,
 `admin/config` (GET/PUT), `me/prefs`, `requests/matches`, `notifications`, `notifications/{id}/read`.
 
- Pro gates **both posting and accepting** jobs. Reciters set alert prefs (`me/prefs`), get preference-matched in-app alerts (`notifications`, `notifications/{id}/read`) when a matching request is posted, and browse `requests/matches`.
+**Posting is open to everyone — no Pro, no login** (enter name → choose prayer → pay).
+A logged-in poster is attributed to their account; an anonymous poster gets a
+`manage_token` to revisit the job via `GET /requests/by-token/{token}`. Pro is
+required only to **accept** jobs (and for premium broadcast). Reciters set alert
+prefs (`me/prefs`), get preference-matched in-app alerts (`notifications`,
+`notifications/{id}/read`), and browse `requests/matches`.
+
+**Accounts are optional but powerful.** `GET /me/dashboard` is the logged-in
+personal zone: everything posted, taken on, and shared; who is davening *for* you
+and who you're davening *for*; and full pledge + payout history.
 
 ## B2 — Community / share-to-inspire (`community.py`)
 - Public profiles are **opt-in, private by default** (`CommunityProfile.public=False`).

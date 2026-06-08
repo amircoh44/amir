@@ -64,16 +64,7 @@ def test_full_jobs_board_flow():
     poster = _tok("poster@example.com", name="Poster")
     reciter = _tok("reciter@example.com", name="Reciter")
 
-    # a non-Pro user cannot post a request
-    r = client.post("/api/market/requests", headers=_h(poster),
-                    json={"gross_cents": 1000, "names": [{"name": "Chaim"}]})
-    assert r.status_code == 402  # Payment Required -> Pro upsell
-
-    # become Pro (phase-1 simulated activation)
-    s = client.post("/api/market/membership/subscribe", headers=_h(poster), json={"tier": "pro"})
-    assert s.status_code == 200 and s.json()["membership"] == "pro"
-
-    # post a request: pool split, free choice, 2 reciters, specific chapters
+    # posting is OPEN to everyone — no Pro required (a free account can post)
     body = {"title": "Refuah for Chaim", "names": [{"name": "Chaim", "mother": "Sarah"}],
             "scope_kind": "chapters", "scope_detail": {"chapters": [20, 121, 130]},
             "reciter_mode": "group", "expected_reciters": 2, "assignment_mode": "free",
@@ -438,3 +429,52 @@ def test_personal_message_delivered_with_sender():
     assert audio.status_code == 200 and audio.content == b"GETWELL"
     # an unrelated user cannot hear it
     assert client.get(f"/api/market/requests/{rid}/message/audio", headers=_h(stranger)).status_code == 403
+
+
+# ---------------- Access corrections: open posting + personal zone ----------------
+def test_posting_is_open_no_login_no_pro():
+    # NO Authorization header, NO Pro: enter name -> choose prayer -> pay
+    body = {"title": "Refuah", "names": [{"name": "Nechama", "mother": "Rivka"}],
+            "scope_kind": "chapters", "scope_detail": {"chapters": [20, 121]},
+            "reciter_mode": "group", "expected_reciters": 1, "assignment_mode": "free",
+            "payout_split": "pool", "gross_cents": 500,
+            "poster_contact": {"email": "guest@example.com", "name": "Guest"}}
+    r = client.post("/api/market/requests", json=body)        # no headers at all
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert j["pledge_breakdown"]["distributable_cents"] > 0
+    token = j["manage_token"]                                  # anonymous revisit token
+    # the anonymous poster can revisit/track via the token, no account
+    by = client.get(f"/api/market/requests/by-token/{token}").json()
+    assert by["id"] == j["id"] and "fulfillment" in by
+    # a free (non-Pro) logged-in user can also post
+    free = _tok("freeposter@example.com", name="Free")
+    r2 = client.post("/api/market/requests", headers=_h(free), json=body)
+    assert r2.status_code == 200 and "manage_token" not in r2.json()  # attributed to the account
+
+
+def test_personal_dashboard_aggregates_everything():
+    me = _pro("zoneuser@example.com", "Zoe")
+    helper = _pro("zonehelper@example.com", "Helper")
+    # I post a job (logged in -> attributed to me)
+    body = {"title": "For Zoe", "names": [{"name": "Zoe"}], "scope_kind": "chapters",
+            "scope_detail": {"chapters": [1]}, "reciter_mode": "single", "expected_reciters": 1,
+            "assignment_mode": "free", "payout_split": "pool", "gross_cents": 1000}
+    rid = client.post("/api/market/requests", headers=_h(me), json=body).json()["id"]
+    # helper takes it (someone davening FOR me)
+    client.post(f"/api/market/requests/{rid}/accept", headers=_h(helper), json={})
+    # I take on a job for someone else, and I share a commitment
+    body2 = dict(body, title="For Amit", names=[{"name": "Amit"}])
+    rid2 = client.post("/api/market/requests", headers=_h(helper), json=body2).json()["id"]
+    client.post(f"/api/market/requests/{rid2}/accept", headers=_h(me), json={})
+    client.put("/api/market/community/profile", headers=_h(me), json={"section": "women"})
+    client.post("/api/market/community/commitments", headers=_h(me),
+                json={"names": [{"name": "Sara"}], "visibility": "public"})
+
+    d = client.get("/api/market/me/dashboard", headers=_h(me)).json()
+    assert any(p["id"] == rid for p in d["posted"])                       # what I posted
+    assert any(t["request_id"] == rid2 for t in d["taken"])              # jobs I took
+    assert any(s["names"][0]["name"] == "Sara" for s in d["shared"])     # what I shared
+    assert any(x["name"] == "Amit" for x in d["davening_for"])           # who I'm davening for
+    assert any(x["who"] == "Helper" for x in d["praying_for_me"])        # who's davening for me
+    assert len(d["pledges"]) >= 1                                         # payment history

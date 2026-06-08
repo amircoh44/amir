@@ -56,6 +56,7 @@ class RequestIn(BaseModel):
     payout_mode: str = "tzedaka"        # tzedaka | credit | cash
     tzedaka_target: str = ""
     deadline: dt.datetime | None = None
+    poster_contact: dict = Field(default_factory=dict)   # {email,name} for anonymous (no-login) posting
 
 
 class RequestOut(BaseModel):

@@ -77,7 +77,10 @@ class PrayerRequest(Base):
     __tablename__ = "market_requests"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    poster_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"), index=True)
+    poster_id: Mapped[int | None] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"),
+                                                  nullable=True, index=True)   # null = posted anonymously
+    poster_contact: Mapped[dict] = mapped_column(JSON, default=dict)           # {email,name} for anonymous receipts
+    manage_token: Mapped[str] = mapped_column(String(40), default="", index=True)  # revisit link for anonymous posters
     title: Mapped[str] = mapped_column(String(255), default="")
     names: Mapped[list] = mapped_column(JSON, default=list)        # [{name, mother, note}]
     # what is wanted
@@ -137,7 +140,9 @@ class Pledge(Base):
     __tablename__ = "market_pledges"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    payer_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"), index=True)
+    payer_id: Mapped[int | None] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"),
+                                                 nullable=True, index=True)    # null = anonymous payer
+    payer_contact: Mapped[dict] = mapped_column(JSON, default=dict)
     request_id: Mapped[int | None] = mapped_column(ForeignKey("market_requests.id", ondelete="SET NULL"), nullable=True, index=True)
     broadcast_id: Mapped[int | None] = mapped_column(ForeignKey("market_broadcasts.id", ondelete="SET NULL"), nullable=True)
     kind: Mapped[str] = mapped_column(String(16), default="request")    # request | broadcast | membership

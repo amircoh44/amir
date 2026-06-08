@@ -17,10 +17,13 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..models import Admin
 from ..security import hash_password, require, verify_password
+import uuid
+
 from .auth import (create_market_token, current_user, get_user_by_email, is_pro,
-                   require_pro)
-from .models import (Assignment, Broadcast, MarketUser, Notification,
-                     PayoutConfig, Pledge, PrayerRequest)
+                   optional_current_user, require_pro)
+from .models import (Assignment, Broadcast, Commitment, CommitmentJoin,
+                     MarketUser, Notification, PayoutConfig, Payout, Pledge,
+                     PrayerRequest)
 from .fulfillment import generate_steps, mark_assignment_complete
 from .payments import get_payment_provider
 from .payout import PLATFORM_CUT_HARD_MAX, Rates, compute_payout
@@ -139,6 +142,65 @@ def update_prefs(body: PrefsIn, user: MarketUser = Depends(current_user),
     return {"ok": True, "prefs": p}
 
 
+@router.get("/me/dashboard")
+def my_dashboard(user: MarketUser = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    """The logged-in user's full personal zone: everything they've posted, taken
+    on, and shared; who is davening for them and who they're davening for; and
+    their pledge + payout history."""
+    posted = db.scalars(select(PrayerRequest).where(PrayerRequest.poster_id == user.id)
+                        .order_by(PrayerRequest.created_at.desc())).all()
+    taken = db.scalars(select(Assignment).where(Assignment.reciter_id == user.id)
+                       .order_by(Assignment.accepted_at.desc())).all()
+    shared = db.scalars(select(Commitment).where(Commitment.user_id == user.id)
+                        .order_by(Commitment.created_at.desc())).all()
+    pledges = db.scalars(select(Pledge).where(Pledge.payer_id == user.id)
+                         .order_by(Pledge.created_at.desc())).all()
+    payouts = db.scalars(select(Payout).where(Payout.reciter_id == user.id)
+                         .order_by(Payout.created_at.desc())).all()
+
+    def asg_brief(a):
+        r = db.get(PrayerRequest, a.request_id)
+        return {"id": a.id, "request_id": a.request_id, "status": a.status,
+                "names": (r.names if r else []), "scope_kind": (r.scope_kind if r else ""),
+                "portion": a.portion, "completed_at": a.completed_at}
+
+    davening_for = []   # names the user prays for: jobs they took + commitments they made
+    for a in taken:
+        r = db.get(PrayerRequest, a.request_id)
+        for nm in ((r.names if r else []) or []):
+            davening_for.append({"name": nm.get("name"), "via": "job", "ref": a.id})
+    for c in shared:
+        for nm in (c.names or []):
+            davening_for.append({"name": nm.get("name"), "via": "commitment", "ref": c.id})
+
+    praying_for_me = []  # reciters on the user's posted jobs + joiners on their commitments
+    posted_ids = [r.id for r in posted]
+    if posted_ids:
+        for a in db.scalars(select(Assignment).where(Assignment.request_id.in_(posted_ids))).all():
+            ru = db.get(MarketUser, a.reciter_id)
+            praying_for_me.append({"who": (ru.name if ru else ""), "status": a.status,
+                                   "request_id": a.request_id, "via": "job"})
+    shared_ids = [c.id for c in shared]
+    if shared_ids:
+        for j in db.scalars(select(CommitmentJoin).where(CommitmentJoin.commitment_id.in_(shared_ids))).all():
+            praying_for_me.append({"who": j.display_name or "Someone",
+                                   "commitment_id": j.commitment_id, "via": "commitment"})
+
+    return {
+        "posted": [{"id": r.id, "title": r.title, "names": r.names, "scope_kind": r.scope_kind,
+                    "status": r.status, "gross_cents": r.gross_cents, "created_at": r.created_at} for r in posted],
+        "taken": [asg_brief(a) for a in taken],
+        "shared": [{"id": c.id, "names": c.names, "message": c.message, "visibility": c.visibility,
+                    "section": c.section, "share_token": c.share_token} for c in shared],
+        "davening_for": davening_for,
+        "praying_for_me": praying_for_me,
+        "pledges": [{"id": p.id, "kind": p.kind, "amount_cents": p.amount_cents, "status": p.status,
+                     "created_at": p.created_at} for p in pledges],
+        "payouts": [{"id": p.id, "amount_cents": p.amount_cents, "status": p.status,
+                     "hold_until": p.hold_until, "released_at": p.released_at} for p in payouts],
+    }
+
+
 @router.get("/notifications")
 def my_notifications(unread_only: bool = False, user: MarketUser = Depends(current_user),
                      db: Session = Depends(get_db)) -> list:
@@ -203,8 +265,11 @@ def subscribe(tier: str = Body("pro", embed=True), user: MarketUser = Depends(cu
 
 # ---------- requests (jobs board) ----------
 @router.post("/requests")
-def create_request(body: RequestIn, user: MarketUser = Depends(require_pro),
+def create_request(body: RequestIn, user: MarketUser | None = Depends(optional_current_user),
                    db: Session = Depends(get_db)) -> dict:
+    """Posting is open to EVERYONE — no Pro, no login. Enter name → choose
+    prayer → pay. A logged-in poster is attributed to their account; an
+    anonymous poster gets a `manage_token` to revisit the job later."""
     cfg = get_config(db)
     if body.payout_split not in ("per_reciter", "pool"):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "payout_split must be per_reciter or pool")
@@ -220,8 +285,12 @@ def create_request(body: RequestIn, user: MarketUser = Depends(require_pro),
     if gross < cfg.min_pledge_cents:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Minimum pledge is {cfg.min_pledge_cents} cents")
 
+    poster_id = user.id if user else None
+    contact = {} if user else (body.poster_contact or {})
+    token = "" if user else uuid.uuid4().hex   # anonymous posters get a revisit token
     r = PrayerRequest(
-        poster_id=user.id, title=body.title, names=[n.model_dump() for n in body.names],
+        poster_id=poster_id, poster_contact=contact, manage_token=token,
+        title=body.title, names=[n.model_dump() for n in body.names],
         scope_kind=body.scope_kind, scope_detail=body.scope_detail,
         reciter_mode=body.reciter_mode, expected_reciters=expected,
         assignment_mode=body.assignment_mode, payout_split=body.payout_split,
@@ -235,14 +304,17 @@ def create_request(body: RequestIn, user: MarketUser = Depends(require_pro),
     # record the poster's pledge intent with a transparent breakdown
     breakdown = compute_payout(gross, rates_from_config(cfg), via_app_store=r.via_app_store,
                                recipients=expected, payout_mode=r.payout_mode)
-    res = get_payment_provider().create_pledge(gross, cfg.currency, user.email, {"request_id": r.id})
-    db.add(Pledge(payer_id=user.id, request_id=r.id, kind="request", amount_cents=gross,
-                  breakdown=breakdown, provider=get_payment_provider().name,
+    payer_ref = (user.email if user else (contact.get("email") or "guest"))
+    res = get_payment_provider().create_pledge(gross, cfg.currency, payer_ref, {"request_id": r.id})
+    db.add(Pledge(payer_id=poster_id, payer_contact=contact, request_id=r.id, kind="request",
+                  amount_cents=gross, breakdown=breakdown, provider=get_payment_provider().name,
                   provider_ref=res["provider_ref"], status="intent", live=res.get("live", False)))
     db.commit()
     _enqueue_alerts(db, r)   # prayer-alerts to matching, opted-in reciters
     out = _request_out(db, r)
     out["pledge_breakdown"] = breakdown
+    if token:
+        out["manage_token"] = token
     return out
 
 
@@ -265,6 +337,22 @@ def my_matches(user: MarketUser = Depends(current_user), db: Session = Depends(g
                       .order_by(PrayerRequest.created_at.desc()).limit(100)).all()
     p = user.prefs or {}
     return [_request_out(db, r) for r in rows if r.poster_id != user.id and _prefs_match(r, p)]
+
+
+@router.get("/requests/by-token/{token}")
+def request_by_token(token: str, db: Session = Depends(get_db)) -> dict:
+    """Revisit an anonymously-posted job (no account) via its manage token —
+    shows status and who has fulfilled it."""
+    if not token:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    r = db.scalar(select(PrayerRequest).where(PrayerRequest.manage_token == token))
+    if not r:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    out = _request_out(db, r)
+    rows = db.scalars(select(Assignment).where(Assignment.request_id == r.id)).all()
+    out["fulfillment"] = [{"reciter_name": (db.get(MarketUser, a.reciter_id).name if db.get(MarketUser, a.reciter_id) else ""),
+                           "status": a.status, "portion": a.portion} for a in rows]
+    return out
 
 
 @router.get("/requests/{rid}")
