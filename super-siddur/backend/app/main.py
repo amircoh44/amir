@@ -62,7 +62,25 @@ app.include_router(jobaudio_router)
 app.include_router(integrations_router)
 
 
-# Static frontend last so /api/* wins. html=True serves index.html at "/".
+# Server-rendered Python front-end (Flask) — the front-end rewrite, mounted
+# alongside the legacy static PWA during migration. Visit it at /web. Flip the
+# root to this once it reaches feature parity.
+import sys as _sys  # noqa: E402
+
+from .config import PROJECT_DIR  # noqa: E402
+
+if str(PROJECT_DIR) not in _sys.path:
+    _sys.path.insert(0, str(PROJECT_DIR))
+try:
+    from starlette.middleware.wsgi import WSGIMiddleware  # noqa: E402
+    from web.app import app as _flask_app  # noqa: E402
+
+    app.mount("/web", WSGIMiddleware(_flask_app))
+except Exception:  # noqa: BLE001  (front-end optional; never break the API)
+    pass
+
+
+# Static frontend last so /api/* and /web win. html=True serves index.html at "/".
 app.mount("/", StaticFiles(directory=str(PUBLIC_DIR), html=True), name="static")
 
 

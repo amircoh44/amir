@@ -106,3 +106,13 @@ def test_cannot_delete_seeded_superadmin():
     admins = client.get("/api/admins", headers=_auth(su)).json()
     amir = next(a for a in admins if a["email"] == "amir@graphicatz.com")
     assert client.delete(f"/api/admins/{amir['id']}", headers=_auth(su)).status_code == 400
+
+
+def test_flask_frontend_mounted_at_web():
+    # the server-rendered Python front-end is served by the same app at /web
+    assert client.get("/web/").status_code == 200
+    z = client.get("/web/zmanim")
+    assert z.status_code == 200 and "Halacha time" in z.text
+    assert client.get("/web/static/siddur.css").status_code == 200
+    # the API is unaffected
+    assert client.get("/api/admin/status").json()["enabled"] is True

@@ -7,9 +7,10 @@ WORKDIR /app
 COPY backend/requirements.txt ./backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
-# App code: Python backend + static frontend.
+# App code: Python backend + server-rendered Flask front-end + static PWA.
 COPY backend ./backend
 COPY public ./public
+COPY web ./web
 
 RUN mkdir -p /app/data
 ENV SIDDUR_DATA_DIR=/app/data \
