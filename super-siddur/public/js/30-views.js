@@ -189,7 +189,7 @@ function renderPrayersIndex(stage){
     ];
     const sec=el("div","");sec.style.marginTop="1.4rem";stage.appendChild(sec);
     groups.forEach(g=>{
-      const items=OCC_SERVICES.filter(s=>(s.cat||"occasion")===g.key);
+      const items=OCC_SERVICES.filter(s=>(s.cat||"occasion")===g.key&&!s.noList);
       if(!items.length)return;
       const open=!!state._discOpen[g.key];
       const disc=el("div","disc "+g.cat+(open?" open":""));
@@ -223,6 +223,15 @@ function renderService(stage,arg){
   const bar=el("div","nusach-bar");
   const ns=el("label","mini-select");ns.innerHTML=`<svg class="icon ic" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M4 19V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14"/><path d="M8 7h8M8 11h6"/></svg><span>Nusach: <b style="color:var(--ink)">${esc(NUSACH_LABELS[state.nusach])}</b></span><svg class="icon" viewBox="0 0 24 24" style="width:.9em;height:.9em"><path d="M6 9l6 6 6-6"/></svg><select id="svcNusach">${Object.keys(NUSACH_LABELS).map(k=>`<option value="${k}"${state.nusach===k?" selected":""}>${NUSACH_LABELS[k]}</option>`).join("")}</select>`;
   bar.appendChild(ns);
+  /* Per-prayer quick-jump — go straight to any prayer in this service */
+  if(prayers.length>1){
+    const bySec={};const secOrder=[];
+    prayers.forEach(p=>{const s=p.section||"Main";if(!bySec[s]){bySec[s]=[];secOrder.push(s);}bySec[s].push(p);});
+    const opts=secOrder.map(s=>`<optgroup label="${esc(s)}">${bySec[s].map(p=>`<option value="${esc(p.id)}">${esc(p.en)}</option>`).join("")}</optgroup>`).join("");
+    const jmp=el("label","mini-select");
+    jmp.innerHTML=`<svg class="icon ic" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M12 5v14M5 12l7 7 7-7"/></svg><span>Jump to…</span><svg class="icon" viewBox="0 0 24 24" style="width:.9em;height:.9em"><path d="M6 9l6 6 6-6"/></svg><select id="svcJump"><option value="">Jump to a prayer…</option>${opts}</select>`;
+    bar.appendChild(jmp);
+  }
   const exp=el("button","mini-select");exp.innerHTML=`<svg class="icon ic" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Expand all</span>`;bar.appendChild(exp);
   const edt=el("button","mini-select"+(state.editMode?" on-edit":""));edt.innerHTML=`<svg class="icon ic" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg><span>${state.editMode?"Done editing":"Edit"}</span>`;if(state.editMode){edt.style.cssText="border-color:var(--accent);color:var(--accent)";}edt.onclick=()=>{state.editMode=!state.editMode;saveState();render();};bar.appendChild(edt);
   /* Quick "Skip Tachanun" chip — only for daily services where Tachanun would otherwise be said today */
@@ -265,6 +274,8 @@ function renderService(stage,arg){
   }
 
   $("#svcNusach").addEventListener("change",e=>{state.nusach=e.target.value;saveState();render();});
+  const jsel=$("#svcJump");
+  if(jsel)jsel.addEventListener("change",e=>{const id=e.target.value;if(id){const t=document.getElementById("p-"+id);if(t){const sec=t.closest(".acc-sec");if(sec)sec.classList.add("open");if(t.scrollIntoView)t.scrollIntoView({behavior:"smooth",block:"start"});}}e.target.selectedIndex=0;});
   exp.onclick=()=>{const secs=acc.querySelectorAll(".acc-sec");const anyClosed=[...secs].some(s=>!s.classList.contains("open"));secs.forEach(s=>s.classList.toggle("open",anyClosed));exp.querySelector("span").textContent=anyClosed?"Collapse all":"Expand all";};
 
   if(jumpId)setTimeout(()=>{const t=document.getElementById("p-"+jumpId);if(t){const sec=t.closest(".acc-sec");if(sec)sec.classList.add("open");if(t.scrollIntoView)t.scrollIntoView({behavior:"smooth",block:"start"});}},120);
@@ -1109,8 +1120,8 @@ function openLib(){
   grp("Daily Prayers");["shacharit","mincha","maariv","birkat","krias"].forEach(sid=>{const s=SERVICES.find(x=>x.id===sid);if(s)it(s.en,s.he,()=>{closeSheet("libSheet");go("service",s.id);});});
   grp("Everyday Occasions");["travel","brachot"].forEach(sid=>{const s=SERVICES.find(x=>x.id===sid);if(s)it(s.en,s.he,()=>{closeSheet("libSheet");go("service",s.id);});});
   if(typeof OCC_SERVICES!=="undefined"){
-    const hol=OCC_SERVICES.filter(s=>(s.cat||"occasion")==="holiday");
-    const occ=OCC_SERVICES.filter(s=>(s.cat||"occasion")==="occasion");
+    const hol=OCC_SERVICES.filter(s=>(s.cat||"occasion")==="holiday"&&!s.noList);
+    const occ=OCC_SERVICES.filter(s=>(s.cat||"occasion")==="occasion"&&!s.noList);
     if(hol.length){grp("Holidays");hol.forEach(s=>it(s.en,s.he,()=>{closeSheet("libSheet");go("service",s.id);}));}
     if(occ.length){grp("Occasions");occ.forEach(s=>it(s.en,s.he,()=>{closeSheet("libSheet");go("service",s.id);}));}
   }

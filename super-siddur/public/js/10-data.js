@@ -12,7 +12,7 @@ const SERVICES=[
   {id:"shacharit",en:"Shacharit",he:"\u05E9\u05B7\u05C1\u05D7\u05B2\u05E8\u05B4\u05D9\u05EA",when:"Morning prayer",icon:"sun"},
   {id:"mincha",en:"Mincha",he:"\u05DE\u05B4\u05E0\u05B0\u05D7\u05B8\u05D4",when:"Afternoon prayer",icon:"dusk"},
   {id:"maariv",en:"Maariv",he:"\u05DE\u05B7\u05E2\u05B2\u05E8\u05B4\u05D9\u05D1",when:"Evening prayer",icon:"moon"},
-  {id:"birkat",en:"Birkat HaMazon",he:"\u05D1\u05B4\u05BC\u05E8\u05B0\u05DB\u05B7\u05BC\u05EA \u05D4\u05B7\u05DE\u05B8\u05BC\u05D6\u05D5\u05B9\u05DF",when:"Grace after meals",icon:"food"},
+  {id:"birkat",en:"Birkat HaMazon",he:"\u05D1\u05B4\u05BC\u05E8\u05B0\u05DB\u05B7\u05BC\u05EA \u05D4\u05B7\u05DE\u05B8\u05BC\u05D6\u05D5\u05B9\u05DF",when:"Blessing after meals",icon:"food"},
   {id:"krias",en:"Krias Shema al HaMita",he:"\u05E7\u05B0\u05E8\u05B4\u05D9\u05D0\u05B7\u05EA \u05E9\u05B0\u05C1\u05DE\u05B7\u05E2 \u05E2\u05B7\u05DC \u05D4\u05B7\u05DE\u05B4\u05D8\u05B8\u05BC\u05D4",when:"Before sleep",icon:"moon"},
   {id:"travel",en:"Tefilat HaDerech",he:"\u05EA\u05B0\u05BC\u05E4\u05B4\u05DC\u05B7\u05BC\u05EA \u05D4\u05B7\u05D3\u05B6\u05BC\u05E8\u05B6\u05DA",when:"While traveling",icon:"path"},
   {id:"brachot",en:"Blessings",he:"\u05D1\u05B0\u05E8\u05B8\u05DB\u05D5\u05B9\u05EA",when:"For various occasions",icon:"star"}

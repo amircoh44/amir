@@ -7,7 +7,7 @@ const OCC_SERVICES=[
   {id:"avinu",en:"Avinu Malkeinu",he:"\u05D0\u05B8\u05D1\u05B4\u05D9\u05E0\u05D5\u05BC \u05DE\u05B7\u05DC\u05B0\u05DB\u05B5\u05BC\u05E0\u05D5\u05BC",when:"Ten Days of Repentance & fasts",icon:"star",tags:["avinu"],cat:"holiday"},
   {id:"hatarat",en:"Hatarat Nedarim",he:"\u05D4\u05B7\u05EA\u05B8\u05BC\u05E8\u05B7\u05EA \u05E0\u05B0\u05D3\u05B8\u05E8\u05B4\u05D9\u05DD",when:"Erev Rosh HaShanah",icon:"star",cat:"holiday"},
   {id:"ilanot",en:"Birkat HaIlanot",he:"\u05D1\u05B4\u05BC\u05E8\u05B0\u05DB\u05B7\u05BC\u05EA \u05D4\u05B8\u05D0\u05B4\u05D9\u05DC\u05B8\u05E0\u05D5\u05BA\u05EA",when:"Blossoming trees in Nissan",icon:"path",tags:["nissan"],cat:"holiday"},
-  {id:"tachanun",en:"Tachanun",he:"\u05EA\u05B7\u05BC\u05D7\u05B2\u05E0\u05D5\u05BC\u05DF",when:"Weekday supplication",icon:"star",tags:["tachanun"],cat:"occasion"},
+  {id:"tachanun",en:"Tachanun",he:"\u05EA\u05B7\u05BC\u05D7\u05B2\u05E0\u05D5\u05BC\u05DF",when:"Weekday supplication",icon:"star",tags:["tachanun"],cat:"occasion",noList:true},
   {id:"levana",en:"Kiddush Levana",he:"\u05E7\u05B4\u05D3\u05D5\u05BC\u05E9 \u05DC\u05B0\u05D1\u05B8\u05E0\u05B8\u05D4",when:"Sanctifying the new moon",icon:"moon",cat:"occasion"},
   {id:"special",en:"Special Blessings",he:"\u05D1\u05B0\u05E8\u05B8\u05DB\u05D5\u05B9\u05EA \u05D4\u05B8\u05E8\u05B0\u05D0\u05B4\u05D9\u05B8\u05BC\u05D4",when:"On wonders & rare sights",icon:"star",cat:"occasion"},
   {id:"malei",en:"Keil Malei Rachamim",he:"\u05D0\u05B5\u05DC \u05DE\u05B8\u05DC\u05B5\u05D0 \u05E8\u05B7\u05D7\u05B2\u05DE\u05B4\u05D9\u05DD",when:"Memorial prayer",icon:"moon",cat:"occasion"},
