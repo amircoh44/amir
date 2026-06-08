@@ -433,7 +433,7 @@ const DEFAULTS={
   onboarded:false,userHebName:"",userEngName:"",birthday:null,
   loc:{name:"Denver, CO",lat:39.7392,lng:-104.9903,tz:"America/Denver"},
   israelMode:"diaspora",nusach:"ashkenaz",
-  theme:"warm",textSize:1.0,hebScale:1.0,enScale:1.0,suppScale:1.0,
+  theme:"warm",textSize:1.0,hebScale:1.0,enScale:1.0,suppScale:1.0,readMode:"scroll",
   timeFmt:"12",             // "12" = 12-hour US (9:05 AM), "24" = 24-hour military (21:05)
   translit:true,showInstr:true,showKavanot:true,hebrewOnly:false,minyan:false,
   kavLevels:{found:true,halachic:false,kabbalistic:false},

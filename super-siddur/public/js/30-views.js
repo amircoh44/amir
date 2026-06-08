@@ -233,7 +233,15 @@ function renderService(stage,arg){
     jmp.innerHTML=`<svg class="icon ic" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M12 5v14M5 12l7 7 7-7"/></svg><span>Jump to…</span><svg class="icon" viewBox="0 0 24 24" style="width:.9em;height:.9em"><path d="M6 9l6 6 6-6"/></svg><select id="svcJump"><option value="">Jump to a prayer…</option>${opts}</select>`;
     bar.appendChild(jmp);
   }
-  const exp=el("button","mini-select");exp.innerHTML=`<svg class="icon ic" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Expand all</span>`;bar.appendChild(exp);
+  const mode=state.readMode||"scroll";
+  /* reading-mode switcher — Scroll / Pages / Swipe / Buttons (A3) */
+  const RM=[["scroll","Scroll"],["page","Pages"],["swipe","Swipe"],["buttons","Buttons"]];
+  const rmLbl=(RM.find(x=>x[0]===mode)||RM[0])[1];
+  const rm=el("label","mini-select");
+  rm.innerHTML=`<svg class="icon ic" viewBox="0 0 24 24" style="width:1em;height:1em"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 4v16"/></svg><span>Read: <b style="color:var(--ink)">${esc(rmLbl)}</b></span><svg class="icon" viewBox="0 0 24 24" style="width:.9em;height:.9em"><path d="M6 9l6 6 6-6"/></svg><select id="svcReadMode">${RM.map(([v,l])=>`<option value="${v}"${mode===v?" selected":""}>${esc(l)}</option>`).join("")}</select>`;
+  bar.appendChild(rm);
+  const exp=el("button","mini-select");exp.innerHTML=`<svg class="icon ic" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Expand all</span>`;
+  if(mode==="scroll")bar.appendChild(exp);
   const edt=el("button","mini-select"+(state.editMode?" on-edit":""));edt.innerHTML=`<svg class="icon ic" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg><span>${state.editMode?"Done editing":"Edit"}</span>`;if(state.editMode){edt.style.cssText="border-color:var(--accent);color:var(--accent)";}edt.onclick=()=>{state.editMode=!state.editMode;saveState();render();};bar.appendChild(edt);
   /* Quick "Skip Tachanun" chip — only for daily services where Tachanun would otherwise be said today */
   if(["shacharit","mincha"].includes(svcId)){
@@ -260,7 +268,18 @@ function renderService(stage,arg){
 
   const dwm=el("button","");dwm.style.cssText="display:flex;align-items:center;gap:.7rem;padding:.85rem 1.1rem;background:color-mix(in srgb,var(--accent) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-radius:.6rem;color:var(--accent);cursor:pointer;font-family:var(--sans);font-weight:600;font-size:.88rem;margin-bottom:1rem;width:100%;text-align:left";dwm.innerHTML=`<svg class="icon" viewBox="0 0 24 24" style="width:1.2em;height:1.2em;flex:none"><polygon points="5 3 19 12 5 21 5 3"/></svg><div style="flex:1"><div style="font-size:.95rem">Daven With Me</div><div style="font-size:.72rem;color:var(--ink2);font-weight:500;margin-top:.1rem">Guided, block-by-block, with focus</div></div><svg class="icon" viewBox="0 0 24 24" style="width:1em"><path d="M9 6l6 6-6 6"/></svg>`;dwm.onclick=()=>startDaven(svcId);stage.appendChild(dwm);
 
-  /* group prayers into sections */
+  /* shared wiring (all modes): nusach + reading-mode switch */
+  $("#svcNusach").addEventListener("change",e=>{state.nusach=e.target.value;saveState();render();});
+  const rmsel=$("#svcReadMode");
+  if(rmsel)rmsel.addEventListener("change",e=>{state.readMode=e.target.value;saveState();render();});
+
+  if(mode!=="scroll"){
+    renderPagedBody(stage,svcId,prayers,mode,jumpId);
+    if(prayers.length)trackRecent(svcId,prayers[0].id);
+    return;
+  }
+
+  /* ---- Continuous scroll (default): accordion ---- */
   const sections=[];prayers.forEach(p=>{const s=p.section||"Main";if(!sections.find(x=>x.name===s))sections.push({name:s,items:[]});sections.find(x=>x.name===s).items.push(p);});
   const acc=el("div","accordion");
   sections.forEach((sec,si)=>{
@@ -281,13 +300,110 @@ function renderService(stage,arg){
     stage.appendChild(addP);
   }
 
-  $("#svcNusach").addEventListener("change",e=>{state.nusach=e.target.value;saveState();render();});
   const jsel=$("#svcJump");
   if(jsel)jsel.addEventListener("change",e=>{const id=e.target.value;if(id){const t=document.getElementById("p-"+id);if(t){const sec=t.closest(".acc-sec");if(sec)sec.classList.add("open");if(t.scrollIntoView)t.scrollIntoView({behavior:"smooth",block:"start"});}}e.target.selectedIndex=0;});
   exp.onclick=()=>{const secs=acc.querySelectorAll(".acc-sec");const anyClosed=[...secs].some(s=>!s.classList.contains("open"));secs.forEach(s=>s.classList.toggle("open",anyClosed));exp.querySelector("span").textContent=anyClosed?"Collapse all":"Expand all";};
 
   if(jumpId)setTimeout(()=>{const t=document.getElementById("p-"+jumpId);if(t){const sec=t.closest(".acc-sec");if(sec)sec.classList.add("open");if(t.scrollIntoView)t.scrollIntoView({behavior:"smooth",block:"start"});}},120);
   if(prayers.length)trackRecent(svcId,prayers[0].id);
+}
+
+/* ====== PAGED READING MODES (Pages / Swipe / Buttons) — A3 ======
+   Same content as scroll mode (built with renderPrayerInline), paginated by
+   measured height into screen-sized pages laid out in a horizontal track.
+   Pages mode adds edge tap-zones + a flip cue; Swipe adds drag gestures;
+   Buttons relies on the large, always-reachable Prev/Next controls. */
+let _pgResize=null,_pgKey=null;
+function renderPagedBody(stage,svcId,prayers,mode,jumpId){
+  const buf=el("div");
+  prayers.forEach(pr=>renderPrayerInline(pr,svcId,buf));
+  const nodes=[...buf.children];
+
+  const viewport=el("div","pg-viewport");viewport.dataset.mode=mode;
+  const track=el("div","pg-track");viewport.appendChild(track);
+  stage.appendChild(viewport);
+
+  /* size the viewport to the space between the toolbar and the controls/nav */
+  const top=viewport.getBoundingClientRect().top;
+  const avail=Math.max(240,Math.round(window.innerHeight-top-150));
+  viewport.style.height=avail+"px";
+
+  /* greedy height-based pagination */
+  const pages=[];
+  const newPage=()=>{const p=el("div","pg-page");track.appendChild(p);pages.push(p);return p;};
+  let page=newPage();
+  nodes.forEach(node=>{
+    page.appendChild(node);
+    if(page.scrollHeight>page.clientHeight+1&&page.childElementCount>1){
+      page.removeChild(node);page=newPage();page.appendChild(node);
+    }
+  });
+  const total=pages.length||1;
+  track.style.width=(total*100)+"%";
+  pages.forEach(p=>{p.style.flex="0 0 "+(100/total)+"%";});
+  const pageOf={};
+  pages.forEach((p,i)=>{p.querySelectorAll('[id^="p-"]').forEach(n=>{pageOf[n.id.slice(2)]=i;});});
+
+  let idx=(jumpId&&pageOf[jumpId]!=null)?pageOf[jumpId]:0;
+
+  /* large, always-reachable controls */
+  const ctr=el("div","pg-controls");
+  const prevB=el("button","pg-btn");prevB.setAttribute("aria-label","Previous");prevB.innerHTML=`<svg class="icon" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>`;
+  const ind=el("div","pg-ind");
+  const nextB=el("button","pg-btn pg-next");nextB.setAttribute("aria-label","Next");nextB.innerHTML=`<span>Next</span> <svg class="icon" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>`;
+  ctr.appendChild(prevB);ctr.appendChild(ind);ctr.appendChild(nextB);stage.appendChild(ctr);
+
+  const clamp=i=>Math.max(0,Math.min(total-1,i));
+  function paint(animate){
+    track.style.transition=animate===false?"none":"";
+    track.style.transform="translateX(-"+(idx*(100/total))+"%)";
+    ind.textContent=(idx+1)+" / "+total;
+    prevB.style.opacity=idx===0?".35":"1";prevB.disabled=idx===0;
+    nextB.querySelector("span").textContent=idx>=total-1?"Done":"Next";
+    if(mode==="page"){viewport.classList.remove("flip");void viewport.offsetWidth;viewport.classList.add("flip");}
+    if(pages[idx])pages[idx].scrollTop=0;
+  }
+  function goPage(i){const n=clamp(i);if(n===idx)return;idx=n;if(typeof haptic==="function")haptic(8);paint();}
+  prevB.onclick=()=>goPage(idx-1);
+  nextB.onclick=()=>{if(idx>=total-1){if(typeof haptic==="function")haptic([10,40,10]);if(typeof toast==="function")toast("End of "+((svcById(svcId)||{}).en||"service"));return;}goPage(idx+1);};
+
+  if(mode==="page"){
+    const zl=el("button","pg-zone pg-zone-l");zl.setAttribute("aria-label","Previous page");zl.onclick=()=>goPage(idx-1);
+    const zr=el("button","pg-zone pg-zone-r");zr.setAttribute("aria-label","Next page");zr.onclick=()=>goPage(idx+1);
+    viewport.appendChild(zl);viewport.appendChild(zr);
+  }
+  if(mode==="swipe"){
+    let x0=0,y0=0,dx=0,drag=false,lockH=false;
+    const basePct=()=>-(idx*(100/total));
+    viewport.addEventListener("pointerdown",e=>{if(e.target.closest("button,select,a"))return;x0=e.clientX;y0=e.clientY;drag=true;lockH=false;dx=0;try{viewport.setPointerCapture(e.pointerId);}catch(_){}});
+    viewport.addEventListener("pointermove",e=>{
+      if(!drag)return;const ddx=e.clientX-x0,ddy=e.clientY-y0;
+      if(!lockH){if(Math.abs(ddx)<6&&Math.abs(ddy)<6)return;if(Math.abs(ddy)>Math.abs(ddx)){drag=false;return;}lockH=true;track.style.transition="none";}
+      dx=ddx;track.style.transform="translateX("+(basePct()+(dx/viewport.clientWidth)*(100/total))+"%)";
+    });
+    const end=e=>{if(!drag&&!lockH)return;try{viewport.releasePointerCapture(e.pointerId);}catch(_){}drag=false;track.style.transition="";const th=viewport.clientWidth*0.16;if(lockH&&dx<-th)goPage(idx+1);else if(lockH&&dx>th)goPage(idx-1);else paint();dx=0;lockH=false;};
+    viewport.addEventListener("pointerup",end);viewport.addEventListener("pointercancel",end);
+  }
+
+  const jsel=$("#svcJump");
+  if(jsel)jsel.addEventListener("change",e=>{const id=e.target.value;if(id&&pageOf[id]!=null)goPage(pageOf[id]);e.target.selectedIndex=0;});
+
+  paint(false);
+
+  /* keyboard arrows (desktop), ignored while typing */
+  if(_pgKey)window.removeEventListener("keydown",_pgKey);
+  _pgKey=e=>{
+    if(state.view!=="service"||(state.readMode||"scroll")==="scroll")return;
+    const t=e.target;if(t&&/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))return;
+    if(e.key==="ArrowRight"||e.key===" "){e.preventDefault();goPage(idx+1);}
+    else if(e.key==="ArrowLeft"){e.preventDefault();goPage(idx-1);}
+  };
+  window.addEventListener("keydown",_pgKey);
+
+  /* re-paginate on resize / rotation */
+  if(_pgResize)window.removeEventListener("resize",_pgResize);
+  _pgResize=()=>{clearTimeout(renderPagedBody._t);renderPagedBody._t=setTimeout(()=>{if(state.view==="service"&&(state.readMode||"scroll")!=="scroll")render();},250);};
+  window.addEventListener("resize",_pgResize);
 }
 
 function renderPrayerInline(pr,svcId,wrap){
