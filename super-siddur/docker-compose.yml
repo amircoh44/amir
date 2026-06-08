@@ -6,9 +6,9 @@ services:
     restart: unless-stopped
     environment:
       # Strong secret for signing admin sessions (JWT).
-      SIDDUR_JWT_SECRET: ${SIDDUR_JWT_SECRET:?set SIDDUR_JWT_SECRET in your .env}
+      SIDDUR_JWT_SECRET: ${SIDDUR_JWT_SECRET:-dev-secret-change-in-production}
       # Initial password for the seeded super admins (change after first login).
-      SIDDUR_SUPERADMIN_PASSWORD: ${SIDDUR_SUPERADMIN_PASSWORD:?set SIDDUR_SUPERADMIN_PASSWORD in your .env}
+      SIDDUR_SUPERADMIN_PASSWORD: ${SIDDUR_SUPERADMIN_PASSWORD:-changeme123}
       # Optional: override the seeded super-admin emails (comma-separated).
       SIDDUR_SUPERADMIN_EMAILS: ${SIDDUR_SUPERADMIN_EMAILS:-amir@graphicatz.com,shalomlebowitz@gmail.com}
       SIDDUR_DATA_DIR: /app/data
