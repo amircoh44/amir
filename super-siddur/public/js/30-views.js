@@ -1107,6 +1107,58 @@ function openZmanInfo(k,en,he,t){
   ov.onclick=(e)=>{if(e.target===ov)ov.remove();};
   $("#zmanInfoClose").onclick=()=>ov.remove();
 }
+/* ====== HALACHIC CLOCK — sha'ah zmanit & da'kah zmanit (alot → tzeit / 12) ====== */
+let _zmHal=null;
+function _halState(nowMin){
+  if(!_zmHal)return null;
+  const start=_zmHal.start,end=_zmHal.end;
+  const dayLen=end-start,nightLen=1440-dayLen,sd=dayLen/12,sn=nightLen/12;
+  let period,shaah,elapsed;
+  if(nowMin>=start&&nowMin<end){period="day";shaah=sd;elapsed=nowMin-start;}
+  else{period="night";shaah=sn;elapsed=(nowMin>=end)?nowMin-end:nowMin+1440-end;}
+  const shaot=Math.max(0,Math.min(12,shaah?elapsed/shaah:0));
+  const hf=Math.floor(shaot),dk=(shaot-hf)*60;
+  return {period,shaah,shaot,hourFloor:hf,dakah:dk,hourNum:Math.min(12,hf+1)};
+}
+function paintHalachic(){
+  if(!_zmHal)return;
+  const base=nowInLocTz(state.loc),sec=(new Date()).getSeconds()/60;
+  const s=_halState((base+sec)%1440);if(!s)return;
+  const setA=(id,a)=>{const n=document.getElementById(id);if(n)n.setAttribute("transform",a);};
+  const setT=(id,t)=>{const n=document.getElementById(id);if(n)n.textContent=t;};
+  const pad=n=>(n<10?"0":"")+n;
+  setA("hzHour",`rotate(${s.shaot*30} 100 100)`);
+  setA("hzMin",`rotate(${s.dakah*6} 100 100)`);  /* minute hand advances per da'kah zmanit */
+  const halStr=s.hourFloor+":"+pad(Math.floor(s.dakah));
+  setT("hzTime",halStr);setT("hzHal",halStr);
+  setT("hzActual",hmFmt(base));
+  setT("hzShaah",Math.round(s.shaah)+" min");
+  setT("hzDakah",(s.shaah/60).toFixed(2)+" min");
+  setT("hzNum",s.hourNum);setT("hzPeriod",s.period);
+}
+function renderHalachicClock(stage,z){
+  const alot=(z.alot!=null?z.alot:z.netz),tzeit=(z.tzeit!=null?z.tzeit:z.shkia);
+  if(alot==null||tzeit==null||tzeit<=alot){_zmHal=null;return;}
+  _zmHal={start:alot,end:tzeit};
+  const ticks=[...Array(12)].map((_,i)=>`<line class="hz-tick" x1="100" y1="16" x2="100" y2="24" transform="rotate(${i*30} 100 100)"/><text class="hz-num" x="100" y="34" text-anchor="middle" transform="rotate(${i*30} 100 100) rotate(${-i*30} 100 34)">${i||12}</text>`).join("");
+  const wrap=el("div","hz-wrap");
+  wrap.innerHTML=`<svg class="hz-clock" viewBox="0 0 200 200" aria-label="Halachic clock">
+      <circle cx="100" cy="100" r="94" class="hz-rim"/><circle cx="100" cy="100" r="86" class="hz-face"/>${ticks}
+      <text class="hz-cap" x="100" y="64" text-anchor="middle" dir="rtl">שָׁעָה זְמַנִּית</text>
+      <text id="hzTime" class="hz-time" x="100" y="126" text-anchor="middle">–</text>
+      <text class="hz-cap2" x="100" y="148" text-anchor="middle">SHA'AH ZMANIT</text>
+      <line id="hzHour" class="hz-hh" x1="100" y1="100" x2="100" y2="56"/>
+      <line id="hzMin" class="hz-mh" x1="100" y1="100" x2="100" y2="34"/>
+      <circle cx="100" cy="100" r="5" class="hz-hub"/></svg>
+    <div class="hz-read">
+      <div class="hz-times"><div><span>Actual time</span><b id="hzActual">–</b></div><div><span>Halacha time</span><b id="hzHal">–</b></div></div>
+      <div class="hz-line"><b id="hzShaah">–</b><span>current <b>sha'ah zmanit</b> · <i id="hzPeriod">day</i></span></div>
+      <div class="hz-line"><b id="hzDakah">–</b><span>one <b>da'kah zmanit</b> (sha'ah ÷ 60)</span></div>
+      <div class="hz-meta">Halachic hour <b id="hzNum">–</b> of 12 · Alot HaShachar → Tzeit ÷ 12</div>
+    </div>`;
+  stage.appendChild(wrap);
+  paintHalachic();
+}
 function renderZmanim(stage){
   const now=new Date();const tz=tzForLoc(state.loc);
   const head=el("div","svc-head");head.innerHTML=`<span class="en">Zmanim</span><span class="he">\u05D6\u05B0\u05DE\u05B7\u05E0\u05B4\u05BC\u05D9\u05DD</span>`;stage.appendChild(head);
@@ -1126,11 +1178,12 @@ function renderZmanim(stage){
 
   const z=computeZmanim(now,state.loc);
   if(!z){stage.appendChild(el("div","note","Could not compute zmanim for this location."));return;}
+  renderHalachicClock(stage,z);
   const nm=nowInLocTz(state.loc);
   const Z=[["alot","Dawn","\u05E2\u05B2\u05DC\u05D5\u05B9\u05EA \u05D4\u05B7\u05E9\u05B7\u05BC\u05D7\u05B7\u05E8"],["netz","Sunrise","\u05D4\u05B8\u05E0\u05B5\u05E5 \u05D4\u05B7\u05D7\u05B7\u05DE\u05B8\u05BC\u05D4"],["shma","Latest Shema","\u05E1\u05D5\u05B9\u05E3 \u05D6\u05B0\u05DE\u05B7\u05DF \u05E9\u05B0\u05C1\u05DE\u05B7\u05E2"],["tefila","Latest Shacharit","\u05E1\u05D5\u05B9\u05E3 \u05D6\u05B0\u05DE\u05B7\u05DF \u05EA\u05B0\u05E4\u05B4\u05DC\u05B8\u05BC\u05D4"],["chatzot","Midday","\u05D7\u05B2\u05E6\u05D5\u05B9\u05EA \u05D4\u05B7\u05D9\u05D5\u05B9\u05DD"],["minchaG","Earliest Mincha","\u05DE\u05B4\u05E0\u05B0\u05D7\u05B8\u05D4 \u05D2\u05B0\u05BC\u05D3\u05D5\u05B9\u05DC\u05B8\u05D4"],["minchaK","Mincha Ketana","\u05DE\u05B4\u05E0\u05B0\u05D7\u05B8\u05D4 \u05E7\u05B0\u05D8\u05B7\u05E0\u05B8\u05BC\u05D4"],["plag","Plag HaMincha","\u05E4\u05B0\u05BC\u05DC\u05B7\u05D2 \u05D4\u05B7\u05DE\u05B4\u05E0\u05B0\u05D7\u05B8\u05D4"],["shkia","Sunset","\u05E9\u05B0\u05C1\u05E7\u05B4\u05D9\u05E2\u05B7\u05EA \u05D4\u05B7\u05D7\u05B7\u05DE\u05B8\u05BC\u05D4"],["tzeit","Nightfall","\u05E6\u05B5\u05D0\u05EA \u05D4\u05B7\u05DB\u05D5\u05B9\u05DB\u05B8\u05D1\u05B4\u05D9\u05DD"]];
   const next=Z.map(([k,en,he])=>({k,en,he,t:z[k]})).find(x=>x.t!=null&&x.t>nm);
   Z.forEach(([k,en,he])=>{const isNext=next&&next.k===k;const row=el("button");row.style.cssText=`display:flex;justify-content:space-between;align-items:center;gap:.6rem;width:100%;text-align:left;cursor:pointer;background:transparent;font:inherit;padding:.95rem 0;border:0;border-bottom:1px solid var(--line);${isNext?'background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:.6rem;padding:.95rem 1rem;border-bottom:0;border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);margin:.3rem 0':''}`;row.innerHTML=`<div style="flex:1"><div style="font-family:var(--display);font-weight:500;font-size:1rem;color:var(--ink)">${esc(en)}${isNext?' <span style="font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-left:.4rem">NEXT</span>':''}</div><div style="color:var(--muted);font-family:var(--hebrew);direction:rtl;font-size:.95rem;margin-top:.18rem">${esc(he)}</div></div><div style="display:flex;align-items:center;gap:.5rem"><div style="font-family:var(--mono);font-size:1.1rem;color:var(--accent);font-weight:500;font-variant-numeric:tabular-nums">${hmFmt(z[k])}</div><svg class="icon" viewBox="0 0 24 24" style="width:1.05em;height:1.05em;color:var(--muted);flex:none"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></div>`;row.onclick=()=>openZmanInfo(k,en,he,z[k]);stage.appendChild(row);});
-  if(window.__zmInt)clearInterval(window.__zmInt);window.__zmInt=setInterval(()=>{if(state.view==="zmanim")paintClock();else{clearInterval(window.__zmInt);window.__zmInt=null;}},1000);
+  if(window.__zmInt)clearInterval(window.__zmInt);window.__zmInt=setInterval(()=>{if(state.view==="zmanim"){paintClock();paintHalachic();}else{clearInterval(window.__zmInt);window.__zmInt=null;}},1000);
 }
 
 /* ====== SHEETS, LIBRARY, SEARCH ====== */

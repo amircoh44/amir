@@ -525,3 +525,31 @@ main{flex:1;padding:1rem 1rem 5rem;max-width:680px;margin:0 auto;width:100%}
   #admSheet .sheet-body{max-width:1040px}
   .adm-shell{grid-template-columns:15rem 1fr}
 }
+
+/* ---- Halachic sha'ah/da'kah zmanit clock (Zmanim page) ---- */
+.hz-wrap{display:grid;grid-template-columns:1fr;gap:1rem;align-items:center;margin:1rem 0 1.4rem;padding:1.1rem;
+  background:radial-gradient(380px 220px at 20% -10%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 60%),var(--surface);
+  border:1px solid color-mix(in srgb,var(--accent) 26%,transparent);border-radius:1rem}
+@media(min-width:600px){.hz-wrap{grid-template-columns:230px 1fr;gap:1.4rem}}
+.hz-clock{width:100%;max-width:230px;margin:0 auto;display:block;filter:drop-shadow(0 8px 20px rgba(0,0,0,.5))}
+.hz-rim{fill:none;stroke:var(--accent);stroke-width:5;opacity:.9}
+.hz-face{fill:var(--surface2)}
+.hz-tick{stroke:var(--accent);stroke-width:2;opacity:.45}
+.hz-num{fill:var(--ink2);font-size:9px;font-family:var(--display)}
+.hz-cap{fill:var(--accent);font-size:7px;font-family:var(--hebrew);opacity:.9}
+.hz-time{fill:var(--ink);font-family:var(--mono);font-size:13px;font-weight:700}
+.hz-cap2{fill:var(--muted);font-size:5px;letter-spacing:.18em}
+.hz-hh{stroke:var(--ink);stroke-width:4;stroke-linecap:round}
+.hz-mh{stroke:var(--accent);stroke-width:2.4;stroke-linecap:round}
+.hz-hub{fill:var(--accent)}
+.hz-read{display:flex;flex-direction:column;gap:.5rem}
+.hz-times{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.hz-times div{display:flex;flex-direction:column}
+.hz-times span{font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.hz-times b{font-family:var(--mono);font-size:1.5rem;color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
+.hz-line{display:flex;align-items:baseline;gap:.5rem}
+.hz-line b{font-family:var(--display);font-size:1.6rem;color:var(--accent);font-weight:700;line-height:1}
+.hz-line span{color:var(--ink2);font-size:.84rem}
+.hz-line i{font-style:normal;color:var(--accent)}
+.hz-meta{font-size:.74rem;color:var(--muted)}
+.hz-meta b{color:var(--ink2)}
