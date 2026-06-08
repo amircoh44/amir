@@ -87,7 +87,10 @@ def test_full_jobs_board_flow():
     feed = client.get("/api/market/requests").json()
     assert any(x["id"] == rid for x in feed)
 
-    # a reciter accepts a portion and marks it said
+    # accepting a paid job also requires Pro (Pro unlocks posting AND accepting)
+    assert client.post(f"/api/market/requests/{rid}/accept", headers=_h(reciter),
+                       json={"portion": {"units": [20]}}).status_code == 402
+    client.post("/api/market/membership/subscribe", headers=_h(reciter), json={"tier": "pro"})
     a = client.post(f"/api/market/requests/{rid}/accept", headers=_h(reciter),
                     json={"portion": {"units": [20]}})
     assert a.status_code == 200, a.text
@@ -110,6 +113,7 @@ def test_random_assignment_picks_a_unit():
             "expected_reciters": 3, "assignment_mode": "random", "payout_split": "pool",
             "gross_cents": 900}
     rid = client.post("/api/market/requests", headers=_h(poster), json=body).json()["id"]
+    client.post("/api/market/membership/subscribe", headers=_h(reciter), json={"tier": "pro"})
     a = client.post(f"/api/market/requests/{rid}/accept", headers=_h(reciter), json={}).json()
     assert a["portion"]["units"] and a["portion"]["units"][0] in (1, 2, 3)
 
@@ -219,3 +223,31 @@ def test_consent_gated_activity_sync():
     ev3 = client.post("/api/market/integrations/activity", headers=_h(u),
                       json={"type": "service.completed", "payload": {"service": "mincha"}}).json()
     assert ev3["delivered_to"] == []
+
+
+def test_prefs_alerts_and_matches():
+    poster = _tok("alertposter@example.com", name="AP")
+    client.post("/api/market/membership/subscribe", headers=_h(poster), json={"tier": "pro"})
+    reciter = _tok("alertreciter@example.com", name="AR")
+    client.post("/api/market/membership/subscribe", headers=_h(reciter), json={"tier": "pro"})
+    # reciter opts into alerts for "chapters" requests only
+    client.put("/api/market/me/prefs", headers=_h(reciter), json={"job_scopes": ["chapters"], "notify": True})
+    body = {"title": "Refuah", "names": [{"name": "Miriam"}], "scope_kind": "chapters",
+            "scope_detail": {"chapters": [1]}, "reciter_mode": "group", "expected_reciters": 1,
+            "assignment_mode": "free", "payout_split": "pool", "gross_cents": 500}
+    rid = client.post("/api/market/requests", headers=_h(poster), json=body).json()["id"]
+    # reciter received an in-app prayer-alert and it appears in their matches feed
+    notes = client.get("/api/market/notifications?unread_only=true", headers=_h(reciter)).json()
+    assert any(n["request_id"] == rid for n in notes)
+    nid = next(n["id"] for n in notes if n["request_id"] == rid)
+    assert client.post(f"/api/market/notifications/{nid}/read", headers=_h(reciter)).status_code == 200
+    matches = client.get("/api/market/requests/matches", headers=_h(reciter)).json()
+    assert any(m["id"] == rid for m in matches)
+    # an out-of-scope (sequence) request does NOT alert this chapters-only reciter
+    body2 = dict(body, scope_kind="sequence", scope_detail={"sequence": "refuah"})
+    rid2 = client.post("/api/market/requests", headers=_h(poster), json=body2).json()["id"]
+    notes2 = client.get("/api/market/notifications?unread_only=true", headers=_h(reciter)).json()
+    assert all(n["request_id"] != rid2 for n in notes2)
+    # the poster never gets a self-alert
+    pnotes = client.get("/api/market/notifications", headers=_h(poster)).json()
+    assert all(n["request_id"] not in (rid, rid2) for n in pnotes)

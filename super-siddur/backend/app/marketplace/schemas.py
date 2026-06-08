@@ -163,3 +163,8 @@ class ConsentIn(BaseModel):
 class ActivityIn(BaseModel):
     type: str                                          # e.g. "service.completed"
     payload: dict = Field(default_factory=dict)        # e.g. {"service": "mincha"}
+
+
+class PrefsIn(BaseModel):
+    job_scopes: list[str] | None = None   # which scope_kinds you want alerts for ([] / None = all)
+    notify: bool | None = None            # opt in to in-app prayer-alerts

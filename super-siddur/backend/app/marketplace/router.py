@@ -19,12 +19,12 @@ from ..models import Admin
 from ..security import hash_password, require, verify_password
 from .auth import (create_market_token, current_user, get_user_by_email, is_pro,
                    require_pro)
-from .models import (Assignment, Broadcast, MarketUser, PayoutConfig, Pledge,
-                     PrayerRequest)
+from .models import (Assignment, Broadcast, MarketUser, Notification,
+                     PayoutConfig, Pledge, PrayerRequest)
 from .payments import get_payment_provider
 from .payout import PLATFORM_CUT_HARD_MAX, Rates, compute_payout
 from .schemas import (AcceptIn, BroadcastIn, CompleteIn, ConfigIn, LoginIn,
-                      QuoteIn, RegisterIn, RequestIn)
+                      PrefsIn, QuoteIn, RegisterIn, RequestIn)
 
 router = APIRouter(prefix="/api/market", tags=["marketplace"])
 
@@ -53,6 +53,29 @@ def rates_from_config(cfg: PayoutConfig) -> Rates:
         platform_cut_max_pct=cfg.platform_cut_max_pct,
         payout_mode=cfg.payout_mode,
     )
+
+
+def _prefs_match(req: PrayerRequest, prefs: dict) -> bool:
+    """A request matches a reciter when its scope is in their wanted scopes
+    (an empty/absent list means 'alert me to everything')."""
+    scopes = (prefs or {}).get("job_scopes") or []
+    return (not scopes) or (req.scope_kind in scopes)
+
+
+def _enqueue_alerts(db: Session, req: PrayerRequest) -> None:
+    """Create in-app prayer-alerts for opted-in reciters whose preferences match
+    this new request (the poster is never alerted to their own request)."""
+    name = (req.names[0].get("name") if req.names else "") or "a name"
+    users = db.scalars(select(MarketUser).where(
+        MarketUser.id != req.poster_id, MarketUser.active.is_(True))).all()
+    for u in users:
+        p = u.prefs or {}
+        if not p.get("notify") or not _prefs_match(req, p):
+            continue
+        db.add(Notification(user_id=u.id, kind="job_match", request_id=req.id,
+                            title=f"New request to daven for {name}",
+                            body=req.title or f"{req.scope_kind} · {name}"))
+    db.commit()
 
 
 def _user_out(u: MarketUser) -> dict:
@@ -99,6 +122,42 @@ def login(body: LoginIn, db: Session = Depends(get_db)) -> dict:
 @router.get("/me")
 def me(user: MarketUser = Depends(current_user)) -> dict:
     return _user_out(user)
+
+
+@router.put("/me/prefs")
+def update_prefs(body: PrefsIn, user: MarketUser = Depends(current_user),
+                 db: Session = Depends(get_db)) -> dict:
+    """Reciter alert preferences: which scope kinds to be alerted about, opt-in."""
+    p = dict(user.prefs or {})
+    if body.job_scopes is not None:
+        p["job_scopes"] = body.job_scopes
+    if body.notify is not None:
+        p["notify"] = bool(body.notify)
+    user.prefs = p
+    db.commit()
+    return {"ok": True, "prefs": p}
+
+
+@router.get("/notifications")
+def my_notifications(unread_only: bool = False, user: MarketUser = Depends(current_user),
+                     db: Session = Depends(get_db)) -> list:
+    q = select(Notification).where(Notification.user_id == user.id)
+    if unread_only:
+        q = q.where(Notification.read.is_(False))
+    rows = db.scalars(q.order_by(Notification.created_at.desc()).limit(100)).all()
+    return [{"id": n.id, "kind": n.kind, "request_id": n.request_id, "title": n.title,
+             "body": n.body, "read": n.read, "created_at": n.created_at} for n in rows]
+
+
+@router.post("/notifications/{nid}/read")
+def mark_notification_read(nid: int, user: MarketUser = Depends(current_user),
+                           db: Session = Depends(get_db)) -> dict:
+    n = db.get(Notification, nid)
+    if not n or n.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Notification not found")
+    n.read = True
+    db.commit()
+    return {"ok": True}
 
 
 # ---------- public config & quote ----------
@@ -180,6 +239,7 @@ def create_request(body: RequestIn, user: MarketUser = Depends(require_pro),
                   breakdown=breakdown, provider=get_payment_provider().name,
                   provider_ref=res["provider_ref"], status="intent", live=res.get("live", False)))
     db.commit()
+    _enqueue_alerts(db, r)   # prayer-alerts to matching, opted-in reciters
     out = _request_out(db, r)
     out["pledge_breakdown"] = breakdown
     return out
@@ -195,6 +255,15 @@ def list_requests(scope_kind: str | None = None, status_filter: str = "open",
         q = q.where(PrayerRequest.scope_kind == scope_kind)
     rows = db.scalars(q.limit(min(200, max(1, limit)))).all()
     return [_request_out(db, r) for r in rows]
+
+
+@router.get("/requests/matches")
+def my_matches(user: MarketUser = Depends(current_user), db: Session = Depends(get_db)) -> list:
+    """Open requests that match the caller's alert preferences (jobs for you)."""
+    rows = db.scalars(select(PrayerRequest).where(PrayerRequest.status == "open")
+                      .order_by(PrayerRequest.created_at.desc()).limit(100)).all()
+    p = user.prefs or {}
+    return [_request_out(db, r) for r in rows if r.poster_id != user.id and _prefs_match(r, p)]
 
 
 @router.get("/requests/{rid}")
@@ -220,7 +289,7 @@ def _scope_units(r: PrayerRequest) -> list:
 
 
 @router.post("/requests/{rid}/accept")
-def accept_request(rid: int, body: AcceptIn, user: MarketUser = Depends(current_user),
+def accept_request(rid: int, body: AcceptIn, user: MarketUser = Depends(require_pro),
                    db: Session = Depends(get_db)) -> dict:
     r = db.get(PrayerRequest, rid)
     if not r:

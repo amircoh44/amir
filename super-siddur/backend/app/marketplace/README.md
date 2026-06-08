@@ -52,7 +52,9 @@ Implement `StripeConnectProvider(PaymentProvider)` and swap `_provider`:
 `membership/subscribe`, `requests` (POST/GET), `requests/{id}`,
 `requests/{id}/accept`, `assignments/{id}/complete`,
 `requests/{id}/completions`, `broadcasts`, `broadcasts/active`,
-`admin/config` (GET/PUT).
+`admin/config` (GET/PUT), `me/prefs`, `requests/matches`, `notifications`, `notifications/{id}/read`.
+
+ Pro gates **both posting and accepting** jobs. Reciters set alert prefs (`me/prefs`), get preference-matched in-app alerts (`notifications`, `notifications/{id}/read`) when a matching request is posted, and browse `requests/matches`.
 
 ## B2 — Community / share-to-inspire (`community.py`)
 - Public profiles are **opt-in, private by default** (`CommunityProfile.public=False`).

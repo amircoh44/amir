@@ -212,3 +212,18 @@ class ActivityEvent(Base):
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
     deliveries: Mapped[list] = mapped_column(JSON, default=list)         # [{partner,status,ref,live}]
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Notification(Base):
+    """In-app prayer-alert for a reciter whose preferences match a new request.
+    Phase 1 is in-app only; external push (web/email) is a phase-2 channel."""
+    __tablename__ = "market_notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(24), default="job_match")
+    request_id: Mapped[int | None] = mapped_column(ForeignKey("market_requests.id", ondelete="CASCADE"), nullable=True)
+    title: Mapped[str] = mapped_column(String(200), default="")
+    body: Mapped[str] = mapped_column(Text, default="")
+    read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
