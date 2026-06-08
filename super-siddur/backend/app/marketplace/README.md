@@ -93,3 +93,22 @@ appears — until done. No proof, no recording.
 - Scope is strictly the paid tefillah's steps; content, audio, and everything
   outside the job are never inspected. All thresholds are admin-configurable
   (`integrity_enabled`, `integrity_max_words_per_sec`, `integrity_min_step_seconds`).
+
+## Escrow + optional voice (`escrow.py`, `jobaudio.py`)
+**Escrow — payouts are never instant.** When an assignment completes, a `Payout`
+opens in escrow with `hold_until = now + escrow_days`. `POST /admin/payouts/
+release-due` auto-releases **clean** payouts whose hold elapsed; payouts that
+were ever flagged carry `requires_review` and need `POST /admin/payouts/{id}/
+release` once resolved (or `/refund`). Reciters see theirs at `GET /me/payouts`.
+Money-free: states only (`live=false`); real movement is the Stripe phase.
+
+**Optional voice (both off by default, admin opt-in):**
+- *Reciter recording* — `POST/GET/DELETE /assignments/{id}/recording`. Purely
+  optional; never a condition of payment. Disabled unless `allow_reciter_recording`.
+- *Poster asks to hear it* — `POST /assignments/{id}/recording-request` (only on
+  pledges ≥ `recording_request_min_cents`, and only if `allow_poster_request_recording`);
+  the reciter can `…/recording-request/decline`. No one is forced to be recorded.
+- *Personal message* — `POST /requests/{id}/message` (poster) → delivered to the
+  reciter (`GET /assignments/{id}/message` shows **who sent it** + audio URL).
+
+Audio bytes live on disk (`audio_dir`), capped at 20 MB/clip.

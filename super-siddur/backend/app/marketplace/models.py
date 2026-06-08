@@ -62,6 +62,12 @@ class PayoutConfig(Base):
     integrity_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     integrity_max_words_per_sec: Mapped[float] = mapped_column(default=6.0)      # faster than this is impossible
     integrity_min_step_seconds: Mapped[float] = mapped_column(default=2.0)       # floor per step regardless of length
+    # escrow — payouts are never instant; they sit a few days before release
+    escrow_days: Mapped[int] = mapped_column(Integer, default=3)
+    # optional voice services (both off by default; admin opt-in)
+    allow_reciter_recording: Mapped[bool] = mapped_column(Boolean, default=False)
+    allow_poster_request_recording: Mapped[bool] = mapped_column(Boolean, default=False)
+    recording_request_min_cents: Mapped[int] = mapped_column(Integer, default=10000)  # e.g. $100+
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
 
@@ -254,3 +260,68 @@ class JobStep(Base):
     read_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     flag_reason: Mapped[str] = mapped_column(String(200), default="")
     confirmation: Mapped[str] = mapped_column(Text, default="")        # the brief reply that clears a flag
+
+
+class Payout(Base):
+    """Reciter payout held in escrow. Never instant: it sits until `hold_until`
+    (a few days) so integrity has time to settle. Clean jobs auto-release after
+    the hold; flagged ones need admin release once resolved."""
+    __tablename__ = "market_payouts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    assignment_id: Mapped[int] = mapped_column(ForeignKey("market_assignments.id", ondelete="CASCADE"), index=True)
+    reciter_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"), index=True)
+    request_id: Mapped[int | None] = mapped_column(ForeignKey("market_requests.id", ondelete="SET NULL"), nullable=True)
+    amount_cents: Mapped[int] = mapped_column(Integer, default=0)
+    payout_mode: Mapped[str] = mapped_column(String(16), default="tzedaka")
+    breakdown: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(16), default="held")     # held | released | refunded | cancelled
+    requires_review: Mapped[bool] = mapped_column(Boolean, default=False)  # was flagged → admin must release
+    hold_until: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    released_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    live: Mapped[bool] = mapped_column(Boolean, default=False)          # did real money move? (phase 2)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class JobRecording(Base):
+    """Reciter's OPTIONAL recording of themselves saying the tefillah. Never a
+    condition of payment. Stored on disk (audio_dir/<id>.<ext>)."""
+    __tablename__ = "market_recordings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    assignment_id: Mapped[int] = mapped_column(ForeignKey("market_assignments.id", ondelete="CASCADE"), index=True)
+    reciter_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"))
+    filename: Mapped[str] = mapped_column(String(255), default="")
+    content_type: Mapped[str] = mapped_column(String(64), default="audio/webm")
+    size_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    shared: Mapped[bool] = mapped_column(Boolean, default=True)         # reciter may keep it private
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class RecordingRequest(Base):
+    """A poster asking to hear the reciter's recording (allowed only on larger
+    pledges). The reciter is always free to decline."""
+    __tablename__ = "market_recording_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    assignment_id: Mapped[int] = mapped_column(ForeignKey("market_assignments.id", ondelete="CASCADE"), index=True)
+    requester_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"))
+    status: Mapped[str] = mapped_column(String(16), default="requested")  # requested | declined | fulfilled
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    resolved_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class JobMessage(Base):
+    """A short personal audio the poster attaches to a job ('thinking of you,
+    get well…'), delivered to whoever takes it; the reciter sees who sent it."""
+    __tablename__ = "market_job_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    request_id: Mapped[int] = mapped_column(ForeignKey("market_requests.id", ondelete="CASCADE"), index=True)
+    sender_id: Mapped[int] = mapped_column(ForeignKey("market_users.id", ondelete="CASCADE"))
+    sender_name: Mapped[str] = mapped_column(String(160), default="")
+    filename: Mapped[str] = mapped_column(String(255), default="")
+    content_type: Mapped[str] = mapped_column(String(64), default="audio/webm")
+    size_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)

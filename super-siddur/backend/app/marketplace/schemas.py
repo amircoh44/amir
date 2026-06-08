@@ -134,6 +134,10 @@ class ConfigIn(BaseModel):
     integrity_enabled: bool | None = None
     integrity_max_words_per_sec: float | None = None
     integrity_min_step_seconds: float | None = None
+    escrow_days: int | None = None
+    allow_reciter_recording: bool | None = None
+    allow_poster_request_recording: bool | None = None
+    recording_request_min_cents: int | None = None
 
 
 # ---- B2: community ----

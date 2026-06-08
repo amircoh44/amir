@@ -119,6 +119,7 @@ def integrity_ok(step: JobStep, read_ms: int | None, cfg: PayoutConfig):
 
 # ---------------- completion ----------------
 def mark_assignment_complete(db: Session, a: Assignment) -> None:
+    from .escrow import create_payout_for_assignment  # local import avoids any import cycle
     if a.status != "completed":
         a.status = "completed"
         a.completed_at = _now()
@@ -129,6 +130,7 @@ def mark_assignment_complete(db: Session, a: Assignment) -> None:
         if active and all(x.status == "completed" for x in active) and len(active) >= r.expected_reciters:
             r.status = "completed"
     db.commit()
+    create_payout_for_assignment(db, a)   # payout goes into escrow, never instant
 
 
 # ---------------- serialization / guards ----------------

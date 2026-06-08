@@ -41,6 +41,10 @@ class Settings(BaseSettings):
         return self.data_dir / "icons"
 
     @property
+    def audio_dir(self) -> Path:
+        return self.data_dir / "job_audio"
+
+    @property
     def superadmin_list(self) -> list[str]:
         return [e.strip().lower() for e in self.superadmin_emails.split(",") if e.strip()]
 

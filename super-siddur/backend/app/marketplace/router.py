@@ -21,7 +21,7 @@ from .auth import (create_market_token, current_user, get_user_by_email, is_pro,
                    require_pro)
 from .models import (Assignment, Broadcast, MarketUser, Notification,
                      PayoutConfig, Pledge, PrayerRequest)
-from .fulfillment import generate_steps
+from .fulfillment import generate_steps, mark_assignment_complete
 from .payments import get_payment_provider
 from .payout import PLATFORM_CUT_HARD_MAX, Rates, compute_payout
 from .schemas import (AcceptIn, BroadcastIn, CompleteIn, ConfigIn, LoginIn,
@@ -331,17 +331,8 @@ def complete_assignment(aid: int, body: CompleteIn, user: MarketUser = Depends(c
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your assignment")
     if a.status == "completed":
         return {"id": a.id, "status": a.status, "completed_at": a.completed_at}
-    a.status = "completed"
     a.note = body.note
-    a.completed_at = _now()
-    # if every accepted assignment is done, mark the request completed
-    r = db.get(PrayerRequest, a.request_id)
-    if r:
-        rows = db.scalars(select(Assignment).where(Assignment.request_id == r.id)).all()
-        active = [x for x in rows if x.status != "abandoned"]
-        if active and all(x.status == "completed" for x in active) and len(active) >= r.expected_reciters:
-            r.status = "completed"
-    db.commit()
+    mark_assignment_complete(db, a)   # marks request done if all reciters done + opens escrow payout
     return {"id": a.id, "status": a.status, "completed_at": a.completed_at}
 
 
@@ -411,7 +402,9 @@ def admin_get_config(admin: Admin = Depends(require("market.admin")), db: Sessio
         "processor_fee_pct", "processor_fee_flat_cents", "appstore_fee_pct",
         "platform_cut_pct", "platform_cut_max_pct", "payout_mode", "min_pledge_cents",
         "suggested_presets_cents", "tzedaka_targets", "currency",
-        "integrity_enabled", "integrity_max_words_per_sec", "integrity_min_step_seconds")}
+        "integrity_enabled", "integrity_max_words_per_sec", "integrity_min_step_seconds",
+        "escrow_days", "allow_reciter_recording", "allow_poster_request_recording",
+        "recording_request_min_cents")}
 
 
 @router.put("/admin/config")

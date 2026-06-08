@@ -332,3 +332,104 @@ def test_integrity_scope_is_only_the_step_timing():
     assert integrity_ok(step, 12000, cfg)[0] is True   # 12s -> fine
     cfg.integrity_enabled = False
     assert integrity_ok(step, 50, cfg)[0] is True      # disabled -> always trust
+
+
+# ---------------- Escrow ----------------
+def test_escrow_holds_then_releases_clean_payout():
+    atok = _admin_tok()
+    client.put("/api/market/admin/config", headers=_h(atok),
+               json={"escrow_days": 0, "integrity_enabled": False})
+    poster = _pro("escposter@example.com", "EP")
+    reciter = _pro("escreciter@example.com", "ER")
+    body = {"title": "T", "names": [{"name": "Rina"}], "scope_kind": "chapters",
+            "scope_detail": {"chapters": [1]}, "reciter_mode": "single", "expected_reciters": 1,
+            "assignment_mode": "free", "payout_split": "pool", "gross_cents": 1000}
+    rid = client.post("/api/market/requests", headers=_h(poster), json=body).json()["id"]
+    aid = client.post(f"/api/market/requests/{rid}/accept", headers=_h(reciter), json={}).json()["id"]
+    client.post(f"/api/market/assignments/{aid}/complete", headers=_h(reciter), json={"note": "done"})
+    # payout exists, held (never instant), clean
+    payouts = client.get("/api/market/me/payouts", headers=_h(reciter)).json()
+    p = next(x for x in payouts if x["assignment_id"] == aid)
+    assert p["status"] == "held" and p["requires_review"] is False and p["amount_cents"] > 0
+    # escrow_days 0 -> hold elapsed -> auto-release of clean payouts
+    rel = client.post("/api/market/admin/payouts/release-due", headers=_h(atok)).json()
+    assert p["id"] in rel["released"]
+    p2 = next(x for x in client.get("/api/market/me/payouts", headers=_h(reciter)).json() if x["id"] == p["id"])
+    assert p2["status"] == "released"
+    client.put("/api/market/admin/config", headers=_h(atok), json={"escrow_days": 3, "integrity_enabled": True})
+
+
+def test_escrow_flagged_payout_needs_admin_release():
+    atok = _admin_tok()
+    client.put("/api/market/admin/config", headers=_h(atok),
+               json={"escrow_days": 0, "integrity_enabled": True, "integrity_min_step_seconds": 2.0})
+    poster = _pro("escposter2@example.com", "EP2")
+    reciter = _pro("escreciter2@example.com", "ER2")
+    body = {"title": "T", "names": [{"name": "Tov"}], "scope_kind": "chapters",
+            "scope_detail": {"chapters": [1]}, "reciter_mode": "single", "expected_reciters": 1,
+            "assignment_mode": "free", "payout_split": "pool", "gross_cents": 1000}
+    rid = client.post("/api/market/requests", headers=_h(poster), json=body).json()["id"]
+    aid = client.post(f"/api/market/requests/{rid}/accept", headers=_h(reciter), json={}).json()["id"]
+    sid = client.post(f"/api/market/assignments/{aid}/start", headers=_h(reciter)).json()["current"]["id"]
+    assert client.post(f"/api/market/steps/{sid}/done", headers=_h(reciter)).json()["flagged"] is True
+    client.post(f"/api/market/steps/{sid}/confirm", headers=_h(reciter), json={"text": "Said Tehillim 1 b'kavana"})
+    p = client.get("/api/market/me/payouts", headers=_h(reciter)).json()[0]
+    assert p["requires_review"] is True
+    # auto-release skips flagged payouts; admin must release once resolved
+    assert p["id"] not in client.post("/api/market/admin/payouts/release-due", headers=_h(atok)).json()["released"]
+    assert client.post(f"/api/market/admin/payouts/{p['id']}/release", headers=_h(atok)).json()["status"] == "released"
+    client.put("/api/market/admin/config", headers=_h(atok), json={"escrow_days": 3})
+
+
+# ---------------- Optional voice: recording + request ----------------
+def test_optional_recording_and_request_and_decline():
+    atok = _admin_tok()
+    client.put("/api/market/admin/config", headers=_h(atok),
+               json={"allow_reciter_recording": True, "allow_poster_request_recording": True})
+    poster = _pro("recposter@example.com", "RecP")
+    reciter = _pro("recreciter@example.com", "RecR")
+    body = {"title": "T", "names": [{"name": "Ari"}], "scope_kind": "chapters",
+            "scope_detail": {"chapters": [1]}, "reciter_mode": "single", "expected_reciters": 1,
+            "assignment_mode": "free", "payout_split": "pool", "gross_cents": 10000}  # large pledge
+    rid = client.post("/api/market/requests", headers=_h(poster), json=body).json()["id"]
+    aid = client.post(f"/api/market/requests/{rid}/accept", headers=_h(reciter), json={}).json()["id"]
+    # reciter optionally uploads a recording (shared)
+    up = client.post(f"/api/market/assignments/{aid}/recording", headers=_h(reciter),
+                     files={"file": ("r.webm", b"AUDIOBYTES", "audio/webm")}, data={"shared": "true"})
+    assert up.status_code == 200, up.text
+    # poster (large pledge) can fetch the shared recording
+    g = client.get(f"/api/market/assignments/{aid}/recording", headers=_h(poster))
+    assert g.status_code == 200 and g.content == b"AUDIOBYTES"
+    # poster may request to hear it; the reciter is free to decline
+    rq = client.post(f"/api/market/assignments/{aid}/recording-request", headers=_h(poster))
+    assert rq.status_code == 200
+    dec = client.post(f"/api/market/assignments/{aid}/recording-request/decline", headers=_h(reciter))
+    assert dec.status_code == 200 and dec.json()["status"] == "declined"
+    # recording is NEVER enabled implicitly: turning it off blocks upload
+    client.put("/api/market/admin/config", headers=_h(atok), json={"allow_reciter_recording": False})
+    off = client.post(f"/api/market/assignments/{aid}/recording", headers=_h(reciter),
+                      files={"file": ("r.webm", b"x", "audio/webm")}, data={"shared": "true"})
+    assert off.status_code == 403
+    client.put("/api/market/admin/config", headers=_h(atok),
+               json={"allow_reciter_recording": False, "allow_poster_request_recording": False})
+
+
+# ---------------- Personal audio message (poster -> reciter) ----------------
+def test_personal_message_delivered_with_sender():
+    poster = _pro("msgposter@example.com", "Bracha")
+    reciter = _pro("msgreciter@example.com", "MsgR")
+    stranger = _pro("msgstranger@example.com", "Str")
+    body = {"title": "T", "names": [{"name": "Eli"}], "scope_kind": "chapters",
+            "scope_detail": {"chapters": [1]}, "reciter_mode": "single", "expected_reciters": 1,
+            "assignment_mode": "free", "payout_split": "pool", "gross_cents": 1000}
+    rid = client.post("/api/market/requests", headers=_h(poster), json=body).json()["id"]
+    aid = client.post(f"/api/market/requests/{rid}/accept", headers=_h(reciter), json={}).json()["id"]
+    up = client.post(f"/api/market/requests/{rid}/message", headers=_h(poster),
+                     files={"file": ("m.webm", b"GETWELL", "audio/webm")})
+    assert up.status_code == 200, up.text
+    meta = client.get(f"/api/market/assignments/{aid}/message", headers=_h(reciter)).json()
+    assert meta["has_message"] is True and meta["from"] == "Bracha"   # reciter sees who sent it
+    audio = client.get(f"/api/market/requests/{rid}/message/audio", headers=_h(reciter))
+    assert audio.status_code == 200 and audio.content == b"GETWELL"
+    # an unrelated user cannot hear it
+    assert client.get(f"/api/market/requests/{rid}/message/audio", headers=_h(stranger)).status_code == 403
