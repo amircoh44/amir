@@ -57,7 +57,26 @@ window.addEventListener("unhandledrejection",function(e){try{var ev=new ErrorEve
 <script src="/js/48-translate.js"></script>
 <script src="/js/50-import.js"></script>
 <script src="/js/60-adminx.js"></script>
-<script>/* Service worker disabled during active development — keep the app fresh.
+<script>/* Build stamp — proves which bundle is live. If this id isn't in the console
+   after a reload, you are being served STALE code (hard-refresh / rebuild). */
+window.__SIDDUR_BUILD="2026-06-09-settings-backstop";
+console.log("%cThe Super Siddur build "+window.__SIDDUR_BUILD,"color:#d4a854;font-weight:700");
+
+/* Topbar backstop — a single delegated handler so the ✱ Settings, Library and
+   Search buttons ALWAYS work, even if a later script's boot throws before it
+   can wire them directly. Runs after all bundles are parsed. */
+document.addEventListener("click",function(e){
+  var t=e.target&&e.target.closest&&e.target.closest("button");
+  if(!t||!t.id)return;
+  try{
+    if(t.id==="admBtn"&&typeof openAdmin==="function"){openAdmin();}
+    else if(t.id==="libBtn"&&typeof openLib==="function"){openLib();}
+    else if(t.id==="searchBtn"&&typeof openSearch==="function"){openSearch();}
+  }catch(err){console.error("topbar handler:",err);
+    var s=document.getElementById("admSheet");if(t.id==="admBtn"&&s)s.classList.add("show");}
+},true);
+
+/* Service worker disabled during active development — keep the app fresh.
 Register the self-destruct worker once so existing installs clear themselves, then unregister. */
 if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});}
 if(window.caches&&caches.keys){caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))).catch(()=>{});}</script>
