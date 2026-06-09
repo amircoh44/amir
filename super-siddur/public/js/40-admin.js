@@ -60,9 +60,12 @@ function paintAdmin(){
   const title=el("div","adm-section-title");title.textContent=admSectionLabel(admTab);head.appendChild(title);
   content.appendChild(head);
   const wrap=el("div","");content.appendChild(wrap);
-  renderAdmSection(admTab,wrap);
   shell.appendChild(content);
   body.appendChild(shell);
+  /* Render the section ONLY after the shell is in the document, so sections
+     that wire themselves with $("#id").addEventListener(...) find a live node
+     (otherwise document.querySelector returns null on the detached subtree). */
+  renderAdmSection(admTab,wrap);
 }
 function admProfile(w){
   w.appendChild(el("div","note","Your name personalizes greetings, and your Hebrew birthday powers the birthday-psalm feature and age display."));
