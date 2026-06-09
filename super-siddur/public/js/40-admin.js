@@ -21,7 +21,17 @@ function renderAdmSection(tab,wrap){
   else if(tab==="admins")admAdmins(wrap);
   else admProfile(wrap);
 }
-function openAdmin(){admTab="profile";admPane="menu";paintAdmin();$("#admSheet").classList.add("show");}
+function openAdmin(){
+  admTab="profile";admPane="menu";
+  const sheet=$("#admSheet");
+  if(sheet)sheet.classList.add("show");   /* show first — the panel always opens */
+  try{paintAdmin();}
+  catch(e){
+    console.error("Settings render error:",e);
+    const b=$("#admBody");
+    if(b)b.innerHTML='<div class="note" style="margin:1rem">Settings hit an error while rendering:<br><b style="color:#e88">'+esc((e&&e.message)||e)+'</b></div>';
+  }
+}
 function paintAdmin(){
   const body=$("#admBody");body.innerHTML="";
   const shell=el("div","adm-shell"+(admPane==="content"?" show-content":""));
