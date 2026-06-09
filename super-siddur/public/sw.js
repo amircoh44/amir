@@ -1,55 +1,23 @@
-/* The Super Siddur — service worker. Offline-first app shell. */
-const CACHE = "siddur-v32";
-const SHELL = [
-  "/",
-  "/index.html",
-  "/css/app.css",
-  "/js/textdata.js",
-  "/js/05-hebcal.js",
-  "/js/00-engine.js",
-  "/js/10-data.js",
-  "/js/20-logic.js",
-  "/js/25-calendar.js",
-  "/js/30-views.js",
-  "/js/40-admin.js",
-  "/js/45-audio.js",
-  "/js/47-propagate.js",
-  "/js/48-translate.js",
-  "/js/50-import.js",
-  "/js/60-adminx.js",
-  "/manifest.webmanifest",
-  "/icons/icon.svg",
-];
-
-self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
-});
+/* The Super Siddur — service worker: SELF-DESTRUCT.
+   The offline cache caused stale/mixed bundles during active development.
+   This version deletes all caches, unregisters itself, and reloads open tabs,
+   so the app always loads fresh from the server. (Re-introduce real offline
+   caching later once the app has stabilised.) */
+self.addEventListener("install", () => self.skipWaiting());
 
 self.addEventListener("activate", (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))),
-    ).then(() => self.clients.claim()),
-  );
+  e.waitUntil((async () => {
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    } catch (_) {}
+    try { await self.registration.unregister(); } catch (_) {}
+    try {
+      const clients = await self.clients.matchAll({ type: "window" });
+      clients.forEach((c) => c.navigate(c.url));
+    } catch (_) {}
+  })());
 });
 
-self.addEventListener("fetch", (e) => {
-  const url = new URL(e.request.url);
-  if (e.request.method !== "GET") return;
-  // Live content + admin calls: always go to the network.
-  if (url.pathname.startsWith("/api/")) return;
-  // App shell + assets: cache-first, fall back to network and cache it.
-  e.respondWith(
-    caches.match(e.request).then(
-      (hit) =>
-        hit ||
-        fetch(e.request).then((res) => {
-          if (res.ok && url.origin === self.location.origin) {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(e.request, copy));
-          }
-          return res;
-        }).catch(() => caches.match("/index.html")),
-    ),
-  );
-});
+/* Pass everything straight to the network — no caching. */
+self.addEventListener("fetch", () => {});
