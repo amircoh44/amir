@@ -59,7 +59,7 @@ window.addEventListener("unhandledrejection",function(e){try{var ev=new ErrorEve
 <script src="/js/60-adminx.js"></script>
 <script>/* Service worker disabled during active development — keep the app fresh.
 Register the self-destruct worker once so existing installs clear themselves, then unregister. */
-if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(rs=>{if(rs.length){rs.forEach(r=>r.unregister());}else{navigator.serviceWorker.register("/sw.js").catch(()=>{});}});}
-if(window.caches&&caches.keys){caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}</script>
+if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});}
+if(window.caches&&caches.keys){caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))).catch(()=>{});}</script>
 </body>
 </html>
