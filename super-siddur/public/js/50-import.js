@@ -97,7 +97,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   }
   /* Skip the animated cover when the user turned it off, or after it's been seen enough. */
   const skipCover = state.showCover===false || state.coverSeen>=5;
-  if(state.onboarded && skipCover){cover.classList.add("gone");openApp();}
+  if(state.onboarded && skipCover){cover.classList.add("gone");try{openApp();}catch(_e){console.error("openApp failed:",_e);const a=$("#app");if(a){a.style.visibility="visible";a.style.opacity="1";}}}
   else if(!state.onboarded && state.showCover===false){startOnboard();}
   else if(bookCover){bookCover.addEventListener("click",enterFromCover);cover.addEventListener("click",e=>{if(e.target===cover)enterFromCover();});}
 

@@ -66,14 +66,20 @@ function render(){
   const stage=$("#stage");stage.innerHTML="";
   stage.setAttribute("data-view",state.view||"home");
   document.querySelectorAll(".nav-tab").forEach(t=>t.classList.toggle("on",t.dataset.view===state.view||(state.view==="service"&&t.dataset.view==="prayers")||(state.view==="tehillim-read"&&t.dataset.view==="tehillim")));
-  if(state.view==="home")renderHome(stage);
-  else if(state.view==="service")renderService(stage,state.viewArg);
-  else if(state.view==="prayers")renderPrayersIndex(stage);
-  else if(state.view==="tehillim")(state.tehSub?renderTehillimSub:renderTehillimHub)(stage);
-  else if(state.view==="tehillim-read")renderTehillimRead(stage,state.viewArg);
-  else if(state.view==="zmanim")renderZmanim(stage);
-  else if(state.view==="kotel")renderKotel(stage);
-  else renderHome(stage);
+  try{
+    if(state.view==="home")renderHome(stage);
+    else if(state.view==="service")renderService(stage,state.viewArg);
+    else if(state.view==="prayers")renderPrayersIndex(stage);
+    else if(state.view==="tehillim")(state.tehSub?renderTehillimSub:renderTehillimHub)(stage);
+    else if(state.view==="tehillim-read")renderTehillimRead(stage,state.viewArg);
+    else if(state.view==="zmanim")renderZmanim(stage);
+    else if(state.view==="kotel")renderKotel(stage);
+    else renderHome(stage);
+  }catch(err){
+    /* a view error must never break the app shell (nav, settings, etc.) */
+    console.error("render error in view '"+state.view+"':",err);
+    stage.innerHTML='<div class="note" style="margin:2rem auto;max-width:30rem;text-align:center">This page hit an error. Try another tab — the rest of the app still works.</div>';
+  }
   /* gentle view transition */
   stage.classList.remove("view-in");void stage.offsetWidth;stage.classList.add("view-in");
 }
