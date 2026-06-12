@@ -44,13 +44,13 @@
 	}
 
 	/**
-	 * Clamp an auto-place count to a sensible 1–10 range.
+	 * Clamp an auto-place count to a sensible 1–20 range.
 	 *
 	 * @param {*} v Raw value.
 	 * @return {number}
 	 */
 	function clampCount( v ) {
-		return Math.max( 1, Math.min( 10, parseInt( v, 10 ) || 2 ) );
+		return Math.max( 1, Math.min( 20, parseInt( v, 10 ) || 2 ) );
 	}
 
 	var state = {
@@ -214,8 +214,8 @@
 			'      <div class="rip-insert-opts">' + insertOpts + '</div>' +
 			'      <div class="rip-foot-actions">' +
 			'        <span class="rip-selcount"></span>' +
-			'        <span class="rip-auto" data-tip="Automatically scatter related images at well-spaced spots — after a paragraph or before a heading, never mid-sentence, kept clear of other images. Choose how many.">' +
-			'          <input type="number" class="rip-auto-count" min="1" max="10" step="1" value="2" aria-label="Number of images to scatter" />' +
+			'        <span class="rip-auto" data-tip="Type how many images to scatter (1–20), then click. They land at well-spaced spots — after a paragraph or before a heading, never mid-sentence, kept clear of other images.">' +
+			'          <input type="number" class="rip-auto-count" min="1" max="20" step="1" value="2" aria-label="Number of images to scatter (1-20)" />' +
 			'          <button type="button" class="rip-auto-btn">' + icon( 'magic' ) + '<span>Auto-place</span></button>' +
 			'        </span>' +
 			'        <button type="button" class="rip-insert-btn" disabled>' + icon( 'insert' ) + '<span>' + esc( i18n.insert || 'Insert' ) + '</span></button>' +
