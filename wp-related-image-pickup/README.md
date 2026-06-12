@@ -44,8 +44,8 @@ Your **alignment, size, link, position, sort and orientation** choices are store
 ### Edit before insert
 Edit **title, alt text, caption and description** per selected image; changes are saved back onto the attachment (and applied at import time for stock images).
 
-### Auto-place (+2)
-One click drops **two more related images** at well-spaced block boundaries — **after a paragraph or before a heading**, never mid-sentence, and kept clear of existing images. Keywords are taken from the surrounding text at each spot.
+### Auto-place
+Choose **how many images to scatter** (1–10, remembered) and one click drops them at well-spaced block boundaries — **after a paragraph or before a heading**, never mid-sentence, and kept clear of existing images. Keywords are taken from the surrounding text at each spot.
 
 ### Sources
 - **Media Library** — searches images already on your site.

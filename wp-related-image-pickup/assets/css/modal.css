@@ -535,7 +535,35 @@
 /* Distinguish the card currently open in the details editor. */
 .rip-card.is-active { box-shadow: 0 0 0 2px var( --rip-accent ), 0 10px 24px -8px rgba( 16, 24, 40, 0.3 ); }
 
-/* ---- Auto-place button ---- */
+/* ---- Auto-place control (count + button) ---- */
+.rip-auto {
+	display: inline-flex;
+	align-items: stretch;
+	gap: 6px;
+}
+
+.rip-auto-count {
+	width: 52px;
+	height: 42px;
+	text-align: center;
+	font-size: 14px;
+	font-weight: 600;
+	color: var( --rip-text );
+	background: var( --rip-bg-soft );
+	border: 1px solid var( --rip-border-strong );
+	border-radius: var( --rip-radius-sm );
+	-moz-appearance: textfield;
+}
+
+.rip-auto-count::-webkit-outer-spin-button,
+.rip-auto-count::-webkit-inner-spin-button { opacity: 1; height: 28px; }
+
+.rip-auto-count:focus {
+	outline: none;
+	border-color: var( --rip-accent );
+	box-shadow: var( --rip-ring );
+}
+
 .rip-auto-btn {
 	display: inline-flex;
 	align-items: center;
@@ -654,6 +682,7 @@
 	.rip-grid { grid-template-columns: repeat( auto-fill, minmax( 132px, 1fr ) ); }
 	.rip-details-grid { grid-template-columns: 1fr; }
 	.rip-foot-actions { width: 100%; flex-wrap: wrap; }
+	.rip-auto { flex: 1; }
 	.rip-auto-btn,
 	.rip-insert-btn { flex: 1; justify-content: center; }
 	/* Tooltips can overflow tiny screens; allow wrapping. */

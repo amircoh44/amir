@@ -43,6 +43,16 @@
 		return p;
 	}
 
+	/**
+	 * Clamp an auto-place count to a sensible 1–10 range.
+	 *
+	 * @param {*} v Raw value.
+	 * @return {number}
+	 */
+	function clampCount( v ) {
+		return Math.max( 1, Math.min( 10, parseInt( v, 10 ) || 2 ) );
+	}
+
 	var state = {
 		editor: null,
 		editorId: '',
@@ -204,7 +214,10 @@
 			'      <div class="rip-insert-opts">' + insertOpts + '</div>' +
 			'      <div class="rip-foot-actions">' +
 			'        <span class="rip-selcount"></span>' +
-			'        <button type="button" class="rip-auto-btn" data-tip="Automatically place 2 more related images at well-spaced spots — after a paragraph or before a heading, never mid-sentence, kept clear of other images">' + icon( 'magic' ) + '<span>Auto-place +2</span></button>' +
+			'        <span class="rip-auto" data-tip="Automatically scatter related images at well-spaced spots — after a paragraph or before a heading, never mid-sentence, kept clear of other images. Choose how many.">' +
+			'          <input type="number" class="rip-auto-count" min="1" max="10" step="1" value="2" aria-label="Number of images to scatter" />' +
+			'          <button type="button" class="rip-auto-btn">' + icon( 'magic' ) + '<span>Auto-place</span></button>' +
+			'        </span>' +
 			'        <button type="button" class="rip-insert-btn" disabled>' + icon( 'insert' ) + '<span>' + esc( i18n.insert || 'Insert' ) + '</span></button>' +
 			'      </div>' +
 			'    </footer>' +
@@ -229,6 +242,7 @@
 		if ( p.usage ) {
 			$modal.find( '.rip-f-usage' ).val( p.usage );
 		}
+		$modal.find( '.rip-auto-count' ).val( clampCount( p.autoCount || 2 ) );
 
 		bindEvents();
 		return $modal;
@@ -298,8 +312,14 @@
 			};
 		} );
 
+		$modal.find( '.rip-auto-count' ).on( 'change', function () {
+			var v = clampCount( $( this ).val() );
+			$( this ).val( v );
+			savePrefs( { autoCount: v } );
+		} );
+
 		$modal.find( '.rip-auto-btn' ).on( 'click', function () {
-			autoIllustrate( 2 );
+			autoIllustrate( clampCount( $modal.find( '.rip-auto-count' ).val() ) );
 		} );
 
 		$modal.find( '.rip-tab' ).on( 'click', function () {
@@ -962,7 +982,7 @@
 				editor.undoManager.add();
 			}
 			editor.save();
-			$btn.prop( 'disabled', false ).find( 'span' ).text( 'Auto-place +2' );
+			$btn.prop( 'disabled', false ).find( 'span' ).text( 'Auto-place' );
 			if ( placed ) {
 				close();
 			} else {

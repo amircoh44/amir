@@ -27,7 +27,7 @@ Features:
 * Stock images are imported into your Media Library on insert.
 * Multi-select, choose insert size, alignment, position (cursor / after / before paragraph), caption and optional link — remembered between sessions.
 * Edit title, alt, caption and description per image before inserting.
-* Auto-place two more related images at well-spaced, professional spots.
+* Auto-place a chosen number of related images at well-spaced, professional spots.
 * Auto-filled alt text for SEO and accessibility.
 
 == Installation ==
@@ -58,7 +58,7 @@ When you insert a stock image it is downloaded into your Media Library first, th
 * Remembers your alignment, size, link, sort and position choices.
 * Edit title, alt text, caption and description per image before inserting (saved to the attachment).
 * Usage tracking: see how many posts already use each image, filter to never-used images, and sort by least/most used.
-* Auto-place: drop two more related images at well-spaced spots, kept clear of other images.
+* Auto-place: scatter a chosen number (1–10) of related images at well-spaced spots, kept clear of other images.
 
 = 1.0.0 =
 * Initial release.
