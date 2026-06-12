@@ -19,22 +19,15 @@ export function cleanText(input: string | null | undefined): string {
   return String(input)
     .replace(/<br\s*\/?>/gi, ' ')
     .replace(/<[^>]+>/g, '')
-    .replace(/&#x([0-9a-f]+);/gi, (_, h) => {
-      const n = parseInt(h, 16);
-      return n < 32 ? ' ' : String.fromCodePoint(n);
-    })
-    .replace(/&#(\d+);/g, (_, d) => {
-      const n = parseInt(d, 10);
-      return n < 32 ? ' ' : String.fromCodePoint(n);
-    })
-    .replace(/&([a-z][a-z0-9]*);/gi, (_, name: string) => {
-      const k = name.toLowerCase();
-      return k in NAMED_ENT ? NAMED_ENT[k] : '';
-    })
+    .replace(/&#x([0-9a-f]+);?/gi, (_, h) => { const n = parseInt(h, 16); return n < 32 ? ' ' : String.fromCodePoint(n); })
+    .replace(/&#(\d+);?/g, (_, d) => { const n = parseInt(d, 10); return n < 32 ? ' ' : String.fromCodePoint(n); })
+    .replace(/&(nbsp|thinsp|ensp|emsp|hairsp|shy|amp|lt|gt|quot|apos|ndash|mdash|hellip|[lr]squo|[lr]dquo)\b;?/gi, (_, name: string) => NAMED_ENT[name.toLowerCase()])
+    .replace(/&([a-z][a-z0-9]*);/gi, (_, name: string) => { const k = name.toLowerCase(); return k in NAMED_ENT ? NAMED_ENT[k] : ''; })
+    .replace(/[\s;|]*[{(]\s*[פס]\s*[})][\s;|]*/g, ' ')
     .replace(/\s*;\s*\|/g, ' ')
     .replace(/\|/g, ' ')
-    .replace(/[\u200B-\u200D\uFEFF]/g, '')
-    .replace(/[ \t\u00A0]{2,}/g, ' ')
-    .replace(/[ \t\u00A0]+([,.;:!?])/g, '$1')
+    .replace(/[​-‍﻿]/g, '')
+    .replace(/[ \t ]{2,}/g, ' ')
+    .replace(/[ \t ]+([,.;:!?])/g, '$1')
     .trim();
 }
