@@ -119,6 +119,9 @@ class RIP_Providers {
 		if ( ! empty( $meta['caption'] ) ) {
 			$update['post_excerpt'] = sanitize_text_field( $meta['caption'] );
 		}
+		if ( ! empty( $meta['description'] ) ) {
+			$update['post_content'] = sanitize_textarea_field( $meta['description'] );
+		}
 		if ( count( $update ) > 1 ) {
 			wp_update_post( $update );
 		}

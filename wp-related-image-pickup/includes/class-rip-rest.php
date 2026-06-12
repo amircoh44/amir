@@ -98,11 +98,29 @@ class RIP_REST {
 					return current_user_can( 'upload_files' );
 				},
 				'args'                => array(
-					'url'     => array( 'required' => true, 'type' => 'string' ),
-					'title'   => array( 'type' => 'string', 'default' => '' ),
-					'alt'     => array( 'type' => 'string', 'default' => '' ),
-					'caption' => array( 'type' => 'string', 'default' => '' ),
-					'post_id' => array( 'type' => 'integer', 'default' => 0 ),
+					'url'         => array( 'required' => true, 'type' => 'string' ),
+					'title'       => array( 'type' => 'string', 'default' => '' ),
+					'alt'         => array( 'type' => 'string', 'default' => '' ),
+					'caption'     => array( 'type' => 'string', 'default' => '' ),
+					'description' => array( 'type' => 'string', 'default' => '' ),
+					'post_id'     => array( 'type' => 'integer', 'default' => 0 ),
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NS,
+			'/update-meta',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'route_update_meta' ),
+				'permission_callback' => array( $this, 'can_edit' ),
+				'args'                => array(
+					'id'          => array( 'required' => true, 'type' => 'integer' ),
+					'title'       => array( 'type' => 'string', 'default' => '' ),
+					'alt'         => array( 'type' => 'string', 'default' => '' ),
+					'caption'     => array( 'type' => 'string', 'default' => '' ),
+					'description' => array( 'type' => 'string', 'default' => '' ),
 				),
 			)
 		);
@@ -127,10 +145,16 @@ class RIP_REST {
 			'min_size'    => array( 'type' => 'integer', 'default' => 0 ),
 			'max_size'    => array( 'type' => 'integer', 'default' => 0 ),
 			'mime'        => array( 'type' => 'string', 'default' => '' ),
+			'usage'       => array(
+				'type'    => 'string',
+				'default' => 'any',
+				'enum'    => array( 'any', 'unused', 'used' ),
+			),
+			'max_usage'   => array( 'type' => 'integer', 'default' => 0 ),
 			'orderby'     => array(
 				'type'    => 'string',
 				'default' => 'relevance',
-				'enum'    => array( 'relevance', 'date', 'date_asc', 'size', 'size_asc', 'resolution', 'title' ),
+				'enum'    => array( 'relevance', 'date', 'date_asc', 'size', 'size_asc', 'resolution', 'title', 'usage', 'usage_asc' ),
 			),
 			'date_after'  => array( 'type' => 'string', 'default' => '' ),
 			'date_before' => array( 'type' => 'string', 'default' => '' ),
@@ -195,6 +219,8 @@ class RIP_REST {
 				'min_size'    => (int) $request->get_param( 'min_size' ),
 				'max_size'    => (int) $request->get_param( 'max_size' ),
 				'mime'        => $mime,
+				'usage'       => $request->get_param( 'usage' ),
+				'max_usage'   => (int) $request->get_param( 'max_usage' ),
 				'orderby'     => $request->get_param( 'orderby' ),
 				'date_after'  => sanitize_text_field( (string) $request->get_param( 'date_after' ) ),
 				'date_before' => sanitize_text_field( (string) $request->get_param( 'date_before' ) ),
@@ -270,10 +296,11 @@ class RIP_REST {
 		$result = RIP_Providers::import_to_library(
 			(string) $request->get_param( 'url' ),
 			array(
-				'title'   => sanitize_text_field( (string) $request->get_param( 'title' ) ),
-				'alt'     => sanitize_text_field( (string) $request->get_param( 'alt' ) ),
-				'caption' => sanitize_text_field( (string) $request->get_param( 'caption' ) ),
-				'post_id' => (int) $request->get_param( 'post_id' ),
+				'title'       => sanitize_text_field( (string) $request->get_param( 'title' ) ),
+				'alt'         => sanitize_text_field( (string) $request->get_param( 'alt' ) ),
+				'caption'     => sanitize_text_field( (string) $request->get_param( 'caption' ) ),
+				'description' => sanitize_textarea_field( (string) $request->get_param( 'description' ) ),
+				'post_id'     => (int) $request->get_param( 'post_id' ),
 			)
 		);
 
@@ -282,5 +309,35 @@ class RIP_REST {
 		}
 
 		return rest_ensure_response( $result );
+	}
+
+	/**
+	 * POST /update-meta — persist edited title/alt/caption/description on an
+	 * existing Media Library attachment.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function route_update_meta( WP_REST_Request $request ) {
+		$id   = (int) $request->get_param( 'id' );
+		$post = get_post( $id );
+
+		if ( ! $post || 'attachment' !== $post->post_type ) {
+			return new WP_Error( 'rip_not_found', __( 'Attachment not found.', 'wp-related-image-pickup' ), array( 'status' => 404 ) );
+		}
+		if ( ! current_user_can( 'edit_post', $id ) ) {
+			return new WP_Error( 'rip_forbidden', __( 'You are not allowed to edit this image.', 'wp-related-image-pickup' ), array( 'status' => 403 ) );
+		}
+
+		$update = array(
+			'ID'           => $id,
+			'post_title'   => sanitize_text_field( (string) $request->get_param( 'title' ) ),
+			'post_excerpt' => sanitize_text_field( (string) $request->get_param( 'caption' ) ),
+			'post_content' => sanitize_textarea_field( (string) $request->get_param( 'description' ) ),
+		);
+		wp_update_post( $update );
+		update_post_meta( $id, '_wp_attachment_image_alt', sanitize_text_field( (string) $request->get_param( 'alt' ) ) );
+
+		return rest_ensure_response( array( 'id' => $id, 'updated' => true ) );
 	}
 }

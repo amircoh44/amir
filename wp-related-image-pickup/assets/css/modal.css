@@ -514,6 +514,108 @@
 
 @keyframes rip-tip { to { opacity: 1; } }
 
+/* ---- Usage chips on cards ---- */
+.rip-use {
+	position: absolute;
+	bottom: 8px;
+	left: 8px;
+	z-index: 2;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	padding: 3px 7px;
+	border-radius: 999px;
+	-webkit-backdrop-filter: blur( 4px );
+	backdrop-filter: blur( 4px );
+}
+
+.rip-use-off { background: rgba( 16, 185, 129, 0.92 ); color: #fff; }
+.rip-use-on { background: rgba( 19, 23, 34, 0.72 ); color: #fff; }
+
+/* Distinguish the card currently open in the details editor. */
+.rip-card.is-active { box-shadow: 0 0 0 2px var( --rip-accent ), 0 10px 24px -8px rgba( 16, 24, 40, 0.3 ); }
+
+/* ---- Auto-place button ---- */
+.rip-auto-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	height: 42px;
+	padding: 0 16px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var( --rip-accent );
+	background: var( --rip-accent-soft );
+	border: 1px solid transparent;
+	border-radius: var( --rip-radius-sm );
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background 0.15s, filter 0.15s, transform 0.05s;
+}
+
+.rip-auto-btn:hover:not( :disabled ) { filter: brightness( 0.97 ); border-color: var( --rip-accent ); }
+.rip-auto-btn:active:not( :disabled ) { transform: translateY( 1px ); }
+.rip-auto-btn:disabled { opacity: 0.55; cursor: progress; }
+
+/* ---- Editable details panel ---- */
+.rip-details {
+	border-top: 1px solid var( --rip-border );
+	background: var( --rip-bg );
+	padding: 14px 20px 4px;
+}
+
+.rip-details[hidden] { display: none; }
+
+.rip-details-head {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	font-size: 12px;
+	font-weight: 650;
+	color: var( --rip-text-dim );
+	margin-bottom: 10px;
+}
+
+.rip-details-head .rip-ic { color: var( --rip-accent ); }
+
+.rip-details-grid {
+	display: grid;
+	grid-template-columns: repeat( 3, 1fr );
+	gap: 10px 12px;
+}
+
+.rip-details-grid .rip-field-lab {
+	font-size: 10.5px;
+	font-weight: 650;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var( --rip-text-dim );
+	margin-bottom: 4px;
+}
+
+.rip-details-grid input[type="text"],
+.rip-details-grid textarea {
+	width: 100%;
+	font-size: 13px;
+	color: var( --rip-text );
+	background: var( --rip-bg-soft );
+	border: 1px solid var( --rip-border-strong );
+	border-radius: var( --rip-radius-xs );
+	padding: 8px 10px;
+	resize: vertical;
+	font-family: inherit;
+}
+
+.rip-details-grid input[type="text"]:focus,
+.rip-details-grid textarea:focus {
+	outline: none;
+	background: var( --rip-bg );
+	border-color: var( --rip-accent );
+	box-shadow: var( --rip-ring );
+}
+
+.rip-field-wide { grid-column: 1 / -1; }
+
 /* ======================================================================
    Responsive — wrap, then stack to a single column. No horizontal scroll.
    ====================================================================== */
@@ -536,6 +638,7 @@
 	.rip-foot { align-items: stretch; }
 	.rip-insert-opts { max-width: none; }
 	.rip-foot-actions { justify-content: space-between; }
+	.rip-details-grid { grid-template-columns: repeat( 2, 1fr ); }
 }
 
 /* Phone — everything in a single column, full-width controls */
@@ -549,7 +652,9 @@
 	.rip-search-btn { flex: 1 1 100%; }
 	.rip-tabs { flex-wrap: wrap; }
 	.rip-grid { grid-template-columns: repeat( auto-fill, minmax( 132px, 1fr ) ); }
-	.rip-foot-actions { width: 100%; }
+	.rip-details-grid { grid-template-columns: 1fr; }
+	.rip-foot-actions { width: 100%; flex-wrap: wrap; }
+	.rip-auto-btn,
 	.rip-insert-btn { flex: 1; justify-content: center; }
 	/* Tooltips can overflow tiny screens; allow wrapping. */
 	[data-tip]:hover::after,

@@ -29,10 +29,23 @@ Keywords appear in an editable box, so you can refine the search by hand at any 
 - **Minimum resolution:** 640 / 1280 / 1920 (HD) / 3840 (4K).
 - **Maximum file size:** 100 KB / 500 KB / 1 MB / 5 MB / any.
 - **File type:** JPG / PNG / WebP / GIF / SVG (Media Library tab).
+- **Usage:** Any / **Never used** / Already used — find fresh images, skip overused ones.
 - **Date range** (via REST API).
 
 ### Sorting
-Relevance · Newest · Oldest · Highest resolution · Largest file · Smallest file · Title (A–Z).
+Relevance · Newest · Oldest · Highest resolution · Largest file · Smallest file · **Least used** · **Most used** · Title (A–Z).
+
+### Usage tracking
+Each Media Library card shows how many posts already use it (**“Never used”** vs **“Used 3×”**), counting both featured-image assignments and in-content `wp-image-{id}` references as distinct posts.
+
+### Remembered preferences
+Your **alignment, size, link, position, sort and orientation** choices are stored in the browser and restored next time.
+
+### Edit before insert
+Edit **title, alt text, caption and description** per selected image; changes are saved back onto the attachment (and applied at import time for stock images).
+
+### Auto-place (+2)
+One click drops **two more related images** at well-spaced block boundaries — **after a paragraph or before a heading**, never mid-sentence, and kept clear of existing images. Keywords are taken from the surrounding text at each spot.
 
 ### Sources
 - **Media Library** — searches images already on your site.
@@ -41,7 +54,7 @@ Relevance · Newest · Oldest · Highest resolution · Largest file · Smallest 
 
 ### Inserting
 - **Multi‑select** to insert several images at once.
-- Insert **size** (thumbnail/medium/large/full), **alignment** (none/left/center/right), optional **caption**, and optional **link to full image**.
+- Insert **size** (thumbnail/medium/large/full), **alignment** (none/left/center/right), **position** (at cursor / after the paragraph / before the paragraph), optional **caption**, and optional **link to full image**.
 - Auto‑filled **alt text** from the matched metadata / selected sentence (good for SEO + accessibility).
 
 ## Installation
@@ -80,6 +93,7 @@ All routes require `edit_posts` (import requires `upload_files`) and a `wp_rest`
 | GET | `/wp-json/rip/v1/search` | Search the Media Library (filters/sort). |
 | GET | `/wp-json/rip/v1/stock` | Search configured stock providers. |
 | POST | `/wp-json/rip/v1/import` | Sideload a stock image into the Media Library. |
+| POST | `/wp-json/rip/v1/update-meta` | Persist edited title/alt/caption/description on an attachment. |
 
 ## Architecture
 
@@ -118,6 +132,7 @@ wp-related-image-pickup/
 - Gutenberg (Block editor) format/toolbar integration.
 - "Set as featured image" action.
 - Per‑provider attribution insertion.
+- Configurable auto‑place count and minimum spacing.
 
 ## License
 

@@ -13,6 +13,13 @@ defined( 'ABSPATH' ) || exit;
 class RIP_Search {
 
 	/**
+	 * Cached map of attachment ID => number of distinct posts using it.
+	 *
+	 * @var array|null
+	 */
+	private $usage_cache = null;
+
+	/**
 	 * Run a search against the Media Library.
 	 *
 	 * @param array $args {
@@ -44,6 +51,8 @@ class RIP_Search {
 				'max_size'    => 0,
 				'min_size'    => 0,
 				'mime'        => array(),
+				'usage'       => 'any',
+				'max_usage'   => 0,
 				'orderby'     => 'relevance',
 				'date_after'  => '',
 				'date_before' => '',
@@ -232,6 +241,9 @@ class RIP_Search {
 		$full      = wp_get_attachment_image_src( $id, 'full' );
 		$filename  = $file ? wp_basename( $file ) : '';
 
+		$usage_map = $this->usage_map();
+		$usage     = isset( $usage_map[ $id ] ) ? (int) $usage_map[ $id ] : 0;
+
 		$item = array(
 			'id'          => $id,
 			'title'       => $post->post_title,
@@ -248,6 +260,7 @@ class RIP_Search {
 			'filesize'    => $filesize,
 			'mime'        => $post->post_mime_type,
 			'date'        => $post->post_date_gmt,
+			'usage'       => $usage,
 			'source'      => 'media_library',
 			'sizes'       => $this->available_sizes( $id ),
 		);
@@ -279,6 +292,45 @@ class RIP_Search {
 		}
 
 		return $out;
+	}
+
+	/**
+	 * Build (and cache) a map of attachment ID => number of distinct posts that
+	 * use it, counting both featured-image assignments and in-content
+	 * references (the `wp-image-{ID}` class WordPress adds to inserted images).
+	 *
+	 * @return array<int,int>
+	 */
+	private function usage_map() {
+		if ( null !== $this->usage_cache ) {
+			return $this->usage_cache;
+		}
+
+		global $wpdb;
+		$map = array();
+
+		// 1. Featured-image usage (one per post that sets _thumbnail_id).
+		$rows = $wpdb->get_results( "SELECT meta_value AS id, COUNT(*) AS c FROM {$wpdb->postmeta} WHERE meta_key = '_thumbnail_id' GROUP BY meta_value" ); // phpcs:ignore WordPress.DB
+		foreach ( (array) $rows as $row ) {
+			$id = (int) $row->id;
+			if ( $id ) {
+				$map[ $id ] = ( isset( $map[ $id ] ) ? $map[ $id ] : 0 ) + (int) $row->c;
+			}
+		}
+
+		// 2. In-content usage: scan post bodies that reference an inserted image
+		// and tally distinct posts per attachment ID.
+		$contents = $wpdb->get_col( "SELECT post_content FROM {$wpdb->posts} WHERE post_type NOT IN ( 'attachment', 'revision' ) AND post_status NOT IN ( 'trash', 'auto-draft' ) AND post_content LIKE '%wp-image-%'" ); // phpcs:ignore WordPress.DB
+		foreach ( (array) $contents as $content ) {
+			if ( preg_match_all( '/wp-image-(\d+)/', $content, $matches ) ) {
+				foreach ( array_unique( array_map( 'intval', $matches[1] ) ) as $id ) {
+					$map[ $id ] = ( isset( $map[ $id ] ) ? $map[ $id ] : 0 ) + 1;
+				}
+			}
+		}
+
+		$this->usage_cache = $map;
+		return $map;
 	}
 
 	/**
@@ -363,6 +415,15 @@ class RIP_Search {
 		if ( $args['max_size'] && $item['filesize'] > (int) $args['max_size'] ) {
 			return false;
 		}
+		if ( 'unused' === $args['usage'] && $item['usage'] > 0 ) {
+			return false;
+		}
+		if ( 'used' === $args['usage'] && $item['usage'] < 1 ) {
+			return false;
+		}
+		if ( $args['max_usage'] && $item['usage'] > (int) $args['max_usage'] ) {
+			return false;
+		}
 
 		return true;
 	}
@@ -399,6 +460,20 @@ class RIP_Search {
 			},
 			'title'      => function ( $a, $b ) {
 				return strcasecmp( $a['title'], $b['title'] );
+			},
+			'usage'      => function ( $a, $b ) {
+				if ( $a['usage'] === $b['usage'] ) {
+					return $b['score'] <=> $a['score'];
+				}
+				return $b['usage'] <=> $a['usage'];
+			},
+			'usage_asc'  => function ( $a, $b ) {
+				// Least-used first (never-used images surface at the top), then
+				// best relevance within the same usage count.
+				if ( $a['usage'] === $b['usage'] ) {
+					return $b['score'] <=> $a['score'];
+				}
+				return $a['usage'] <=> $b['usage'];
 			},
 		);
 
