@@ -55,3 +55,26 @@ const CITIES=[
  ["Buenos Aires",-34.6037,-58.3816,"America/Argentina/Buenos_Aires"],["Mexico City",19.4326,-99.1332,"America/Mexico_City"]
 ];
 
+/* ====== TEXT SANITISER ======
+   Fetched text (Sefaria, etc.) carries HTML entities and markup — &thinsp;,
+   &nbsp;, <br>, <sup> footnotes, and Sefaria's ";|" segment separators — which
+   then render literally (esc() turns the leading & into &amp;). cleanText strips
+   tags, decodes/removes entities, and drops stray pipes, while leaving every
+   Hebrew letter, nikud, ta'am, and punctuation mark (־ ׃ ׳ ״ …) untouched. */
+const _NAMED_ENT={amp:"&",lt:"<",gt:">",quot:'"',apos:"'",nbsp:" ",thinsp:" ",ensp:" ",emsp:" ",hairsp:" ",shy:"",ndash:"–",mdash:"—",hellip:"…",rsquo:"’",lsquo:"‘",ldquo:"“",rdquo:"”"};
+function cleanText(s){
+  if(s==null)return "";
+  return String(s)
+    .replace(/<br\s*\/?>/gi," ")            /* line breaks → space */
+    .replace(/<[^>]+>/g,"")                  /* strip any remaining tags (incl. footnotes) */
+    .replace(/&#x([0-9a-f]+);/gi,(_,h)=>{const n=parseInt(h,16);return n<32?" ":String.fromCodePoint(n);})
+    .replace(/&#(\d+);/g,(_,d)=>{const n=parseInt(d,10);return n<32?" ":String.fromCodePoint(n);})
+    .replace(/&([a-z][a-z0-9]*);/gi,(m,name)=>{const k=name.toLowerCase();return k in _NAMED_ENT?_NAMED_ENT[k]:"";})
+    .replace(/\s*;\s*\|/g," ")               /* Sefaria ";|" segment separator */
+    .replace(/\|/g," ")                       /* any stray pipes */
+    .replace(/[\u200B-\u200D\uFEFF]/g,"")    /* zero-width junk (ZWSP/ZWNJ/ZWJ/BOM) */
+    .replace(/[ \t\u00A0]{2,}/g," ")          /* collapse runs of spaces (incl. nbsp) */
+    .replace(/[ \t\u00A0]+([,.;:!?])/g,"$1") /* tidy space before Latin punctuation */
+    .trim();
+}
+

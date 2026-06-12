@@ -30,7 +30,7 @@ async function sefariaFetchEnglish(ref){
     if(!r.ok)return{ok:false,error:"Sefaria: "+(r.status===404?"reference not found":"error "+r.status)};
     const d=await r.json();
     let v=(d.versions||[]).find(x=>x&&(x.language==="en"||x.isPrimary===false&&x.direction==="ltr"))||(d.versions||[])[0];
-    const segs=_flattenSeg(v&&v.text);
+    const segs=_flattenSeg(v&&v.text).map(cleanText);
     if(!segs.length)return{ok:false,error:"No English text available for this reference"};
     return{ok:true,segments:segs,ref:d.ref||ref};
   }catch(e){return{ok:false,error:"Network error — Sefaria needs a connection"};}
