@@ -1,0 +1,136 @@
+/**
+ * Related Image Pickup — settings page styles (2026 design system).
+ *
+ * Card-based, responsive layout. On tablet/phone the form rows stack
+ * (label above field) so nothing ever horizontal-scrolls.
+ *
+ * @package WP_Related_Image_Pickup
+ */
+
+.rip-admin {
+	--rip-accent: #4f46e5;
+	--rip-card: #ffffff;
+	--rip-border: #e4e7ec;
+	--rip-text: #131722;
+	--rip-text-dim: #5a6473;
+	--rip-radius: 14px;
+	max-width: 880px;
+}
+
+.rip-admin h1 {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-weight: 650;
+	letter-spacing: -0.01em;
+}
+
+.rip-admin-logo {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 38px;
+	height: 38px;
+	border-radius: 11px;
+	color: #fff;
+	background: linear-gradient( 135deg, #6366f1, #4f46e5 );
+	box-shadow: 0 6px 16px -6px rgba( 79, 70, 229, 0.7 );
+	flex: none;
+}
+
+.rip-admin-lede {
+	color: var( --rip-text-dim );
+	font-size: 14px;
+	max-width: 62ch;
+	margin: 6px 0 22px;
+}
+
+.rip-admin-card {
+	background: var( --rip-card );
+	border: 1px solid var( --rip-border );
+	border-radius: var( --rip-radius );
+	padding: 8px 24px 18px;
+	margin: 0 0 18px;
+	box-shadow: 0 1px 2px rgba( 16, 24, 40, 0.05 ), 0 8px 24px -16px rgba( 16, 24, 40, 0.25 );
+}
+
+.rip-admin-card h2.title {
+	font-size: 15px;
+	font-weight: 650;
+	margin: 14px 0 4px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid var( --rip-border );
+	color: var( --rip-text );
+}
+
+.rip-admin .form-table th {
+	font-weight: 600;
+	color: var( --rip-text );
+}
+
+.rip-admin .form-table input[type="text"],
+.rip-admin .form-table input[type="number"],
+.rip-admin .form-table select {
+	border-radius: 8px;
+	border-color: #d0d5dd;
+	min-height: 38px;
+}
+
+.rip-admin .form-table input[type="text"]:focus,
+.rip-admin .form-table input[type="number"]:focus,
+.rip-admin .form-table select:focus {
+	border-color: var( --rip-accent );
+	box-shadow: 0 0 0 3px rgba( 79, 70, 229, 0.18 );
+}
+
+.rip-admin .description a { color: var( --rip-accent ); text-decoration: none; }
+.rip-admin .description a:hover { text-decoration: underline; }
+
+.rip-admin .button-primary {
+	background: var( --rip-accent );
+	border-color: var( --rip-accent );
+	border-radius: 8px;
+	height: 40px;
+	padding: 0 22px;
+	font-weight: 600;
+}
+
+.rip-admin .button-primary:hover { filter: brightness( 1.08 ); }
+
+/* ===== Responsive: stack rows, never horizontal-scroll ===== */
+@media ( max-width: 782px ) {
+	.rip-admin { max-width: 100%; }
+	.rip-admin-card { padding: 6px 16px 16px; }
+
+	/* WP already switches form-table to block below 783px; reinforce it and
+	   make every field full-width so the layout fits one column on screen. */
+	.rip-admin .form-table,
+	.rip-admin .form-table tbody,
+	.rip-admin .form-table tr,
+	.rip-admin .form-table th,
+	.rip-admin .form-table td {
+		display: block;
+		width: 100%;
+		box-sizing: border-box;
+	}
+	.rip-admin .form-table th { padding-bottom: 4px; }
+	.rip-admin .form-table td { padding-top: 0; }
+	.rip-admin .form-table input[type="text"],
+	.rip-admin .form-table input[type="number"],
+	.rip-admin .form-table select,
+	.rip-admin .regular-text {
+		width: 100%;
+		max-width: 100%;
+	}
+}
+
+/* ===== Dark mode ===== */
+@media ( prefers-color-scheme: dark ) {
+	.rip-admin {
+		--rip-card: #1f232b;
+		--rip-border: #2c313b;
+		--rip-text: #e7eaf0;
+		--rip-text-dim: #9aa4b2;
+		--rip-accent: #7c74ff;
+	}
+}
