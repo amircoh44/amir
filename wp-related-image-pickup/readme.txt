@@ -4,7 +4,7 @@ Tags: images, media library, tinymce, classic editor, stock photos, unsplash, pe
 Requires at least: 5.0
 Tested up to: 6.5
 Requires PHP: 7.2
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,10 @@ Only if you enable stock providers. Searching your own Media Library needs no ke
 When you insert a stock image it is downloaded into your Media Library first, then inserted, so it is hosted on your own site.
 
 == Changelog ==
+
+= 1.2.0 =
+* Auto-place: choose how many images to scatter (1–20) via a number box next to the button.
+* Asset version bump so updated scripts/styles refresh (no stale cache).
 
 = 1.1.0 =
 * Insert position: at cursor, after the paragraph, or before it (never mid-sentence).
