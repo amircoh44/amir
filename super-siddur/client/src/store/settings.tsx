@@ -1,5 +1,5 @@
 /**
- * App-wide settings: davening location, time format, and nusach.
+ * App-wide settings & "personal zone": location, display, nusach, and profile.
  * Persisted via the cross-platform storage helper, so the siddur keeps your
  * place offline.
  */
@@ -10,50 +10,50 @@ import { getJSON, setJSON } from '@/store/storage';
 
 export type Nusach = 'ashkenaz' | 'sefard' | 'edot' | 'ari';
 export type TimeFmt = '12' | '24';
+export type ThemePref = 'auto' | 'light' | 'dark';
 
-interface Settings {
+export interface Settings {
   loc: Loc;
   timeFmt: TimeFmt;
   nusach: Nusach;
   israelMode: boolean;
+  themePref: ThemePref;
+  userEngName: string;
+  userHebName: string;
+  /** Gregorian birthday as YYYY-MM-DD, or '' if unset. */
+  birthday: string;
 }
 
 interface SettingsCtx extends Settings {
-  setLoc: (loc: Loc) => void;
-  setTimeFmt: (f: TimeFmt) => void;
-  setNusach: (n: Nusach) => void;
-  setIsraelMode: (b: boolean) => void;
+  update: (patch: Partial<Settings>) => void;
 }
 
-const KEY = 'siddur.settings.v1';
+const KEY = 'siddur.settings.v2';
 const DEFAULT: Settings = {
   loc: CITIES.find((c) => c.name === 'Jerusalem')!,
   timeFmt: '12',
   nusach: 'ashkenaz',
   israelMode: false,
+  themePref: 'auto',
+  userEngName: '',
+  userHebName: '',
+  birthday: '',
 };
 
 const Ctx = createContext<SettingsCtx | null>(null);
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [s, setS] = useState<Settings>(() => getJSON<Settings>(KEY, DEFAULT));
+  const [s, setS] = useState<Settings>(() => ({ ...DEFAULT, ...getJSON<Partial<Settings>>(KEY, {}) }));
 
-  const persist = useCallback((next: Settings) => {
-    setS(next);
-    setJSON(KEY, next);
+  const update = useCallback((patch: Partial<Settings>) => {
+    setS((prev) => {
+      const next = { ...prev, ...patch };
+      setJSON(KEY, next);
+      return next;
+    });
   }, []);
 
-  const value = useMemo<SettingsCtx>(
-    () => ({
-      ...s,
-      setLoc: (loc) => persist({ ...s, loc }),
-      setTimeFmt: (timeFmt) => persist({ ...s, timeFmt }),
-      setNusach: (nusach) => persist({ ...s, nusach }),
-      setIsraelMode: (israelMode) => persist({ ...s, israelMode }),
-    }),
-    [s, persist],
-  );
-
+  const value = useMemo<SettingsCtx>(() => ({ ...s, update }), [s, update]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

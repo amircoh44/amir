@@ -12,7 +12,7 @@ import { GlassCard, GradientText, Kicker, Screen, Txt } from '@/ui/primitives';
 export default function ZmanimScreen() {
   const { c } = useTheme();
   const { isDesktop } = useResponsive();
-  const { loc, setLoc, timeFmt } = useSettings();
+  const { loc, update, timeFmt } = useSettings();
 
   const { rows, nowMin } = useMemo(() => {
     const z = computeZmanim(new Date(), loc);
@@ -63,7 +63,7 @@ export default function ZmanimScreen() {
         {CITIES.map((city) => {
           const sel = city.name === loc.name;
           return (
-            <Pressable key={city.name} onPress={() => setLoc(city)} style={[styles.chip, { borderColor: sel ? c.lineStrong : c.line, backgroundColor: sel ? c.surface2 : 'transparent' }]}>
+            <Pressable key={city.name} onPress={() => update({ loc: city })} style={[styles.chip, { borderColor: sel ? c.lineStrong : c.line, backgroundColor: sel ? c.surface2 : 'transparent' }]}>
               <Txt style={{ fontSize: 13, fontWeight: sel ? '700' : '500', color: sel ? c.accent : c.textSecondary }}>{city.name}</Txt>
             </Pressable>
           );

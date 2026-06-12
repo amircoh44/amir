@@ -67,7 +67,14 @@ export function Sidebar() {
       </View>
 
       <View style={{ flex: 1 }} />
-      <Txt variant="mono" style={{ color: c.textFaint, fontSize: 11 }}>Offline-first · v1</Txt>
+      <Link href="/settings" asChild>
+        <Pressable style={styles.railItem}>
+          {pathname === '/settings' && <View style={[styles.railBead, { backgroundColor: c.accent }]} />}
+          <Ionicons name={pathname === '/settings' ? 'sparkles' : 'sparkles-outline'} size={21} color={pathname === '/settings' ? c.accent : c.tabInactive} />
+          <Txt style={{ color: pathname === '/settings' ? c.text : c.textSecondary, fontSize: 15, fontWeight: pathname === '/settings' ? '700' : '500' }}>Personal Zone</Txt>
+        </Pressable>
+      </Link>
+      <Txt variant="mono" style={{ color: c.textFaint, fontSize: 11, marginTop: 8 }}>Offline-first · v1</Txt>
     </View>
   );
 }
@@ -91,6 +98,13 @@ export function Dock() {
           </Link>
         );
       })}
+      <Link href="/settings" asChild>
+        <Pressable style={styles.dockItem}>
+          {pathname === '/settings' && <View style={[styles.dockBead, { backgroundColor: c.accent }]} />}
+          <Ionicons name={pathname === '/settings' ? 'sparkles' : 'sparkles-outline'} size={23} color={pathname === '/settings' ? c.accent : c.tabInactive} />
+          <Txt style={{ fontSize: 10.5, color: pathname === '/settings' ? c.accent : c.tabInactive, fontWeight: pathname === '/settings' ? '700' : '500' }}>Zone</Txt>
+        </Pressable>
+      </Link>
     </View>
   );
 }
