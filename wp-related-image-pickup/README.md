@@ -47,6 +47,8 @@ Edit **title, alt text, caption and description** per selected image; changes ar
 ### Auto-place
 Choose **how many images to scatter** (1–20, remembered) and one click drops them at well-spaced block boundaries — **after a paragraph or before a heading**, never mid-sentence, and kept clear of existing images. Keywords are taken from the surrounding text at each spot.
 
+With **Prefer fresh** on (default, remembered), Auto-place favours **never-used** images first, then the **least-used** ones, and **varies the pick** among the strongest relevant candidates — so it stops reusing the same handful of images. Turn it off to pick purely by relevance.
+
 ### Icons mode
 Any image whose **filename contains “icon”** is treated as an icon: it’s **excluded** from normal image search and auto-place (icons never get scattered as main images). In **Icons** mode you:
 - choose a **side** (left / right) and **pixel size** (e.g. 50×50, remembered);

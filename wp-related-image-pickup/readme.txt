@@ -4,7 +4,7 @@ Tags: images, media library, tinymce, classic editor, stock photos, unsplash, pe
 Requires at least: 5.0
 Tested up to: 6.5
 Requires PHP: 7.2
-Stable tag: 1.6.0
+Stable tag: 1.6.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,9 @@ Only if you enable stock providers. Searching your own Media Library needs no ke
 When you insert a stock image it is downloaded into your Media Library first, then inserted, so it is hosted on your own site.
 
 == Changelog ==
+
+= 1.6.1 =
+* Auto-place now prefers never-used images (then least-used) and varies the pick among the most relevant ones, so it stops reusing the same images. New "Prefer fresh" toggle (on by default, remembered).
 
 = 1.6.0 =
 * Links mode is now a readable, full-width list (no more cramped grid).

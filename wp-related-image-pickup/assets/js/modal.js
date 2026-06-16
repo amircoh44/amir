@@ -267,6 +267,10 @@
 			'<label class="rip-field rip-link-toggle" data-tip="Wrap the image in a link to the full-size file">' +
 			'<span class="rip-field-lab">' + icon( 'link' ) + '<span>Link full</span></span>' +
 			'<span class="rip-switch"><input type="checkbox" class="rip-insert-link" /><span class="rip-switch-track"></span></span>' +
+			'</label>' +
+			'<label class="rip-field rip-fresh-toggle" data-tip="Auto-place prefers never-used images (then least-used), and varies the pick among the most relevant ones — so it stops reusing the same images.">' +
+			'<span class="rip-field-lab">' + icon( 'usage' ) + '<span>Prefer fresh</span></span>' +
+			'<span class="rip-switch"><input type="checkbox" class="rip-prefer-fresh" checked /><span class="rip-switch-track"></span></span>' +
 			'</label>';
 
 		// Icon-mode controls: which side to float on, and the px size. Icons are
@@ -343,6 +347,7 @@
 		$modal.find( '.rip-insert-align' ).val( p.align || 'none' );
 		$modal.find( '.rip-insert-position' ).val( p.position || 'cursor' );
 		$modal.find( '.rip-insert-link' ).prop( 'checked', !! p.link );
+		$modal.find( '.rip-prefer-fresh' ).prop( 'checked', p.preferFresh !== false );
 		if ( p.orderby ) {
 			$modal.find( '.rip-f-orderby' ).val( p.orderby );
 		}
@@ -411,6 +416,9 @@
 		} );
 		$modal.find( '.rip-insert-link' ).on( 'change', function () {
 			savePrefs( { link: $( this ).is( ':checked' ) } );
+		} );
+		$modal.find( '.rip-prefer-fresh' ).on( 'change', function () {
+			savePrefs( { preferFresh: $( this ).is( ':checked' ) } );
 		} );
 
 		// Live-edit of the selected image's metadata.
@@ -1074,36 +1082,75 @@
 	}
 
 	/**
-	 * Find one Media Library image relevant to a chunk of text, skipping any
-	 * already chosen this run.
+	 * Find one Media Library image relevant to a chunk of text. Prefers
+	 * never-used images (then least-used) and varies the pick among the most
+	 * relevant candidates, skipping anything already chosen this run.
 	 *
 	 * @param {string} text Context text.
 	 * @param {Object} used Map of already-used ids.
 	 * @return {Promise<Object|null>}
 	 */
 	function findImageFor( text, used ) {
+		var preferFresh = $modal.find( '.rip-prefer-fresh' ).is( ':checked' );
 		return $.ajax( {
 			url: cfg.restUrl + '/search',
 			method: 'GET',
 			data: {
 				text: text,
 				orientation: $modal.find( '.rip-f-orientation' ).val(),
+				// Keep results relevance-ranked; freshness is applied while
+				// choosing, so picks stay on-topic AND avoid reused images.
 				orderby: 'relevance',
-				per_page: 12,
+				per_page: 30,
 				page: 1
 			},
 			beforeSend: function ( xhr ) {
 				xhr.setRequestHeader( 'X-WP-Nonce', cfg.nonce );
 			}
 		} ).then( function ( res ) {
-			var list = ( res && res.items ) || [];
-			for ( var i = 0; i < list.length; i++ ) {
-				if ( ! used[ list[ i ].id ] ) {
-					return list[ i ];
-				}
-			}
-			return null;
+			return chooseImage( ( res && res.items ) || [], used, preferFresh );
 		} );
+	}
+
+	/**
+	 * Choose one image from a candidate pool: prefer never-used (then the
+	 * least-used tier), then pick at random among the strongest few for variety.
+	 *
+	 * @param {Array}   list        Candidate items.
+	 * @param {Object}  used        Already-used ids this run.
+	 * @param {boolean} preferFresh Prefer unused / least-used images.
+	 * @return {Object|null}
+	 */
+	function chooseImage( list, used, preferFresh ) {
+		var avail = list.filter( function ( it ) {
+			return ! used[ it.id ];
+		} );
+		if ( ! avail.length ) {
+			return null;
+		}
+
+		var pool = avail;
+		if ( preferFresh ) {
+			var fresh = avail.filter( function ( it ) {
+				return ( it.usage || 0 ) === 0;
+			} );
+			if ( fresh.length ) {
+				pool = fresh;
+			} else {
+				// No never-used left → fall back to the least-used tier.
+				var min = avail.reduce( function ( m, it ) {
+					return Math.min( m, it.usage || 0 );
+				}, Infinity );
+				pool = avail.filter( function ( it ) {
+					return ( it.usage || 0 ) === min;
+				} );
+			}
+		}
+
+		// Variety: random pick among the strongest few candidates (keeps it
+		// relevant while avoiding the same image every time).
+		var top = pool.slice( 0, 8 );
+		return top[ Math.floor( Math.random() * top.length ) ];
 	}
 
 	/**
