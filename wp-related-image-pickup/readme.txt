@@ -4,7 +4,7 @@ Tags: images, media library, tinymce, classic editor, stock photos, unsplash, pe
 Requires at least: 5.0
 Tested up to: 6.5
 Requires PHP: 7.2
-Stable tag: 1.8.0
+Stable tag: 1.8.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,9 @@ Only if you enable stock providers. Searching your own Media Library needs no ke
 When you insert a stock image it is downloaded into your Media Library first, then inserted, so it is hosted on your own site.
 
 == Changelog ==
+
+= 1.8.1 =
+* Fixed the close (X) button not responding — clicks on the icon inside the button are now handled.
 
 = 1.8.0 =
 * Links seeding is now review-and-confirm: "Propose all" / "Propose selected" scan the article and show each proposed anchor (with a context snippet) and its target. Untick any, then "Seed" to apply only the confirmed ones.

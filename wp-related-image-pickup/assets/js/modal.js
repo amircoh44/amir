@@ -372,7 +372,13 @@
 	 * Wire up all modal event handlers.
 	 */
 	function bindEvents() {
-		$modal.on( 'click', '.rip-close, .rip-overlay', function ( e ) {
+		// Close on the X button (clicks may land on the inner SVG/path).
+		$modal.on( 'click', '.rip-close', function () {
+			close();
+		} );
+
+		// Close when clicking the backdrop itself (not the dialog inside it).
+		$modal.on( 'click', '.rip-overlay', function ( e ) {
 			if ( e.target === this ) {
 				close();
 			}
