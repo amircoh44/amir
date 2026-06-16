@@ -644,6 +644,178 @@
 
 .rip-field-wide { grid-column: 1 / -1; }
 
+/* ---- Mode switcher (Images / Icons / Links) ---- */
+.rip-modes {
+	display: flex;
+	gap: 6px;
+	padding: 12px 20px 0;
+}
+
+.rip-mode {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	padding: 8px 14px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var( --rip-text-dim );
+	background: var( --rip-bg-soft );
+	border: 1px solid var( --rip-border );
+	border-radius: 999px;
+	cursor: pointer;
+	transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.rip-mode .rip-ic { color: var( --rip-text-faint ); }
+.rip-mode:hover { background: var( --rip-bg-sunk ); color: var( --rip-text ); }
+
+.rip-mode.is-active {
+	background: var( --rip-accent );
+	border-color: var( --rip-accent );
+	color: #fff;
+}
+
+.rip-mode.is-active .rip-ic { color: #fff; }
+
+/* Per-mode visibility. Base-hide the mode-scoped pieces, then re-show. */
+.rip-when-images,
+.rip-when-icons,
+.rip-when-links { display: none !important; }
+
+.rip-mode-images .rip-insert-opts,
+.rip-mode-icons .rip-icon-opts { display: grid !important; }
+.rip-mode-images .rip-auto { display: inline-flex !important; }
+.rip-mode-images .rip-insert-btn,
+.rip-mode-icons .rip-insert-btn,
+.rip-mode-icons .rip-spread-icons,
+.rip-mode-links .rip-links-all,
+.rip-mode-links .rip-links-sel { display: inline-flex !important; }
+.rip-mode-links .rip-link-hint { display: flex !important; }
+
+/* Links mode hides image search; icons mode is Media-Library only. */
+.rip-mode-links .rip-toolbar,
+.rip-mode-links .rip-filters,
+.rip-mode-links .rip-tabs,
+.rip-mode-icons .rip-tabs { display: none; }
+
+.rip-icon-size {
+	width: 100%;
+	height: 38px;
+	padding: 0 10px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var( --rip-text );
+	background: var( --rip-bg-soft );
+	border: 1px solid var( --rip-border-strong );
+	border-radius: var( --rip-radius-xs );
+}
+
+.rip-icon-size:focus { outline: none; border-color: var( --rip-accent ); box-shadow: var( --rip-ring ); }
+
+.rip-spread-icons,
+.rip-links-all,
+.rip-links-sel {
+	align-items: center;
+	gap: 7px;
+	height: 42px;
+	padding: 0 16px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var( --rip-accent );
+	background: var( --rip-accent-soft );
+	border: 1px solid transparent;
+	border-radius: var( --rip-radius-sm );
+	cursor: pointer;
+	white-space: nowrap;
+	transition: filter 0.15s, border-color 0.15s, transform 0.05s;
+}
+
+.rip-links-all { color: #fff; background: var( --rip-accent ); border-color: var( --rip-accent ); }
+.rip-spread-icons:hover,
+.rip-links-sel:hover:not( :disabled ) { border-color: var( --rip-accent ); }
+.rip-links-all:hover { filter: brightness( 1.08 ); }
+.rip-links-sel:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.rip-link-hint {
+	align-items: center;
+	gap: 8px;
+	font-size: 12.5px;
+	color: var( --rip-text-dim );
+}
+
+.rip-link-hint .rip-ic { color: var( --rip-accent ); flex: none; }
+
+/* ---- Internal-link candidate list ---- */
+.rip-link-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 12px;
+	background: var( --rip-bg );
+	border: 1.5px solid var( --rip-border );
+	border-radius: var( --rip-radius-sm );
+	margin-bottom: 8px;
+	cursor: pointer;
+	transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.rip-link-row:hover { border-color: var( --rip-border-strong ); }
+.rip-link-row:focus { outline: none; box-shadow: var( --rip-ring ); }
+.rip-link-row.is-selected { border-color: var( --rip-accent ); box-shadow: var( --rip-ring ); }
+
+.rip-link-check {
+	width: 22px;
+	height: 22px;
+	flex: none;
+	border-radius: 6px;
+	border: 1.5px solid var( --rip-border-strong );
+	color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 12px;
+	font-weight: 700;
+	background: transparent;
+}
+
+.rip-link-row.is-selected .rip-link-check { background: var( --rip-accent ); border-color: var( --rip-accent ); }
+.rip-link-row:not( .is-selected ) .rip-link-check { color: transparent; }
+
+.rip-link-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+
+.rip-link-title { font-size: 13.5px; font-weight: 600; color: var( --rip-text ); }
+
+.rip-link-url {
+	font-size: 11.5px;
+	color: var( --rip-text-faint );
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.rip-link-type {
+	font-size: 10.5px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: var( --rip-text-dim );
+	background: var( --rip-bg-sunk );
+	padding: 3px 8px;
+	border-radius: 999px;
+	flex: none;
+}
+
+.rip-link-rel {
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	color: #fff;
+	background: #10b981;
+	padding: 3px 7px;
+	border-radius: 999px;
+	flex: none;
+}
+
 /* ======================================================================
    Responsive — wrap, then stack to a single column. No horizontal scroll.
    ====================================================================== */

@@ -4,7 +4,7 @@ Tags: images, media library, tinymce, classic editor, stock photos, unsplash, pe
 Requires at least: 5.0
 Tested up to: 6.5
 Requires PHP: 7.2
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -28,6 +28,8 @@ Features:
 * Multi-select, choose insert size, alignment, position (cursor / after / before paragraph), caption and optional link — remembered between sessions.
 * Edit title, alt, caption and description per image before inserting.
 * Auto-place a chosen number of related images at well-spaced, professional spots.
+* Icons mode: handle "icon" images separately — float left/right at a chosen px size, spread by name, never captioned.
+* Links mode: pull your sitemap (Yoast / Rank Math / core) and add internal links to matching words.
 * Auto-filled alt text for SEO and accessibility.
 
 == Installation ==
@@ -52,6 +54,10 @@ Only if you enable stock providers. Searching your own Media Library needs no ke
 When you insert a stock image it is downloaded into your Media Library first, then inserted, so it is hosted on your own site.
 
 == Changelog ==
+
+= 1.3.0 =
+* Icons mode: images whose filename contains "icon" are kept out of normal image results and auto-place. Place icons by side (left/right) and pixel size; "Spread by name" drops each icon next to text matching its name. Icons are never captioned (existing icon captions are stripped).
+* Links mode: auto-discovers your sitemap (Yoast, Rank Math or WordPress core), lists posts/pages/products, and adds internal links into matching words — apply all relevant or pick your own.
 
 = 1.2.0 =
 * Auto-place: choose how many images to scatter (1–20) via a number box next to the button.

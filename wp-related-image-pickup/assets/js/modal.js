@@ -53,14 +53,27 @@
 		return Math.max( 1, Math.min( 20, parseInt( v, 10 ) || 2 ) );
 	}
 
+	/**
+	 * Clamp an icon pixel size to a sensible 16–256 range.
+	 *
+	 * @param {*} v Raw value.
+	 * @return {number}
+	 */
+	function clampIconSize( v ) {
+		return Math.max( 16, Math.min( 256, parseInt( v, 10 ) || 50 ) );
+	}
+
 	var state = {
 		editor: null,
 		editorId: '',
+		mode: 'images',        // 'images' | 'icons' | 'links'
 		tab: 'media',          // 'media' | 'stock'
 		page: 1,
 		total: 0,
 		selected: {},          // id -> item (for multi-select)
 		activeId: null,        // id whose details are being edited
+		links: [],             // link candidates (links mode)
+		linkSel: {},           // url -> link (selected links)
 		lastRequest: null
 	};
 
@@ -116,7 +129,10 @@
 		position: '<path d="M8 2v12M4.5 5.5 8 2l3.5 3.5M4.5 10.5 8 14l3.5-3.5"/>',
 		usage: '<path d="M2.5 13.5h11M4 13.5V9M7.5 13.5V5M11 13.5V7"/>',
 		edit: '<path d="M10.5 2.5 13 5 6 12l-3 .5.5-3z"/>',
-		magic: '<path d="M5.5 2l.9 2.6L9 5.5l-2.6.9L5.5 9l-.9-2.6L2 5.5l2.6-.9z"/><path d="M11.5 8.5l.6 1.7 1.7.6-1.7.6-.6 1.7-.6-1.7-1.7-.6 1.7-.6z"/>'
+		magic: '<path d="M5.5 2l.9 2.6L9 5.5l-2.6.9L5.5 9l-.9-2.6L2 5.5l2.6-.9z"/><path d="M11.5 8.5l.6 1.7 1.7.6-1.7.6-.6 1.7-.6-1.7-1.7-.6 1.7-.6z"/>',
+		images: '<rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="m3 12 3.5-3 2.5 2 2-2 2 2.5"/>',
+		grid: '<rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>',
+		side: '<rect x="2.5" y="3" width="5" height="10" rx="1"/><path d="M10 5h4M10 8h3M10 11h4"/>'
 	};
 
 	/**
@@ -180,6 +196,15 @@
 			'<span class="rip-switch"><input type="checkbox" class="rip-insert-link" /><span class="rip-switch-track"></span></span>' +
 			'</label>';
 
+		// Icon-mode controls: which side to float on, and the px size. Icons are
+		// never captioned.
+		var iconOpts =
+			field( { ic: 'side', label: 'Side', cls: 'rip-icon-side', tip: 'Float icons to the left or right of the text (remembered)', options: [ [ 'left', 'Left' ], [ 'right', 'Right' ] ] } ) +
+			'<label class="rip-field" data-tip="Icon size in pixels — square (remembered)">' +
+			'<span class="rip-field-lab">' + icon( 'size' ) + '<span>Icon size (px)</span></span>' +
+			'<input type="number" class="rip-icon-size" min="16" max="256" step="2" value="50" />' +
+			'</label>';
+
 		var html =
 			'<div class="rip-overlay" role="dialog" aria-modal="true" aria-label="' + esc( i18n.title || 'Related Image Pickup' ) + '">' +
 			'  <div class="rip-modal">' +
@@ -187,6 +212,11 @@
 			'      <h2>' + icon( 'search' ) + '<span>' + esc( i18n.title || 'Related Image Pickup' ) + '</span></h2>' +
 			'      <button type="button" class="rip-close" aria-label="Close" data-tip="Close (Esc)">' + icon( 'close' ) + '</button>' +
 			'    </header>' +
+			'    <nav class="rip-modes">' +
+			'      <button type="button" class="rip-mode is-active" data-mode="images" data-tip="Find and place content images">' + icon( 'images' ) + '<span>Images</span></button>' +
+			'      <button type="button" class="rip-mode" data-mode="icons" data-tip="Place small icons (filename contains “icon”) by side &amp; size — never captioned">' + icon( 'grid' ) + '<span>Icons</span></button>' +
+			'      <button type="button" class="rip-mode" data-mode="links" data-tip="Add internal links from your sitemap (Yoast / Rank Math / core)">' + icon( 'link' ) + '<span>Links</span></button>' +
+			'    </nav>' +
 			'    <div class="rip-toolbar">' +
 			'      <span class="rip-search-ic">' + icon( 'search' ) + '</span>' +
 			'      <input type="text" class="rip-keywords" placeholder="' + esc( i18n.searchPH || 'Keywords' ) + '" />' +
@@ -211,14 +241,19 @@
 			'      </div>' +
 			'    </div>' +
 			'    <footer class="rip-foot">' +
-			'      <div class="rip-insert-opts">' + insertOpts + '</div>' +
+			'      <div class="rip-insert-opts rip-when-images">' + insertOpts + '</div>' +
+			'      <div class="rip-icon-opts rip-when-icons">' + iconOpts + '</div>' +
+			'      <div class="rip-link-hint rip-when-links">' + icon( 'link' ) + '<span>Pick targets below, then add links into matching words in your article.</span></div>' +
 			'      <div class="rip-foot-actions">' +
 			'        <span class="rip-selcount"></span>' +
-			'        <span class="rip-auto" data-tip="Type how many images to scatter (1–20), then click. They land at well-spaced spots — after a paragraph or before a heading, never mid-sentence, kept clear of other images.">' +
+			'        <span class="rip-auto rip-when-images" data-tip="Type how many images to scatter (1–20), then click. They land at well-spaced spots — after a paragraph or before a heading, never mid-sentence, kept clear of other images.">' +
 			'          <input type="number" class="rip-auto-count" min="1" max="20" step="1" value="2" aria-label="Number of images to scatter (1-20)" />' +
 			'          <button type="button" class="rip-auto-btn">' + icon( 'magic' ) + '<span>Auto-place</span></button>' +
 			'        </span>' +
-			'        <button type="button" class="rip-insert-btn" disabled>' + icon( 'insert' ) + '<span>' + esc( i18n.insert || 'Insert' ) + '</span></button>' +
+			'        <button type="button" class="rip-spread-icons rip-when-icons" data-tip="Place every icon next to text that matches its name (e.g. a contact icon by “contact us”), and strip any captions from icons.">' + icon( 'magic' ) + '<span>Spread by name</span></button>' +
+			'        <button type="button" class="rip-links-sel rip-when-links" disabled data-tip="Add only the links you ticked">' + icon( 'link' ) + '<span>Add selected</span></button>' +
+			'        <button type="button" class="rip-links-all rip-when-links" data-tip="Add every relevant link found">' + icon( 'link' ) + '<span>Add all relevant</span></button>' +
+			'        <button type="button" class="rip-insert-btn rip-when-images rip-when-icons" disabled>' + icon( 'insert' ) + '<span>' + esc( i18n.insert || 'Insert' ) + '</span></button>' +
 			'      </div>' +
 			'    </footer>' +
 			'  </div>' +
@@ -243,6 +278,10 @@
 			$modal.find( '.rip-f-usage' ).val( p.usage );
 		}
 		$modal.find( '.rip-auto-count' ).val( clampCount( p.autoCount || 2 ) );
+		$modal.find( '.rip-icon-side' ).val( p.iconSide || 'left' );
+		$modal.find( '.rip-icon-size' ).val( clampIconSize( p.iconSize || 50 ) );
+
+		$modal.find( '.rip-modal' ).addClass( 'rip-mode-images' );
 
 		bindEvents();
 		return $modal;
@@ -322,6 +361,34 @@
 			autoIllustrate( clampCount( $modal.find( '.rip-auto-count' ).val() ) );
 		} );
 
+		// Mode switching (Images / Icons / Links).
+		$modal.find( '.rip-mode' ).on( 'click', function () {
+			setMode( $( this ).data( 'mode' ) );
+		} );
+
+		// Icon controls remember their values.
+		$modal.find( '.rip-icon-side' ).on( 'change', function () {
+			savePrefs( { iconSide: $( this ).val() } );
+		} );
+		$modal.find( '.rip-icon-size' ).on( 'change', function () {
+			var v = clampIconSize( $( this ).val() );
+			$( this ).val( v );
+			savePrefs( { iconSize: v } );
+		} );
+
+		$modal.find( '.rip-spread-icons' ).on( 'click', spreadIconsByName );
+		$modal.find( '.rip-links-all' ).on( 'click', function () {
+			applyLinks( false );
+		} );
+		$modal.find( '.rip-links-sel' ).on( 'click', function () {
+			applyLinks( true );
+		} );
+
+		// Toggle a link target in the candidate list.
+		$modal.on( 'click', '.rip-link-row', function () {
+			toggleLink( $( this ) );
+		} );
+
 		$modal.find( '.rip-tab' ).on( 'click', function () {
 			$modal.find( '.rip-tab' ).removeClass( 'is-active' );
 			$( this ).addClass( 'is-active' );
@@ -358,10 +425,11 @@
 			max_size: parseInt( $modal.find( '.rip-f-maxsize' ).val(), 10 ) || 0,
 			mime: $modal.find( '.rip-f-mime' ).val(),
 			usage: $modal.find( '.rip-f-usage' ).val() || 'any',
+			icons: 'icons' === state.mode ? 'only' : 'exclude',
 			orderby: $modal.find( '.rip-f-orderby' ).val(),
 			provider: $modal.find( '.rip-f-provider' ).val() || '',
 			page: state.page,
-			per_page: cfg.perPage || 24
+			per_page: 'icons' === state.mode ? 100 : ( cfg.perPage || 24 )
 		};
 	}
 
@@ -401,6 +469,53 @@
 			}
 			setStatus( 'Error: ' + ( xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : textStatus ) );
 		} );
+	}
+
+	/**
+	 * Switch between Images / Icons / Links modes.
+	 *
+	 * @param {string} mode Target mode.
+	 */
+	function setMode( mode ) {
+		if ( ! mode || mode === state.mode ) {
+			return;
+		}
+		state.mode = mode;
+		state.selected = {};
+		state.activeId = null;
+		state.linkSel = {};
+		state.page = 1;
+		hideDetails();
+		updateSelCount();
+
+		$modal.find( '.rip-mode' ).removeClass( 'is-active' );
+		$modal.find( '.rip-mode[data-mode="' + mode + '"]' ).addClass( 'is-active' );
+		$modal.find( '.rip-modal' )
+			.removeClass( 'rip-mode-images rip-mode-icons rip-mode-links' )
+			.addClass( 'rip-mode-' + mode );
+
+		$modal.find( '.rip-grid' ).empty();
+		$modal.find( '.rip-pagination' ).remove();
+		setStatus( '' );
+
+		if ( 'links' === mode ) {
+			fetchLinks();
+			return;
+		}
+
+		// Images / Icons are Media-Library only.
+		state.tab = 'media';
+		$modal.find( '.rip-tab' ).removeClass( 'is-active' );
+		$modal.find( '.rip-tab[data-tab="media"]' ).addClass( 'is-active' );
+		$modal.toggleClass( 'rip-is-stock', false );
+
+		if ( 'icons' === mode ) {
+			runSearch();
+		} else if ( ( $modal.find( '.rip-keywords' ).val() || '' ).trim() ) {
+			runSearch();
+		} else {
+			setStatus( i18n.noSelection || 'Select a sentence first, then click the button.' );
+		}
 	}
 
 	/**
@@ -592,6 +707,18 @@
 			return state.selected[ id ];
 		} );
 		if ( ! items.length ) {
+			return;
+		}
+
+		// Icon mode: insert bare, captionless, sized + floated icons.
+		if ( 'icons' === state.mode ) {
+			items.forEach( function ( item ) {
+				insertIcon( item );
+			} );
+			if ( state.editor && ! state.editor.isHidden() ) {
+				unwrapIconCaptions( state.editor );
+			}
+			close();
 			return;
 		}
 
@@ -992,6 +1119,355 @@
 	}
 
 	/**
+	 * Build the HTML for a single icon: bare <img>, floated to the chosen side,
+	 * sized in px, and NEVER captioned.
+	 *
+	 * @param {Object} item Icon item.
+	 * @return {string}
+	 */
+	function iconHtml( item ) {
+		var side = $modal.find( '.rip-icon-side' ).val() || 'left';
+		var px = clampIconSize( $modal.find( '.rip-icon-size' ).val() );
+		var src = ( item.sizes && item.sizes.thumbnail ) ? item.sizes.thumbnail.url : ( item.thumb || item.url );
+		var alt = item.alt || item.title || '';
+		return '<img src="' + esc( src ) + '" alt="' + esc( alt ) + '" width="' + px + '" height="' + px +
+			'" class="rip-icon align' + side + '" style="width:' + px + 'px;height:' + px + 'px;" />';
+	}
+
+	/**
+	 * Insert a single icon at the current cursor/position (no caption, no link).
+	 *
+	 * @param {Object} item Icon item.
+	 */
+	function insertIcon( item ) {
+		var html = iconHtml( item );
+		var position = $modal.find( '.rip-insert-position' ).val();
+		if ( state.editor && ! state.editor.isHidden() ) {
+			if ( 'cursor' === position || ! placeAtParagraph( state.editor, html, position ) ) {
+				state.editor.insertContent( html );
+			}
+		} else {
+			var $ta = $( '#' + state.editorId );
+			if ( $ta.length ) {
+				var el = $ta.get( 0 );
+				var pos = el.selectionStart || el.value.length;
+				el.value = el.value.slice( 0, pos ) + html + el.value.slice( pos );
+			}
+		}
+	}
+
+	/**
+	 * Whether an image src points at an "icon" file.
+	 *
+	 * @param {string} src Image URL.
+	 * @return {boolean}
+	 */
+	function isIconSrc( src ) {
+		return /icon/i.test( ( src || '' ).split( '?' )[ 0 ].split( '/' ).pop() || '' );
+	}
+
+	/**
+	 * Strip caption wrappers from any icon images already in the content.
+	 *
+	 * @param {Object} editor TinyMCE editor.
+	 */
+	function unwrapIconCaptions( editor ) {
+		var figures = editor.getBody().querySelectorAll( 'figure' );
+		Array.prototype.forEach.call( figures, function ( fig ) {
+			var img = fig.querySelector( 'img' );
+			if ( ! img || ! isIconSrc( img.getAttribute( 'src' ) ) ) {
+				return;
+			}
+			// Replace the whole figure (caption included) with just the image.
+			if ( fig.parentNode ) {
+				fig.parentNode.replaceChild( img, fig );
+			}
+		} );
+		editor.nodeChanged();
+		editor.save();
+	}
+
+	/**
+	 * Spread every icon in the current results next to text that matches its
+	 * name (e.g. a "contact-us" icon beside "contact us"). Icons are floated
+	 * to the chosen side, sized in px, and never captioned. Also strips any
+	 * captions from icons already in the article.
+	 */
+	function spreadIconsByName() {
+		var editor = state.editor;
+		if ( ! editor || editor.isHidden() ) {
+			setStatus( 'Icon spread needs the Visual editor — switch from Text to Visual and try again.' );
+			return;
+		}
+
+		var icons = [];
+		$modal.find( '.rip-card' ).each( function () {
+			var item = $( this ).data( 'item' );
+			if ( item && item.is_icon ) {
+				icons.push( item );
+			}
+		} );
+		if ( ! icons.length ) {
+			setStatus( 'No icons found in your Media Library (filenames containing “icon”).' );
+			return;
+		}
+
+		var blocks = Array.prototype.slice.call( editor.getBody().children );
+		var placed = 0;
+
+		icons.forEach( function ( item ) {
+			var kws = ( item.icon_keywords && item.icon_keywords.length ) ? item.icon_keywords : [];
+			if ( ! kws.length ) {
+				return;
+			}
+			// Find the first block whose text mentions one of the icon's name words.
+			for ( var i = 0; i < blocks.length; i++ ) {
+				var b = blocks[ i ];
+				if ( ! /^(P|H[1-6]|LI)$/.test( b.nodeName ) ) {
+					continue;
+				}
+				if ( b.querySelector && b.querySelector( 'img.rip-icon' ) ) {
+					continue; // already has an icon.
+				}
+				var hay = ( b.textContent || '' ).toLowerCase();
+				var match = kws.some( function ( kw ) {
+					return hay.indexOf( kw.toLowerCase() ) !== -1;
+				} );
+				if ( match ) {
+					var temp = editor.getDoc().createElement( 'div' );
+					temp.innerHTML = iconHtml( item );
+					b.insertBefore( temp.firstChild, b.firstChild );
+					placed++;
+					break;
+				}
+			}
+		} );
+
+		unwrapIconCaptions( editor );
+		editor.nodeChanged();
+		if ( editor.undoManager ) {
+			editor.undoManager.add();
+		}
+		editor.save();
+
+		if ( placed ) {
+			close();
+		} else {
+			setStatus( 'No article text matched the icon names. Try renaming icons to match your content.' );
+		}
+	}
+
+	/**
+	 * Fetch internal-link candidates from the sitemap.
+	 */
+	function fetchLinks() {
+		setStatus( 'Reading your sitemap…' );
+		$.ajax( {
+			url: cfg.restUrl + '/links',
+			method: 'GET',
+			data: { text: state.lastSelection || '', limit: 300 },
+			beforeSend: function ( xhr ) {
+				xhr.setRequestHeader( 'X-WP-Nonce', cfg.nonce );
+			}
+		} ).done( function ( res ) {
+			state.links = ( res && res.items ) || [];
+			renderLinks( state.links );
+		} ).fail( function ( xhr ) {
+			setStatus( 'Could not read a sitemap: ' + ( xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'none found' ) );
+		} );
+	}
+
+	/**
+	 * Render the internal-link candidate checklist.
+	 *
+	 * @param {Array} links Link candidates.
+	 */
+	function renderLinks( links ) {
+		if ( ! links.length ) {
+			setStatus( 'No sitemap links found. Make sure an SEO plugin (Yoast / Rank Math) or core sitemaps are active.' );
+			return;
+		}
+		setStatus( '' );
+
+		var $grid = $modal.find( '.rip-grid' ).empty();
+		links.forEach( function ( link, idx ) {
+			var rel = ( link.score && link.score > 0 ) ? '<span class="rip-link-rel">relevant</span>' : '';
+			var $row = $(
+				'<div class="rip-link-row" data-idx="' + idx + '" tabindex="0">' +
+				'  <span class="rip-link-check">✓</span>' +
+				'  <span class="rip-link-main">' +
+				'    <span class="rip-link-title">' + esc( link.title ) + '</span>' +
+				'    <span class="rip-link-url">' + esc( link.url ) + '</span>' +
+				'  </span>' +
+				'  <span class="rip-link-type">' + esc( link.type ) + '</span>' + rel +
+				'</div>'
+			);
+			$row.data( 'link', link );
+			$grid.append( $row );
+		} );
+	}
+
+	/**
+	 * Toggle selection of a link candidate.
+	 *
+	 * @param {jQuery} $row Row element.
+	 */
+	function toggleLink( $row ) {
+		var link = $row.data( 'link' );
+		if ( state.linkSel[ link.url ] ) {
+			delete state.linkSel[ link.url ];
+			$row.removeClass( 'is-selected' );
+		} else {
+			state.linkSel[ link.url ] = link;
+			$row.addClass( 'is-selected' );
+		}
+		var n = Object.keys( state.linkSel ).length;
+		$modal.find( '.rip-selcount' ).text( n ? n + ' selected' : '' );
+		$modal.find( '.rip-links-sel' ).prop( 'disabled', n === 0 );
+	}
+
+	/**
+	 * Add internal links into the article. Each chosen target links the first
+	 * matching occurrence of its title in the body text (never inside an
+	 * existing link), longest titles first.
+	 *
+	 * @param {boolean} selectedOnly Only apply ticked targets.
+	 */
+	function applyLinks( selectedOnly ) {
+		var editor = state.editor;
+		if ( ! editor || editor.isHidden() ) {
+			setStatus( 'Adding links needs the Visual editor — switch from Text to Visual and try again.' );
+			return;
+		}
+
+		var links;
+		if ( selectedOnly ) {
+			links = Object.keys( state.linkSel ).map( function ( u ) {
+				return state.linkSel[ u ];
+			} );
+		} else if ( hasScores() ) {
+			// "All relevant" = those that matched the article keywords.
+			links = state.links.filter( function ( l ) {
+				return l.score > 0;
+			} );
+		} else {
+			links = state.links.slice();
+		}
+
+		if ( ! links.length ) {
+			setStatus( selectedOnly ? 'Tick at least one link first.' : 'No relevant links to add.' );
+			return;
+		}
+
+		// Longest titles first so specific phrases win over generic ones.
+		links.sort( function ( a, b ) {
+			return ( b.title || '' ).length - ( a.title || '' ).length;
+		} );
+
+		var linked = {};
+		var count = 0;
+		links.forEach( function ( link ) {
+			var phrase = ( link.title || '' ).trim();
+			if ( phrase.length < 3 || linked[ phrase.toLowerCase() ] ) {
+				return;
+			}
+			if ( wrapFirstOccurrence( editor, phrase, link.url ) ) {
+				linked[ phrase.toLowerCase() ] = true;
+				count++;
+			}
+		} );
+
+		editor.nodeChanged();
+		if ( editor.undoManager ) {
+			editor.undoManager.add();
+		}
+		editor.save();
+
+		if ( count ) {
+			close();
+		} else {
+			setStatus( 'None of those titles appear in your article text yet.' );
+		}
+	}
+
+	/**
+	 * Whether any link candidate carries a relevance score (keyword context).
+	 *
+	 * @return {boolean}
+	 */
+	function hasScores() {
+		return state.links.some( function ( l ) {
+			return l.hasOwnProperty( 'score' );
+		} );
+	}
+
+	/**
+	 * Wrap the first unlinked occurrence of a phrase (whole-word, case-
+	 * insensitive) in an anchor, within P/LI text nodes only.
+	 *
+	 * @param {Object} editor TinyMCE editor.
+	 * @param {string} phrase Phrase to link.
+	 * @param {string} href   Target URL.
+	 * @return {boolean} True if a link was created.
+	 */
+	function wrapFirstOccurrence( editor, phrase, href ) {
+		var doc = editor.getDoc();
+		var body = editor.getBody();
+		var lower = phrase.toLowerCase();
+		var walker = doc.createTreeWalker( body, NodeFilter.SHOW_TEXT, null, false );
+		var node;
+
+		while ( ( node = walker.nextNode() ) ) {
+			// Skip text already inside a link, or outside paragraph-ish blocks.
+			if ( closestTag( node.parentNode, 'A' ) ) {
+				continue;
+			}
+			if ( ! closestTag( node.parentNode, 'P' ) && ! closestTag( node.parentNode, 'LI' ) ) {
+				continue;
+			}
+			var text = node.nodeValue;
+			var pos = text.toLowerCase().indexOf( lower );
+			if ( pos === -1 ) {
+				continue;
+			}
+			// Require word boundaries so "art" doesn't match inside "start".
+			var before = text.charAt( pos - 1 );
+			var after = text.charAt( pos + phrase.length );
+			if ( /\w/.test( before ) || /\w/.test( after ) ) {
+				continue;
+			}
+
+			var matched = text.substr( pos, phrase.length );
+			var anchor = doc.createElement( 'a' );
+			anchor.setAttribute( 'href', href );
+			anchor.appendChild( doc.createTextNode( matched ) );
+
+			var after_node = node.splitText( pos );
+			after_node.nodeValue = after_node.nodeValue.substr( phrase.length );
+			node.parentNode.insertBefore( anchor, after_node );
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Find the nearest ancestor (incl. self) with the given tag name.
+	 *
+	 * @param {Node}   node Start node.
+	 * @param {string} tag  Upper-case tag name.
+	 * @return {Element|null}
+	 */
+	function closestTag( node, tag ) {
+		while ( node && node.nodeType === 1 ) {
+			if ( node.nodeName === tag ) {
+				return node;
+			}
+			node = node.parentNode;
+		}
+		return null;
+	}
+
+	/**
 	 * Set the status / empty-state message.
 	 *
 	 * @param {string} msg Message ('' hides it).
@@ -1027,10 +1503,22 @@
 		state.page = 1;
 		state.selected = {};
 		state.activeId = null;
+		state.linkSel = {};
+		state.links = [];
+		state.mode = 'images';
 		state.tab = ( cfg.enableMedia !== false ) ? 'media' : 'stock';
+		state.lastSelection = ( opts.selection || '' ).trim();
+
+		// Reset to Images mode each time the picker opens.
+		$modal.find( '.rip-mode' ).removeClass( 'is-active' );
+		$modal.find( '.rip-mode[data-mode="images"]' ).addClass( 'is-active' );
+		$modal.find( '.rip-modal' )
+			.removeClass( 'rip-mode-icons rip-mode-links' )
+			.addClass( 'rip-mode-images' );
 
 		$modal.find( '.rip-keywords' ).val( '' );
 		$modal.find( '.rip-grid' ).empty();
+		$modal.find( '.rip-pagination' ).remove();
 		hideDetails();
 		updateSelCount();
 

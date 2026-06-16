@@ -110,6 +110,22 @@ class RIP_REST {
 
 		register_rest_route(
 			self::NS,
+			'/links',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'route_links' ),
+				'permission_callback' => array( $this, 'can_edit' ),
+				'args'                => array(
+					'keywords' => array( 'type' => 'string', 'default' => '' ),
+					'text'     => array( 'type' => 'string', 'default' => '' ),
+					'limit'    => array( 'type' => 'integer', 'default' => 300 ),
+					'refresh'  => array( 'type' => 'boolean', 'default' => false ),
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NS,
 			'/update-meta',
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
@@ -151,6 +167,11 @@ class RIP_REST {
 				'enum'    => array( 'any', 'unused', 'used' ),
 			),
 			'max_usage'   => array( 'type' => 'integer', 'default' => 0 ),
+			'icons'       => array(
+				'type'    => 'string',
+				'default' => 'exclude',
+				'enum'    => array( 'exclude', 'only', 'any' ),
+			),
 			'orderby'     => array(
 				'type'    => 'string',
 				'default' => 'relevance',
@@ -221,6 +242,7 @@ class RIP_REST {
 				'mime'        => $mime,
 				'usage'       => $request->get_param( 'usage' ),
 				'max_usage'   => (int) $request->get_param( 'max_usage' ),
+				'icons'       => $request->get_param( 'icons' ),
 				'orderby'     => $request->get_param( 'orderby' ),
 				'date_after'  => sanitize_text_field( (string) $request->get_param( 'date_after' ) ),
 				'date_before' => sanitize_text_field( (string) $request->get_param( 'date_before' ) ),
@@ -309,6 +331,55 @@ class RIP_REST {
 		}
 
 		return rest_ensure_response( $result );
+	}
+
+	/**
+	 * GET /links — internal-link candidates from the site's sitemap, optionally
+	 * scored against the article keywords.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response
+	 */
+	public function route_links( WP_REST_Request $request ) {
+		$limit = max( 10, min( 1000, (int) $request->get_param( 'limit' ) ) );
+		$links = RIP_Sitemap::get_links( $limit, (bool) $request->get_param( 'refresh' ) );
+
+		$keywords = $this->resolve_keywords( $request );
+		if ( ! empty( $keywords ) ) {
+			foreach ( $links as &$link ) {
+				$haystack = strtolower( $link['title'] );
+				$score    = 0;
+				foreach ( $keywords as $kw ) {
+					$kw = strtolower( $kw );
+					if ( '' === $kw ) {
+						continue;
+					}
+					if ( preg_match( '/\b' . preg_quote( $kw, '/' ) . '\b/u', $haystack ) ) {
+						$score += 2;
+					} elseif ( false !== strpos( $haystack, $kw ) ) {
+						$score += 1;
+					}
+				}
+				$link['score'] = $score;
+			}
+			unset( $link );
+
+			usort(
+				$links,
+				static function ( $a, $b ) {
+					return $b['score'] <=> $a['score'];
+				}
+			);
+		}
+
+		return rest_ensure_response(
+			array(
+				'items'    => array_values( $links ),
+				'total'    => count( $links ),
+				'sitemaps' => RIP_Sitemap::discovered(),
+				'keywords' => array_values( $keywords ),
+			)
+		);
 	}
 
 	/**

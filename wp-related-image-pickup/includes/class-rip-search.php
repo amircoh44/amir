@@ -53,6 +53,7 @@ class RIP_Search {
 				'mime'        => array(),
 				'usage'       => 'any',
 				'max_usage'   => 0,
+				'icons'       => 'exclude',
 				'orderby'     => 'relevance',
 				'date_after'  => '',
 				'date_before' => '',
@@ -244,6 +245,11 @@ class RIP_Search {
 		$usage_map = $this->usage_map();
 		$usage     = isset( $usage_map[ $id ] ) ? (int) $usage_map[ $id ] : 0;
 
+		// An "icon" is any image whose filename, title or slug contains "icon".
+		$is_icon = ( false !== stripos( $filename, 'icon' ) )
+			|| ( false !== stripos( $post->post_title, 'icon' ) )
+			|| ( false !== stripos( $post->post_name, 'icon' ) );
+
 		$item = array(
 			'id'          => $id,
 			'title'       => $post->post_title,
@@ -261,6 +267,8 @@ class RIP_Search {
 			'mime'        => $post->post_mime_type,
 			'date'        => $post->post_date_gmt,
 			'usage'       => $usage,
+			'is_icon'     => $is_icon,
+			'icon_keywords' => $is_icon ? $this->icon_keywords( $filename, $post->post_title ) : array(),
 			'source'      => 'media_library',
 			'sizes'       => $this->available_sizes( $id ),
 		);
@@ -292,6 +300,29 @@ class RIP_Search {
 		}
 
 		return $out;
+	}
+
+	/**
+	 * Derive the "name" keywords for an icon from its filename/title so it can
+	 * be matched to related article text (e.g. "contact-us-icon" => contact, us).
+	 *
+	 * @param string $filename Attachment filename.
+	 * @param string $title    Attachment title.
+	 * @return string[]
+	 */
+	private function icon_keywords( $filename, $title ) {
+		$base = preg_replace( '/\.[a-z0-9]+$/i', '', (string) $filename ); // strip extension.
+		$text = strtolower( $base . ' ' . $title );
+		$text = str_ireplace( 'icon', ' ', $text );
+		$text = preg_replace( '/[^a-z0-9]+/', ' ', $text );
+
+		$words = array();
+		foreach ( preg_split( '/\s+/', trim( $text ) ) as $w ) {
+			if ( strlen( $w ) >= 2 && ! in_array( $w, $words, true ) ) {
+				$words[] = $w;
+			}
+		}
+		return $words;
 	}
 
 	/**
@@ -422,6 +453,14 @@ class RIP_Search {
 			return false;
 		}
 		if ( $args['max_usage'] && $item['usage'] > (int) $args['max_usage'] ) {
+			return false;
+		}
+		// Icon handling: keep icons out of normal image results, or show only
+		// icons when explicitly requested.
+		if ( 'exclude' === $args['icons'] && ! empty( $item['is_icon'] ) ) {
+			return false;
+		}
+		if ( 'only' === $args['icons'] && empty( $item['is_icon'] ) ) {
 			return false;
 		}
 

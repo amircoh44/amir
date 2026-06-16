@@ -47,6 +47,18 @@ Edit **title, alt text, caption and description** per selected image; changes ar
 ### Auto-place
 Choose **how many images to scatter** (1–20, remembered) and one click drops them at well-spaced block boundaries — **after a paragraph or before a heading**, never mid-sentence, and kept clear of existing images. Keywords are taken from the surrounding text at each spot.
 
+### Icons mode
+Any image whose **filename contains “icon”** is treated as an icon: it’s **excluded** from normal image search and auto-place (icons never get scattered as main images). In **Icons** mode you:
+- choose a **side** (left / right) and **pixel size** (e.g. 50×50, remembered);
+- **insert** selected icons, or **Spread by name** — each icon is dropped next to text that matches its name (e.g. a `contact-us-icon` lands beside “contact us”);
+- icons are **never captioned**, and the spread pass strips captions off any icon images already in the article.
+
+### Links mode (sitemap internal linking)
+Auto-discovers your **sitemap** — works with **Yoast, Rank Math, or WordPress core** (via `robots.txt`, `sitemap_index.xml`, `wp-sitemap.xml`), walking sitemap indexes down to the URLs and resolving them to **posts / pages / products** for their titles. Then:
+- review the candidate list (relevant ones — matching your selected sentence — are flagged);
+- **Add all relevant**, or tick targets and **Add selected**;
+- each target links the **first matching, unlinked occurrence** of its title in your article (longest titles win, word-boundary safe).
+
 ### Sources
 - **Media Library** — searches images already on your site.
 - **Stock providers** (optional) — **Unsplash, Pexels, Pixabay**. Chosen stock images are **auto‑imported** into the Media Library on insert (with title/alt/caption), so they live on your site like any upload.
@@ -94,6 +106,7 @@ All routes require `edit_posts` (import requires `upload_files`) and a `wp_rest`
 | GET | `/wp-json/rip/v1/stock` | Search configured stock providers. |
 | POST | `/wp-json/rip/v1/import` | Sideload a stock image into the Media Library. |
 | POST | `/wp-json/rip/v1/update-meta` | Persist edited title/alt/caption/description on an attachment. |
+| GET | `/wp-json/rip/v1/links` | Internal-link candidates discovered from the site's sitemap. |
 
 ## Architecture
 
@@ -104,7 +117,8 @@ wp-related-image-pickup/
 ├── includes/
 │   ├── class-rip-plugin.php         Orchestrator + settings accessor
 │   ├── class-rip-keywords.php       Sentence → keywords
-│   ├── class-rip-search.php         Media Library search + scoring + filters
+│   ├── class-rip-search.php         Media Library search + scoring + filters + icons
+│   ├── class-rip-sitemap.php        Sitemap discovery + parsing (internal links)
 │   ├── class-rip-rest.php           REST controller
 │   ├── class-rip-editor.php         TinyMCE button + asset enqueue
 │   ├── class-rip-admin.php          Settings page
