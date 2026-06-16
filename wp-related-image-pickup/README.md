@@ -75,8 +75,11 @@ Auto-discovers your **sitemap** — works with **Yoast, Rank Math, or WordPress 
 - **Stock providers** (optional) — **Unsplash, Pexels, Pixabay**. Chosen stock images are **auto‑imported** into the Media Library on insert (with title/alt/caption), so they live on your site like any upload.
 - Both can be enabled together as separate tabs.
 
+### Scatter selected
+Mark several images in the grid, then **Scatter selected** distributes them across the article — each image dropped at the spot whose text best matches its **alt / title / filename** keywords, with any leftovers filling the next well‑spaced slots. Kept clear of existing images and never mid‑sentence. (Auto‑place finds its own images; Scatter selected uses exactly the ones you ticked.)
+
 ### Inserting
-- **Multi‑select** to insert several images at once.
+- **Multi‑select** to insert several images at once (at the cursor / chosen position), or **Scatter selected** to spread them to related spots.
 - Insert **size** (thumbnail/medium/large/full), **alignment** (none/left/center/right), **position** (at cursor / after the paragraph / before the paragraph), optional **caption**, and optional **link to full image**.
 - Auto‑filled **alt text** from the matched metadata / selected sentence (good for SEO + accessibility).
 

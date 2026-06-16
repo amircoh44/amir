@@ -686,6 +686,7 @@
 .rip-mode-icons .rip-icon-opts { display: grid !important; }
 .rip-mode-images .rip-auto { display: inline-flex !important; }
 .rip-mode-images .rip-insert-btn,
+.rip-mode-images .rip-scatter-sel,
 .rip-mode-icons .rip-insert-btn,
 .rip-mode-icons .rip-spread-icons,
 .rip-mode-links .rip-links-all,
@@ -761,7 +762,8 @@
 .rip-spread-icons,
 .rip-links-all,
 .rip-links-sel,
-.rip-links-rescan {
+.rip-links-rescan,
+.rip-scatter-sel {
 	align-items: center;
 	gap: 7px;
 	height: 42px;
@@ -776,6 +778,9 @@
 	white-space: nowrap;
 	transition: filter 0.15s, border-color 0.15s, transform 0.05s;
 }
+
+.rip-scatter-sel:hover:not( :disabled ) { border-color: var( --rip-accent ); }
+.rip-scatter-sel:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .rip-links-rescan {
 	color: var( --rip-text-dim );

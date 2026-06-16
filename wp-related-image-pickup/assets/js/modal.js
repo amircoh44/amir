@@ -328,6 +328,7 @@
 			'          <input type="number" class="rip-auto-count" min="1" max="20" step="1" value="2" aria-label="Number of images to scatter (1-20)" />' +
 			'          <button type="button" class="rip-auto-btn">' + icon( 'magic' ) + '<span>Auto-place</span></button>' +
 			'        </span>' +
+			'        <button type="button" class="rip-scatter-sel rip-when-images" disabled data-tip="Scatter the images you ticked across the article, matched to related text (kept clear of other images, never mid-sentence)">' + icon( 'magic' ) + '<span>Scatter selected</span></button>' +
 			'        <button type="button" class="rip-spread-icons rip-when-icons" data-tip="Place every icon next to text that matches its name (e.g. a contact icon by “contact us”), and strip any captions from icons.">' + icon( 'magic' ) + '<span>Spread by name</span></button>' +
 			'        <button type="button" class="rip-links-rescan rip-when-links" data-tip="Re-read the sitemap, bypassing the cache">' + icon( 'refresh' ) + '<span>Re-scan</span></button>' +
 			'        <button type="button" class="rip-links-sel rip-when-links" disabled data-tip="Add only the links you ticked">' + icon( 'link' ) + '<span>Add selected</span></button>' +
@@ -443,6 +444,8 @@
 		$modal.find( '.rip-auto-btn' ).on( 'click', function () {
 			autoIllustrate( clampCount( $modal.find( '.rip-auto-count' ).val() ) );
 		} );
+
+		$modal.find( '.rip-scatter-sel' ).on( 'click', scatterSelected );
 
 		// Mode switching (Images / Icons / Links).
 		$modal.find( '.rip-mode' ).on( 'click', function () {
@@ -816,6 +819,7 @@
 		var n = Object.keys( state.selected ).length;
 		$modal.find( '.rip-selcount' ).text( n ? n + ' selected' : '' );
 		$modal.find( '.rip-insert-btn' ).prop( 'disabled', n === 0 );
+		$modal.find( '.rip-scatter-sel' ).prop( 'disabled', n === 0 );
 	}
 
 	/**
@@ -1169,26 +1173,18 @@
 	}
 
 	/**
-	 * Auto-place N related images at well-spaced block boundaries — after a
-	 * paragraph or before a heading, never mid-sentence, kept clear of any
-	 * existing images.
+	 * Collect well-spaced insertion slots from the article: paragraph ends and
+	 * headings, kept clear of existing images, never mid-sentence.
 	 *
-	 * @param {number} count How many images to place.
+	 * @param {number} minGap Minimum block distance from any existing image.
+	 * @return {Array} Slots: { index, node, where, text }.
 	 */
-	function autoIllustrate( count ) {
+	function articleSlots( minGap ) {
 		var editor = state.editor;
 		if ( ! editor || editor.isHidden() ) {
-			setStatus( 'Auto-place needs the Visual editor — switch from Text to Visual and try again.' );
-			return;
+			return [];
 		}
-
 		var blocks = Array.prototype.slice.call( editor.getBody().children );
-		if ( ! blocks.length ) {
-			setStatus( 'Write some content first, then auto-place images.' );
-			return;
-		}
-
-		// Indices of blocks that already hold an image (keep distance from these).
 		var occupied = [];
 		blocks.forEach( function ( b, i ) {
 			if ( blockHasImage( b ) ) {
@@ -1196,7 +1192,6 @@
 			}
 		} );
 
-		var minGap = 2;
 		var slots = [];
 		blocks.forEach( function ( b, i ) {
 			var isHeading = /^H[1-6]$/.test( b.nodeName );
@@ -1205,7 +1200,6 @@
 			if ( ! isHeading && ! isPara ) {
 				return;
 			}
-			// Keep clear of existing images.
 			var tooClose = occupied.some( function ( oi ) {
 				return Math.abs( oi - i ) < minGap;
 			} );
@@ -1219,7 +1213,24 @@
 				text: isHeading ? ( text + ' ' + nearestText( blocks, i ) ) : text
 			} );
 		} );
+		return slots;
+	}
 
+	/**
+	 * Auto-place N related images at well-spaced block boundaries — after a
+	 * paragraph or before a heading, never mid-sentence, kept clear of any
+	 * existing images.
+	 *
+	 * @param {number} count How many images to place.
+	 */
+	function autoIllustrate( count ) {
+		var editor = state.editor;
+		if ( ! editor || editor.isHidden() ) {
+			setStatus( 'Auto-place needs the Visual editor — switch from Text to Visual and try again.' );
+			return;
+		}
+
+		var slots = articleSlots( 2 );
 		if ( ! slots.length ) {
 			setStatus( 'No well-spaced spots found — need paragraphs/headings set apart from existing images.' );
 			return;
@@ -1274,6 +1285,142 @@
 				setStatus( 'No related images found in the Media Library for the surrounding text.' );
 			}
 		} );
+	}
+
+	/**
+	 * Tiny stop-word set for client-side image keyword extraction.
+	 */
+	var STOP = { the: 1, and: 1, for: 1, with: 1, from: 1, that: 1, this: 1, your: 1, our: 1, are: 1, was: 1, has: 1, you: 1, all: 1, can: 1, how: 1, why: 1, who: 1, new: 1, get: 1, img: 1, image: 1, photo: 1, jpg: 1, jpeg: 1, png: 1, webp: 1, scaled: 1, copy: 1, final: 1 };
+
+	/**
+	 * Derive keywords for an image from its alt, title and filename.
+	 *
+	 * @param {Object} item Image item.
+	 * @return {string[]}
+	 */
+	function imageKeywords( item ) {
+		var text = ( ( item.alt || '' ) + ' ' + ( item.title || '' ) + ' ' + ( item.filename || '' ) ).toLowerCase();
+		text = text.replace( /\.[a-z0-9]+$/, ' ' ).replace( /[^a-z0-9]+/g, ' ' );
+		var out = [];
+		text.split( /\s+/ ).forEach( function ( w ) {
+			if ( w.length >= 3 && ! STOP[ w ] && ! /^\d+$/.test( w ) && out.indexOf( w ) === -1 ) {
+				out.push( w );
+			}
+		} );
+		return out;
+	}
+
+	/**
+	 * Build a figure for a scattered/auto-placed content image (caption kept if
+	 * present), honouring the current size + alignment.
+	 *
+	 * @param {Object} item Image item.
+	 * @return {string}
+	 */
+	function contentFigure( item ) {
+		var align = $modal.find( '.rip-insert-align' ).val();
+		var size = $modal.find( '.rip-insert-size' ).val();
+		var alignClass = align && align !== 'none' ? ' align' + align : '';
+		var sized = ( item.sizes && item.sizes[ size ] ) ? item.sizes[ size ].url : item.url;
+		var alt = item.alt || item.title || '';
+		var cap = item.caption || '';
+		return '<figure class="wp-caption' + alignClass + '">' +
+			'<img src="' + esc( sized ) + '" alt="' + esc( alt ) + '" class="rip-image' + alignClass + '" />' +
+			( cap ? '<figcaption class="wp-caption-text">' + esc( cap ) + '</figcaption>' : '' ) +
+			'</figure>';
+	}
+
+	/**
+	 * Scatter the user-marked images across the article, matching each image to
+	 * the most related spot by its keywords, then filling any remainder with the
+	 * next well-spaced slots. Never mid-sentence, kept clear of existing images.
+	 */
+	function scatterSelected() {
+		var editor = state.editor;
+		if ( ! editor || editor.isHidden() ) {
+			setStatus( 'Scatter needs the Visual editor — switch from Text to Visual and try again.' );
+			return;
+		}
+
+		var items = Object.keys( state.selected ).map( function ( id ) {
+			return state.selected[ id ];
+		} );
+		if ( ! items.length ) {
+			return;
+		}
+
+		var slots = articleSlots( 2 );
+		if ( ! slots.length ) {
+			setStatus( 'No well-spaced spots found — add more paragraphs/headings or clear nearby images.' );
+			return;
+		}
+
+		var usedSlot = {};
+		var assignments = [];
+
+		// Pass 1: assign each image to its best keyword-matching free slot.
+		items.forEach( function ( item ) {
+			var kws = imageKeywords( item );
+			var best = -1;
+			var bestScore = 0;
+			slots.forEach( function ( slot, si ) {
+				if ( usedSlot[ si ] ) {
+					return;
+				}
+				var hay = ( slot.text || '' ).toLowerCase();
+				var score = kws.reduce( function ( s, kw ) {
+					return s + ( hay.indexOf( kw ) !== -1 ? 1 : 0 );
+				}, 0 );
+				if ( score > bestScore ) {
+					bestScore = score;
+					best = si;
+				}
+			} );
+			if ( best !== -1 && bestScore > 0 ) {
+				usedSlot[ best ] = true;
+				assignments.push( { item: item, slot: slots[ best ] } );
+			} else {
+				assignments.push( { item: item, slot: null } );
+			}
+		} );
+
+		// Pass 2: fill unmatched images with the remaining free slots.
+		var free = [];
+		slots.forEach( function ( s, si ) {
+			if ( ! usedSlot[ si ] ) {
+				free.push( si );
+			}
+		} );
+		assignments.forEach( function ( a ) {
+			if ( ! a.slot && free.length ) {
+				var si = free.shift();
+				usedSlot[ si ] = true;
+				a.slot = slots[ si ];
+			}
+		} );
+
+		var placed = assignments.filter( function ( a ) {
+			return a.slot;
+		} );
+		if ( ! placed.length ) {
+			setStatus( 'No spots available to scatter into.' );
+			return;
+		}
+
+		// Insert bottom-up so earlier DOM indices stay valid.
+		placed.sort( function ( a, b ) {
+			return b.slot.index - a.slot.index;
+		} );
+		placed.forEach( function ( a ) {
+			insertNodeAt( editor, a.slot.node, a.slot.where, contentFigure( a.item ) );
+		} );
+
+		editor.nodeChanged();
+		if ( editor.undoManager ) {
+			editor.undoManager.add();
+		}
+		editor.save();
+		close();
 	}
 
 	/**
