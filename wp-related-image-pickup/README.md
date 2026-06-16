@@ -55,6 +55,7 @@ Any image whose **filename contains “icon”** is treated as an icon: it’s *
 
 ### Links mode (sitemap internal linking)
 Auto-discovers your **sitemap** — works with **Yoast, Rank Math, or WordPress core** (via `robots.txt`, `sitemap_index.xml`, `wp-sitemap.xml`), walking sitemap indexes down to the URLs and resolving them to **posts / pages / products** for their titles. Then:
+- targets are shown in a **readable, full-width list**, **colour-coded by kind** — homepage, author, tag, category, product, page, post, other — and each colour is **recolourable from the legend** (remembered), so seeding links is fast to scan;
 - review the candidate list (relevance is scored against the **whole article**, so on-topic targets are flagged **relevant**);
 - **Add all relevant** auto-spreads matching links, or tick targets and **Add selected**;
 - each target links the **first matching, unlinked occurrence** of its title in your article (longest titles win, word-boundary safe);

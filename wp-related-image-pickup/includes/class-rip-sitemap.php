@@ -100,17 +100,21 @@ class RIP_Sitemap {
 			}
 
 			$post_id = url_to_postid( $url );
+			$kind    = self::classify( $url, $post_id );
+
 			if ( $post_id ) {
 				$links[] = array(
 					'url'   => get_permalink( $post_id ),
 					'title' => html_entity_decode( get_the_title( $post_id ), ENT_QUOTES, 'UTF-8' ),
 					'type'  => get_post_type( $post_id ),
+					'kind'  => $kind,
 				);
 			} else {
 				$links[] = array(
 					'url'   => $url,
 					'title' => self::title_from_url( $url ),
 					'type'  => 'url',
+					'kind'  => $kind,
 				);
 			}
 		}
@@ -127,6 +131,43 @@ class RIP_Sitemap {
 		}
 
 		return $unique;
+	}
+
+	/**
+	 * Classify a link target so the UI can colour-code it: home, author, tag,
+	 * category, product, page, post, or url.
+	 *
+	 * @param string $url     URL.
+	 * @param int    $post_id Resolved post ID (0 if none).
+	 * @return string
+	 */
+	private static function classify( $url, $post_id ) {
+		if ( untrailingslashit( strtolower( $url ) ) === untrailingslashit( strtolower( home_url( '/' ) ) ) ) {
+			return 'home';
+		}
+
+		if ( $post_id ) {
+			$pt = get_post_type( $post_id );
+			if ( in_array( $pt, array( 'product', 'page', 'post' ), true ) ) {
+				return $pt;
+			}
+			return $pt ? $pt : 'url';
+		}
+
+		$path = strtolower( (string) wp_parse_url( $url, PHP_URL_PATH ) );
+		if ( false !== strpos( $path, '/author/' ) ) {
+			return 'author';
+		}
+		if ( false !== strpos( $path, '/tag/' ) ) {
+			return 'tag';
+		}
+		if ( false !== strpos( $path, '/category/' ) || false !== strpos( $path, '/cat/' ) ) {
+			return 'category';
+		}
+		if ( false !== strpos( $path, '/product/' ) || false !== strpos( $path, '/shop/' ) || false !== strpos( $path, '/store/' ) || false !== strpos( $path, '/product-category/' ) ) {
+			return 'product';
+		}
+		return 'url';
 	}
 
 	/**

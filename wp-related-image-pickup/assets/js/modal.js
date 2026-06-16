@@ -63,6 +63,77 @@
 		return Math.max( 16, Math.min( 256, parseInt( v, 10 ) || 50 ) );
 	}
 
+	// Link-kind colour coding (user-customisable, remembered).
+	var LINK_KINDS = [
+		[ 'home', 'Homepage', '#ef4444' ],
+		[ 'author', 'Author pages', '#f59e0b' ],
+		[ 'tag', 'Tag pages', '#10b981' ],
+		[ 'category', 'Category pages', '#3b82f6' ],
+		[ 'product', 'Products', '#a855f7' ],
+		[ 'page', 'Pages', '#6366f1' ],
+		[ 'post', 'Posts', '#0ea5e9' ],
+		[ 'url', 'Other', '#94a3b8' ]
+	];
+
+	/**
+	 * Resolve the colour map for link kinds (defaults merged with saved prefs).
+	 *
+	 * @return {Object}
+	 */
+	function linkColors() {
+		var map = {};
+		LINK_KINDS.forEach( function ( k ) {
+			map[ k[ 0 ] ] = k[ 2 ];
+		} );
+		var saved = loadPrefs().linkColors || {};
+		Object.keys( saved ).forEach( function ( k ) {
+			if ( /^#[0-9a-f]{6}$/i.test( saved[ k ] ) ) {
+				map[ k ] = saved[ k ];
+			}
+		} );
+		return map;
+	}
+
+	/**
+	 * Colour for a given link kind.
+	 *
+	 * @param {string} kind Link kind.
+	 * @return {string}
+	 */
+	function colorFor( kind ) {
+		var map = linkColors();
+		return map[ kind ] || map.url;
+	}
+
+	/**
+	 * Human label for a link kind.
+	 *
+	 * @param {string} kind Link kind.
+	 * @return {string}
+	 */
+	function kindLabel( kind ) {
+		for ( var i = 0; i < LINK_KINDS.length; i++ ) {
+			if ( LINK_KINDS[ i ][ 0 ] === kind ) {
+				return LINK_KINDS[ i ][ 1 ];
+			}
+		}
+		return kind;
+	}
+
+	/**
+	 * Build the colour legend (swatches the user can recolour).
+	 */
+	function buildLegend() {
+		var colors = linkColors();
+		var html = '<span class="rip-legend-lab">Highlight colours — click a swatch to recolour:</span>';
+		LINK_KINDS.forEach( function ( k ) {
+			html += '<label class="rip-legend-item" data-kind="' + k[ 0 ] + '">' +
+				'<input type="color" class="rip-legend-color" value="' + colors[ k[ 0 ] ] + '" />' +
+				'<span>' + esc( k[ 1 ] ) + '</span></label>';
+		} );
+		$modal.find( '.rip-legend' ).html( html );
+	}
+
 	var state = {
 		editor: null,
 		editorId: '',
@@ -229,6 +300,7 @@
 			( showMedia ? '      <button type="button" class="rip-tab is-active" data-tab="media">' + esc( i18n.mediaTab || 'Media Library' ) + '</button>' : '' ) +
 			( showStock ? '      <button type="button" class="rip-tab' + ( showMedia ? '' : ' is-active' ) + '" data-tab="stock">' + esc( i18n.stockTab || 'Stock Photos' ) + '</button>' : '' ) +
 			'    </nav>' +
+			'    <div class="rip-legend rip-when-links"></div>' +
 			'    <div class="rip-body">' +
 			'      <div class="rip-status"></div>' +
 			'      <div class="rip-grid"></div>' +
@@ -390,6 +462,17 @@
 			fetchLinks( true );
 		} );
 
+		// Recolour a link kind (remembered) and re-paint the list live.
+		$modal.on( 'input change', '.rip-legend-color', function () {
+			var kind = $( this ).closest( '.rip-legend-item' ).data( 'kind' );
+			var val = $( this ).val();
+			var prefs = loadPrefs();
+			prefs.linkColors = prefs.linkColors || {};
+			prefs.linkColors[ kind ] = val;
+			savePrefs( { linkColors: prefs.linkColors } );
+			renderLinks( state.links );
+		} );
+
 		// Block a page (stop it ever being suggested/linked).
 		$modal.on( 'click', '.rip-link-block', function ( e ) {
 			e.stopPropagation();
@@ -511,6 +594,7 @@
 		setStatus( '' );
 
 		if ( 'links' === mode ) {
+			buildLegend();
 			fetchLinks();
 			return;
 		}
@@ -1321,15 +1405,20 @@
 
 		var $grid = $modal.find( '.rip-grid' ).empty();
 		links.forEach( function ( link, idx ) {
+			var kind = link.kind || 'url';
+			var color = colorFor( kind );
 			var rel = ( link.score && link.score > 0 ) ? '<span class="rip-link-rel">relevant</span>' : '';
+			var selected = state.linkSel[ link.url ] ? ' is-selected' : '';
+
 			var $row = $(
-				'<div class="rip-link-row" data-idx="' + idx + '" tabindex="0">' +
-				'  <span class="rip-link-check">✓</span>' +
+				'<div class="rip-link-row' + selected + '" data-idx="' + idx + '" tabindex="0" style="border-left-color:' + color + '">' +
+				'  <span class="rip-link-check" style="--rip-k:' + color + '">✓</span>' +
 				'  <span class="rip-link-main">' +
 				'    <span class="rip-link-title">' + esc( link.title ) + '</span>' +
 				'    <span class="rip-link-url">' + esc( link.url ) + '</span>' +
 				'  </span>' +
-				'  <span class="rip-link-type">' + esc( link.type ) + '</span>' + rel +
+				'  <span class="rip-link-kind" style="background:' + color + '">' + esc( kindLabel( kind ) ) + '</span>' +
+				rel +
 				'  <button type="button" class="rip-link-block" data-tip="Block this page — never suggest or link it">' + icon( 'ban' ) + '</button>' +
 				'</div>'
 			);
