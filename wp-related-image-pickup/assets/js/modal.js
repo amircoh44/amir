@@ -547,6 +547,11 @@
 			updateSelCount();
 		}
 
+		// Remember the last image search so reopening restores it.
+		if ( 'images' === state.mode ) {
+			savePrefs( { lastKeywords: $modal.find( '.rip-keywords' ).val() || '' } );
+		}
+
 		var filters = currentFilters();
 		var endpoint = state.tab === 'stock' ? '/stock' : '/search';
 
@@ -575,6 +580,21 @@
 	}
 
 	/**
+	 * Apply a mode's visual state (active pill + modal class) and remember it.
+	 *
+	 * @param {string} mode 'images' | 'icons' | 'links'.
+	 */
+	function applyModeClass( mode ) {
+		state.mode = mode;
+		$modal.find( '.rip-mode' ).removeClass( 'is-active' );
+		$modal.find( '.rip-mode[data-mode="' + mode + '"]' ).addClass( 'is-active' );
+		$modal.find( '.rip-modal' )
+			.removeClass( 'rip-mode-images rip-mode-icons rip-mode-links' )
+			.addClass( 'rip-mode-' + mode );
+		savePrefs( { lastMode: mode } );
+	}
+
+	/**
 	 * Switch between Images / Icons / Links modes.
 	 *
 	 * @param {string} mode Target mode.
@@ -583,7 +603,6 @@
 		if ( ! mode || mode === state.mode ) {
 			return;
 		}
-		state.mode = mode;
 		state.selected = {};
 		state.activeId = null;
 		state.linkSel = {};
@@ -591,11 +610,7 @@
 		hideDetails();
 		updateSelCount();
 
-		$modal.find( '.rip-mode' ).removeClass( 'is-active' );
-		$modal.find( '.rip-mode[data-mode="' + mode + '"]' ).addClass( 'is-active' );
-		$modal.find( '.rip-modal' )
-			.removeClass( 'rip-mode-images rip-mode-icons rip-mode-links' )
-			.addClass( 'rip-mode-' + mode );
+		applyModeClass( mode );
 
 		$modal.find( '.rip-grid' ).empty();
 		$modal.find( '.rip-pagination' ).remove();
@@ -1707,26 +1722,22 @@
 		state.activeId = null;
 		state.linkSel = {};
 		state.links = [];
-		state.mode = 'images';
 		state.tab = ( cfg.enableMedia !== false ) ? 'media' : 'stock';
-		state.lastSelection = ( opts.selection || '' ).trim();
 
-		// Reset to Images mode each time the picker opens.
-		$modal.find( '.rip-mode' ).removeClass( 'is-active' );
-		$modal.find( '.rip-mode[data-mode="images"]' ).addClass( 'is-active' );
-		$modal.find( '.rip-modal' )
-			.removeClass( 'rip-mode-icons rip-mode-links' )
-			.addClass( 'rip-mode-images' );
+		var selection = ( opts.selection || '' ).trim();
+		state.lastSelection = selection;
 
-		$modal.find( '.rip-keywords' ).val( '' );
 		$modal.find( '.rip-grid' ).empty();
 		$modal.find( '.rip-pagination' ).remove();
 		hideDetails();
 		updateSelCount();
 
-		// Pre-fill keywords by extracting them from the selection server-side.
-		var selection = ( opts.selection || '' ).trim();
+		var prefs = loadPrefs();
+
 		if ( selection ) {
+			// Fresh text selected → search it in Images mode.
+			applyModeClass( 'images' );
+			$modal.find( '.rip-keywords' ).val( '' );
 			setStatus( i18n.searching || 'Searching…' );
 			$.ajax( {
 				url: cfg.restUrl + '/keywords',
@@ -1743,7 +1754,32 @@
 				runSearch();
 			} );
 		} else {
-			setStatus( i18n.noSelection || 'Select a sentence first, then click the button.' );
+			// No selection → restore the last search and mode.
+			var mode = prefs.lastMode || 'images';
+			applyModeClass( mode );
+
+			if ( 'links' === mode ) {
+				buildLegend();
+				fetchLinks();
+			} else {
+				state.tab = 'media';
+				$modal.find( '.rip-tab' ).removeClass( 'is-active' );
+				$modal.find( '.rip-tab[data-tab="media"]' ).addClass( 'is-active' );
+				$modal.toggleClass( 'rip-is-stock', false );
+
+				if ( 'icons' === mode ) {
+					$modal.find( '.rip-keywords' ).val( '' );
+					runSearch();
+				} else {
+					var kw = prefs.lastKeywords || '';
+					$modal.find( '.rip-keywords' ).val( kw );
+					if ( kw.trim() ) {
+						runSearch();
+					} else {
+						setStatus( i18n.noSelection || 'Select a sentence first, then click the button.' );
+					}
+				}
+			}
 		}
 
 		$modal.show();
