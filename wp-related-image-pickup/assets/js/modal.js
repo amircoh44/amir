@@ -1710,10 +1710,14 @@
 				return state.linkSel[ u ];
 			} );
 		} else if ( hasScores() ) {
-			// "All relevant" = those that matched the article keywords.
+			// "All relevant" = those that matched the article keywords; if none
+			// matched, fall back to all candidates so the button still works.
 			links = state.links.filter( function ( l ) {
 				return l.score > 0;
 			} );
+			if ( ! links.length ) {
+				links = state.links.slice();
+			}
 		} else {
 			links = state.links.slice();
 		}
@@ -1731,13 +1735,19 @@
 		var linked = {};
 		var count = 0;
 		links.forEach( function ( link ) {
-			var phrase = ( link.title || '' ).trim();
-			if ( phrase.length < 3 || linked[ phrase.toLowerCase() ] ) {
-				return;
-			}
-			if ( wrapFirstOccurrence( editor, phrase, link.url ) ) {
-				linked[ phrase.toLowerCase() ] = true;
-				count++;
+			// Try meaningful phrases derived from the title, longest/most
+			// specific first — full titles rarely appear verbatim.
+			var phrases = linkPhrases( link.title );
+			for ( var i = 0; i < phrases.length; i++ ) {
+				var p = phrases[ i ];
+				if ( linked[ p ] ) {
+					continue;
+				}
+				if ( wrapFirstOccurrence( editor, p, link.url ) ) {
+					linked[ p ] = true;
+					count++;
+					break;
+				}
 			}
 		} );
 
@@ -1752,6 +1762,55 @@
 		} else {
 			setStatus( 'None of those titles appear in your article text yet.' );
 		}
+	}
+
+	/**
+	 * Boilerplate / preposition words dropped from link anchor phrases so we
+	 * don't link words like "no", "in", "best" (e.g. from "No.1 … in Buffalo").
+	 */
+	var TITLE_STOP = { no: 1, in: 1, on: 1, at: 1, of: 1, to: 1, by: 1, an: 1, or: 1, is: 1, it: 1, as: 1, we: 1, us: 1, best: 1, top: 1, premier: 1, leading: 1, trusted: 1, official: 1 };
+
+	/**
+	 * Derive linkable anchor phrases from a page title, most specific first.
+	 * Strips boilerplate (punctuation, "no.1", pure numbers, stop-words) and
+	 * yields contiguous word n-grams (longest → shortest), then significant
+	 * single words. So "No.1 Commercial Locksmith Buffalo NY" can link
+	 * "commercial locksmith buffalo ny", "commercial locksmith", … "locksmith".
+	 *
+	 * @param {string} title Page title.
+	 * @return {string[]}
+	 */
+	function linkPhrases( title ) {
+		var clean = ( title || '' ).toLowerCase()
+			.replace( /[^a-z0-9\s]/g, ' ' )
+			.replace( /\s+/g, ' ' )
+			.trim();
+		var tokens = clean.split( ' ' ).filter( function ( t ) {
+			return t && ! STOP[ t ] && ! TITLE_STOP[ t ] && ! /^\d+$/.test( t );
+		} );
+
+		var phrases = [];
+		for ( var n = tokens.length; n >= 2; n-- ) {
+			for ( var i = 0; i + n <= tokens.length; i++ ) {
+				phrases.push( tokens.slice( i, i + n ).join( ' ' ) );
+			}
+		}
+		// Significant single words last (avoid linking tiny/common ones).
+		tokens.forEach( function ( t ) {
+			if ( t.length >= 4 ) {
+				phrases.push( t );
+			}
+		} );
+
+		var seen = {};
+		var out = [];
+		phrases.forEach( function ( p ) {
+			if ( ! seen[ p ] ) {
+				seen[ p ] = true;
+				out.push( p );
+			}
+		} );
+		return out;
 	}
 
 	/**

@@ -374,19 +374,25 @@ class RIP_REST {
 		}
 
 		$keywords = $this->resolve_keywords( $request );
-		if ( ! empty( $keywords ) ) {
+
+		// Score each candidate against the FULL article text (not a capped
+		// keyword list): how many of the title's significant words appear.
+		$text = strtolower( (string) $request->get_param( 'text' ) );
+		if ( '' !== trim( $text ) ) {
 			foreach ( $links as &$link ) {
-				$haystack = strtolower( $link['title'] );
-				$score    = 0;
-				foreach ( $keywords as $kw ) {
-					$kw = strtolower( $kw );
-					if ( '' === $kw ) {
-						continue;
-					}
-					if ( preg_match( '/\b' . preg_quote( $kw, '/' ) . '\b/u', $haystack ) ) {
-						$score += 2;
-					} elseif ( false !== strpos( $haystack, $kw ) ) {
-						$score += 1;
+				$title = strtolower( preg_replace( '/[^a-z0-9\s]/i', ' ', $link['title'] ) );
+				$words = array_unique(
+					array_filter(
+						preg_split( '/\s+/', $title ),
+						static function ( $w ) {
+							return strlen( $w ) >= 4;
+						}
+					)
+				);
+				$score = 0;
+				foreach ( $words as $w ) {
+					if ( false !== strpos( $text, $w ) ) {
+						$score++;
 					}
 				}
 				$link['score'] = $score;

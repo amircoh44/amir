@@ -4,7 +4,7 @@ Tags: images, media library, tinymce, classic editor, stock photos, unsplash, pe
 Requires at least: 5.0
 Tested up to: 6.5
 Requires PHP: 7.2
-Stable tag: 1.7.0
+Stable tag: 1.7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,10 @@ Only if you enable stock providers. Searching your own Media Library needs no ke
 When you insert a stock image it is downloaded into your Media Library first, then inserted, so it is hosted on your own site.
 
 == Changelog ==
+
+= 1.7.1 =
+* Fixed Links mode adding nothing: it required the whole page title to appear verbatim. It now links meaningful phrases derived from each title (e.g. "commercial locksmith", "access control"), longest/most specific first, dropping boilerplate like "No.1" and prepositions.
+* Relevance is now scored against the full article text (not a capped keyword list), so on-topic targets are flagged correctly; "Add all relevant" falls back to all candidates if none score.
 
 = 1.7.0 =
 * Scatter selected: mark several images in Images mode and place them across the article, each matched to the most related spot by its alt/title/filename keywords (kept clear of other images, never mid-sentence).
