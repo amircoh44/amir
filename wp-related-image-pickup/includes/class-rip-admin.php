@@ -83,7 +83,8 @@ class RIP_Admin {
 	}
 
 	/**
-	 * Sanitize the blocked-link textarea into a clean array of URLs.
+	 * Sanitize the blocked-link textarea. Each line may be an exact URL, a
+	 * wildcard glob using a star, or a bare path fragment (e.g. /author/).
 	 *
 	 * @param mixed $input Raw textarea value (newline-separated) or array.
 	 * @return string[]
@@ -92,9 +93,12 @@ class RIP_Admin {
 		$lines = is_array( $input ) ? $input : preg_split( '/[\r\n]+/', (string) $input );
 		$out   = array();
 		foreach ( (array) $lines as $line ) {
-			$url = esc_url_raw( trim( $line ) );
-			if ( '' !== $url && ! in_array( $url, $out, true ) ) {
-				$out[] = $url;
+			$line = trim( wp_strip_all_tags( (string) $line ) );
+			$line = preg_replace( '/\s+/', '', $line );
+			// Allow URL + glob characters only.
+			$line = preg_replace( '![^a-z0-9*/:._\-?=&~%#]!i', '', $line );
+			if ( '' !== $line && ! in_array( $line, $out, true ) ) {
+				$out[] = $line;
 			}
 		}
 		return $out;
@@ -237,9 +241,20 @@ class RIP_Admin {
 				<div class="rip-admin-card">
 				<h2 class="title"><?php esc_html_e( 'Blocked link targets', 'wp-related-image-pickup' ); ?></h2>
 				<p class="description">
-					<?php esc_html_e( 'Pages listed here are never suggested or linked in Links mode (one URL per line). The home page and the page you are editing are always excluded automatically. You can also block a page directly from the Links list.', 'wp-related-image-pickup' ); ?>
+					<?php esc_html_e( 'Pages matching these patterns are never suggested or linked in Links mode (one per line). The home page and the page you are editing are always excluded automatically. You can also block a page directly from the Links list.', 'wp-related-image-pickup' ); ?>
 				</p>
-				<textarea name="rip_link_blocklist" rows="5" class="large-text code" placeholder="https://example.com/page-to-never-link/"><?php echo esc_textarea( implode( "\n", RIP_Sitemap::blocklist() ) ); ?></textarea>
+				<p class="description">
+					<?php
+					printf(
+						/* translators: %1$s, %2$s, %3$s: example blocklist patterns */
+						esc_html__( 'Use an exact URL, a %1$s wildcard (e.g. %2$s), or a bare path fragment (e.g. %3$s) to block whole sections such as tag, author or category archives.', 'wp-related-image-pickup' ),
+						'<code>*</code>',
+						'<code>*/tag/*</code>, <code>https://example.com/author/*</code>',
+						'<code>/author/</code>, <code>/category/</code>'
+					);
+					?>
+				</p>
+				<textarea name="rip_link_blocklist" rows="6" class="large-text code" placeholder="*/tag/*&#10;*/author/*&#10;/category/&#10;https://example.com/exact-page/"><?php echo esc_textarea( implode( "\n", RIP_Sitemap::blocklist() ) ); ?></textarea>
 				</div>
 
 				<?php submit_button(); ?>

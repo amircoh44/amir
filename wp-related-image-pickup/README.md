@@ -62,7 +62,10 @@ Auto-discovers your **sitemap** — works with **Yoast, Rank Math, or WordPress 
 
 **Never** links to the **page you're editing** (no self-links) or the **home page**.
 
-**Block list:** stop specific pages from ever being suggested or linked — click the **block (⊘) button** on any candidate, or manage the list under **Settings → Related Image Pickup → Blocked link targets** (one URL per line).
+**Block list:** stop pages from ever being suggested or linked — click the **block (⊘) button** on any candidate (blocks that exact URL), or manage patterns under **Settings → Related Image Pickup → Blocked link targets** (one per line). Each pattern can be:
+- an **exact URL** — `https://example.com/page/`;
+- a **wildcard glob** (`*` = any characters) — `*/tag/*`, `https://example.com/author/*`;
+- a **bare path fragment** — `/author/`, `/category/`, `/tag/` — to block whole archive sections.
 
 ### Sources
 - **Media Library** — searches images already on your site.

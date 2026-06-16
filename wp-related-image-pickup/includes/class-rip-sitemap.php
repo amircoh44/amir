@@ -49,14 +49,20 @@ class RIP_Sitemap {
 			set_transient( self::CACHE_KEY, $list, HOUR_IN_SECONDS );
 		}
 
-		// Always filter out blocked pages.
-		$blocked = array_map( array( __CLASS__, 'norm' ), self::blocklist() );
-		if ( ! empty( $blocked ) ) {
+		// Always filter out blocked pages (supports exact URLs, wildcard globs
+		// like */tag/* and bare path fragments like /author/).
+		$patterns = self::blocklist();
+		if ( ! empty( $patterns ) ) {
 			$list = array_values(
 				array_filter(
 					$list,
-					static function ( $link ) use ( $blocked ) {
-						return ! in_array( self::norm( $link['url'] ), $blocked, true );
+					static function ( $link ) use ( $patterns ) {
+						foreach ( $patterns as $pattern ) {
+							if ( self::matches_block( $link['url'], $pattern ) ) {
+								return false;
+							}
+						}
+						return true;
 					}
 				)
 			);
@@ -169,6 +175,39 @@ class RIP_Sitemap {
 	 */
 	private static function norm( $url ) {
 		return untrailingslashit( strtolower( trim( (string) $url ) ) );
+	}
+
+	/**
+	 * Whether a URL is blocked by a blocklist pattern. Supports:
+	 *   - exact URLs, e.g. https://site.com/page/
+	 *   - wildcard globs using a star, e.g. star-slash-tag-slash-star, or
+	 *     https://site.com/author/star
+	 *   - bare path fragments / tokens, e.g. /author/, /tag/, products
+	 *
+	 * @param string $url     Candidate URL.
+	 * @param string $pattern Blocklist entry.
+	 * @return bool
+	 */
+	private static function matches_block( $url, $pattern ) {
+		$u = self::norm( $url );
+		$p = self::norm( $pattern );
+		if ( '' === $p ) {
+			return false;
+		}
+
+		// Wildcard glob → unanchored regex search.
+		if ( false !== strpos( $p, '*' ) ) {
+			$regex = '#' . str_replace( '\*', '.*', preg_quote( $p, '#' ) ) . '#';
+			return (bool) preg_match( $regex, $u );
+		}
+
+		// A full URL is matched exactly.
+		if ( preg_match( '#^https?://#', $p ) ) {
+			return $u === $p;
+		}
+
+		// A bare path fragment / token matches anywhere in the URL.
+		return false !== strpos( $u, $p );
 	}
 
 	/**
