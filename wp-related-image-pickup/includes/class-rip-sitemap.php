@@ -28,18 +28,50 @@ class RIP_Sitemap {
 	/**
 	 * Get internal-link candidates pulled from the site's sitemap.
 	 *
+	 * The blocklist is always applied (even to cached results) so blocking a
+	 * page takes effect immediately.
+	 *
 	 * @param int  $limit Maximum links to return.
-	 * @param bool $fresh Bypass the cache.
+	 * @param bool $fresh Bypass the cache (re-scan).
 	 * @return array[] Each: { url, title, type }.
 	 */
 	public static function get_links( $limit = 500, $fresh = false ) {
+		$list = null;
 		if ( ! $fresh ) {
 			$cache = get_transient( self::CACHE_KEY );
 			if ( is_array( $cache ) ) {
-				return array_slice( $cache, 0, $limit );
+				$list = $cache;
 			}
 		}
 
+		if ( null === $list ) {
+			$list = self::build( $limit );
+			set_transient( self::CACHE_KEY, $list, HOUR_IN_SECONDS );
+		}
+
+		// Always filter out blocked pages.
+		$blocked = array_map( array( __CLASS__, 'norm' ), self::blocklist() );
+		if ( ! empty( $blocked ) ) {
+			$list = array_values(
+				array_filter(
+					$list,
+					static function ( $link ) use ( $blocked ) {
+						return ! in_array( self::norm( $link['url'] ), $blocked, true );
+					}
+				)
+			);
+		}
+
+		return array_slice( $list, 0, $limit );
+	}
+
+	/**
+	 * Discover + parse + resolve the sitemap into link candidates.
+	 *
+	 * @param int $limit Soft cap on how many URLs to resolve.
+	 * @return array[]
+	 */
+	private static function build( $limit = 500 ) {
 		$sitemaps         = self::discover();
 		self::$discovered = $sitemaps;
 
@@ -56,7 +88,7 @@ class RIP_Sitemap {
 		$links = array();
 
 		foreach ( $urls as $url ) {
-			// Skip the site root itself — rarely a useful internal link target.
+			// Skip the site root itself — never a useful internal link target.
 			if ( untrailingslashit( $url ) === untrailingslashit( $home ) ) {
 				continue;
 			}
@@ -88,8 +120,55 @@ class RIP_Sitemap {
 			$unique[]             = $link;
 		}
 
-		set_transient( self::CACHE_KEY, $unique, HOUR_IN_SECONDS );
-		return array_slice( $unique, 0, $limit );
+		return $unique;
+	}
+
+	/**
+	 * The list of blocked link-target URLs.
+	 *
+	 * @return string[]
+	 */
+	public static function blocklist() {
+		return array_values( array_filter( (array) get_option( 'rip_link_blocklist', array() ) ) );
+	}
+
+	/**
+	 * Block or unblock a URL from being suggested/linked.
+	 *
+	 * @param string $url     Target URL.
+	 * @param bool   $blocked True to block, false to unblock.
+	 * @return string[] The updated blocklist.
+	 */
+	public static function set_blocked( $url, $blocked = true ) {
+		$url  = esc_url_raw( $url );
+		$norm = self::norm( $url );
+		$list = self::blocklist();
+
+		$list = array_values(
+			array_filter(
+				$list,
+				static function ( $existing ) use ( $norm ) {
+					return self::norm( $existing ) !== $norm;
+				}
+			)
+		);
+
+		if ( $blocked && '' !== $url ) {
+			$list[] = $url;
+		}
+
+		update_option( 'rip_link_blocklist', $list );
+		return $list;
+	}
+
+	/**
+	 * Normalize a URL for comparison (drop trailing slash, lower scheme/host).
+	 *
+	 * @param string $url URL.
+	 * @return string
+	 */
+	private static function norm( $url ) {
+		return untrailingslashit( strtolower( trim( (string) $url ) ) );
 	}
 
 	/**

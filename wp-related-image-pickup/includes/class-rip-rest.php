@@ -116,10 +116,25 @@ class RIP_REST {
 				'callback'            => array( $this, 'route_links' ),
 				'permission_callback' => array( $this, 'can_edit' ),
 				'args'                => array(
-					'keywords' => array( 'type' => 'string', 'default' => '' ),
-					'text'     => array( 'type' => 'string', 'default' => '' ),
-					'limit'    => array( 'type' => 'integer', 'default' => 300 ),
-					'refresh'  => array( 'type' => 'boolean', 'default' => false ),
+					'keywords'     => array( 'type' => 'string', 'default' => '' ),
+					'text'         => array( 'type' => 'string', 'default' => '' ),
+					'limit'        => array( 'type' => 'integer', 'default' => 300 ),
+					'refresh'      => array( 'type' => 'boolean', 'default' => false ),
+					'exclude_post' => array( 'type' => 'integer', 'default' => 0 ),
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NS,
+			'/block-link',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'route_block_link' ),
+				'permission_callback' => array( $this, 'can_edit' ),
+				'args'                => array(
+					'url'     => array( 'required' => true, 'type' => 'string' ),
+					'blocked' => array( 'type' => 'boolean', 'default' => true ),
 				),
 			)
 		);
@@ -344,6 +359,20 @@ class RIP_REST {
 		$limit = max( 10, min( 1000, (int) $request->get_param( 'limit' ) ) );
 		$links = RIP_Sitemap::get_links( $limit, (bool) $request->get_param( 'refresh' ) );
 
+		// Never offer the page currently being edited (no self-links) or home.
+		$exclude_post = (int) $request->get_param( 'exclude_post' );
+		if ( $exclude_post > 0 ) {
+			$self_url = untrailingslashit( strtolower( (string) get_permalink( $exclude_post ) ) );
+			$links    = array_values(
+				array_filter(
+					$links,
+					static function ( $link ) use ( $self_url ) {
+						return untrailingslashit( strtolower( $link['url'] ) ) !== $self_url;
+					}
+				)
+			);
+		}
+
 		$keywords = $this->resolve_keywords( $request );
 		if ( ! empty( $keywords ) ) {
 			foreach ( $links as &$link ) {
@@ -378,6 +407,27 @@ class RIP_REST {
 				'total'    => count( $links ),
 				'sitemaps' => RIP_Sitemap::discovered(),
 				'keywords' => array_values( $keywords ),
+			)
+		);
+	}
+
+	/**
+	 * POST /block-link — block (or unblock) a page from internal-link
+	 * suggestions site-wide.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response
+	 */
+	public function route_block_link( WP_REST_Request $request ) {
+		$url     = esc_url_raw( (string) $request->get_param( 'url' ) );
+		$blocked = (bool) $request->get_param( 'blocked' );
+		$list    = RIP_Sitemap::set_blocked( $url, $blocked );
+
+		return rest_ensure_response(
+			array(
+				'url'       => $url,
+				'blocked'   => $blocked,
+				'blocklist' => $list,
 			)
 		);
 	}

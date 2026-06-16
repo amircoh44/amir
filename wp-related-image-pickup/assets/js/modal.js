@@ -132,7 +132,9 @@
 		magic: '<path d="M5.5 2l.9 2.6L9 5.5l-2.6.9L5.5 9l-.9-2.6L2 5.5l2.6-.9z"/><path d="M11.5 8.5l.6 1.7 1.7.6-1.7.6-.6 1.7-.6-1.7-1.7-.6 1.7-.6z"/>',
 		images: '<rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="m3 12 3.5-3 2.5 2 2-2 2 2.5"/>',
 		grid: '<rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>',
-		side: '<rect x="2.5" y="3" width="5" height="10" rx="1"/><path d="M10 5h4M10 8h3M10 11h4"/>'
+		side: '<rect x="2.5" y="3" width="5" height="10" rx="1"/><path d="M10 5h4M10 8h3M10 11h4"/>',
+		refresh: '<path d="M13 8a5 5 0 1 1-1.5-3.6"/><path d="M13 2.5V5H10.5"/>',
+		ban: '<circle cx="8" cy="8" r="5.5"/><path d="M4.2 4.2l7.6 7.6"/>'
 	};
 
 	/**
@@ -251,6 +253,7 @@
 			'          <button type="button" class="rip-auto-btn">' + icon( 'magic' ) + '<span>Auto-place</span></button>' +
 			'        </span>' +
 			'        <button type="button" class="rip-spread-icons rip-when-icons" data-tip="Place every icon next to text that matches its name (e.g. a contact icon by “contact us”), and strip any captions from icons.">' + icon( 'magic' ) + '<span>Spread by name</span></button>' +
+			'        <button type="button" class="rip-links-rescan rip-when-links" data-tip="Re-read the sitemap, bypassing the cache">' + icon( 'refresh' ) + '<span>Re-scan</span></button>' +
 			'        <button type="button" class="rip-links-sel rip-when-links" disabled data-tip="Add only the links you ticked">' + icon( 'link' ) + '<span>Add selected</span></button>' +
 			'        <button type="button" class="rip-links-all rip-when-links" data-tip="Add every relevant link found">' + icon( 'link' ) + '<span>Add all relevant</span></button>' +
 			'        <button type="button" class="rip-insert-btn rip-when-images rip-when-icons" disabled>' + icon( 'insert' ) + '<span>' + esc( i18n.insert || 'Insert' ) + '</span></button>' +
@@ -382,6 +385,15 @@
 		} );
 		$modal.find( '.rip-links-sel' ).on( 'click', function () {
 			applyLinks( true );
+		} );
+		$modal.find( '.rip-links-rescan' ).on( 'click', function () {
+			fetchLinks( true );
+		} );
+
+		// Block a page (stop it ever being suggested/linked).
+		$modal.on( 'click', '.rip-link-block', function ( e ) {
+			e.stopPropagation();
+			blockLink( $( this ).closest( '.rip-link-row' ) );
 		} );
 
 		// Toggle a link target in the candidate list.
@@ -1259,13 +1271,31 @@
 
 	/**
 	 * Fetch internal-link candidates from the sitemap.
+	 *
+	 * @param {boolean} refresh Re-scan (bypass the server cache).
 	 */
-	function fetchLinks() {
-		setStatus( 'Reading your sitemap…' );
+	function fetchLinks( refresh ) {
+		setStatus( refresh ? 'Re-scanning your sitemap…' : 'Reading your sitemap…' );
+		$modal.find( '.rip-grid' ).empty();
+		state.linkSel = {};
+
+		// Score relevance against the whole article (so "Add all relevant"
+		// auto-spreads links that match the article's topics), falling back to
+		// the selected sentence.
+		var context = state.lastSelection || '';
+		if ( state.editor && ! state.editor.isHidden() ) {
+			context = ( state.editor.getContent( { format: 'text' } ) || context ).slice( 0, 5000 );
+		}
+
 		$.ajax( {
 			url: cfg.restUrl + '/links',
 			method: 'GET',
-			data: { text: state.lastSelection || '', limit: 300 },
+			data: {
+				text: context,
+				limit: 300,
+				refresh: refresh ? 1 : 0,
+				exclude_post: cfg.postId || 0
+			},
 			beforeSend: function ( xhr ) {
 				xhr.setRequestHeader( 'X-WP-Nonce', cfg.nonce );
 			}
@@ -1300,6 +1330,7 @@
 				'    <span class="rip-link-url">' + esc( link.url ) + '</span>' +
 				'  </span>' +
 				'  <span class="rip-link-type">' + esc( link.type ) + '</span>' + rel +
+				'  <button type="button" class="rip-link-block" data-tip="Block this page — never suggest or link it">' + icon( 'ban' ) + '</button>' +
 				'</div>'
 			);
 			$row.data( 'link', link );
@@ -1324,6 +1355,41 @@
 		var n = Object.keys( state.linkSel ).length;
 		$modal.find( '.rip-selcount' ).text( n ? n + ' selected' : '' );
 		$modal.find( '.rip-links-sel' ).prop( 'disabled', n === 0 );
+	}
+
+	/**
+	 * Block a page so it is never suggested/linked again, and drop it from the
+	 * current list.
+	 *
+	 * @param {jQuery} $row Row element.
+	 */
+	function blockLink( $row ) {
+		var link = $row.data( 'link' );
+		if ( ! link ) {
+			return;
+		}
+		$row.css( 'opacity', 0.4 );
+		$.ajax( {
+			url: cfg.restUrl + '/block-link',
+			method: 'POST',
+			data: { url: link.url, blocked: 1 },
+			beforeSend: function ( xhr ) {
+				xhr.setRequestHeader( 'X-WP-Nonce', cfg.nonce );
+			}
+		} ).done( function () {
+			delete state.linkSel[ link.url ];
+			state.links = state.links.filter( function ( l ) {
+				return l.url !== link.url;
+			} );
+			$row.slideUp( 150, function () {
+				$( this ).remove();
+			} );
+			var c = Object.keys( state.linkSel ).length;
+			$modal.find( '.rip-selcount' ).text( c ? c + ' selected' : '' );
+			$modal.find( '.rip-links-sel' ).prop( 'disabled', c === 0 );
+		} ).fail( function () {
+			$row.css( 'opacity', 1 );
+		} );
 	}
 
 	/**

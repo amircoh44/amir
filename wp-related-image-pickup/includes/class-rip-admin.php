@@ -74,6 +74,30 @@ class RIP_Admin {
 			'rip_settings',
 			array( $this, 'sanitize' )
 		);
+
+		register_setting(
+			'rip_settings_group',
+			'rip_link_blocklist',
+			array( $this, 'sanitize_blocklist' )
+		);
+	}
+
+	/**
+	 * Sanitize the blocked-link textarea into a clean array of URLs.
+	 *
+	 * @param mixed $input Raw textarea value (newline-separated) or array.
+	 * @return string[]
+	 */
+	public function sanitize_blocklist( $input ) {
+		$lines = is_array( $input ) ? $input : preg_split( '/[\r\n]+/', (string) $input );
+		$out   = array();
+		foreach ( (array) $lines as $line ) {
+			$url = esc_url_raw( trim( $line ) );
+			if ( '' !== $url && ! in_array( $url, $out, true ) ) {
+				$out[] = $url;
+			}
+		}
+		return $out;
 	}
 
 	/**
@@ -208,6 +232,14 @@ class RIP_Admin {
 						</td>
 					</tr>
 				</table>
+				</div>
+
+				<div class="rip-admin-card">
+				<h2 class="title"><?php esc_html_e( 'Blocked link targets', 'wp-related-image-pickup' ); ?></h2>
+				<p class="description">
+					<?php esc_html_e( 'Pages listed here are never suggested or linked in Links mode (one URL per line). The home page and the page you are editing are always excluded automatically. You can also block a page directly from the Links list.', 'wp-related-image-pickup' ); ?>
+				</p>
+				<textarea name="rip_link_blocklist" rows="5" class="large-text code" placeholder="https://example.com/page-to-never-link/"><?php echo esc_textarea( implode( "\n", RIP_Sitemap::blocklist() ) ); ?></textarea>
 				</div>
 
 				<?php submit_button(); ?>

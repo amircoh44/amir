@@ -55,9 +55,14 @@ Any image whose **filename contains “icon”** is treated as an icon: it’s *
 
 ### Links mode (sitemap internal linking)
 Auto-discovers your **sitemap** — works with **Yoast, Rank Math, or WordPress core** (via `robots.txt`, `sitemap_index.xml`, `wp-sitemap.xml`), walking sitemap indexes down to the URLs and resolving them to **posts / pages / products** for their titles. Then:
-- review the candidate list (relevant ones — matching your selected sentence — are flagged);
-- **Add all relevant**, or tick targets and **Add selected**;
-- each target links the **first matching, unlinked occurrence** of its title in your article (longest titles win, word-boundary safe).
+- review the candidate list (relevance is scored against the **whole article**, so on-topic targets are flagged **relevant**);
+- **Add all relevant** auto-spreads matching links, or tick targets and **Add selected**;
+- each target links the **first matching, unlinked occurrence** of its title in your article (longest titles win, word-boundary safe);
+- **Re-scan** re-reads the sitemap on demand (bypasses the 1-hour cache).
+
+**Never** links to the **page you're editing** (no self-links) or the **home page**.
+
+**Block list:** stop specific pages from ever being suggested or linked — click the **block (⊘) button** on any candidate, or manage the list under **Settings → Related Image Pickup → Blocked link targets** (one URL per line).
 
 ### Sources
 - **Media Library** — searches images already on your site.
@@ -106,7 +111,8 @@ All routes require `edit_posts` (import requires `upload_files`) and a `wp_rest`
 | GET | `/wp-json/rip/v1/stock` | Search configured stock providers. |
 | POST | `/wp-json/rip/v1/import` | Sideload a stock image into the Media Library. |
 | POST | `/wp-json/rip/v1/update-meta` | Persist edited title/alt/caption/description on an attachment. |
-| GET | `/wp-json/rip/v1/links` | Internal-link candidates discovered from the site's sitemap. |
+| GET | `/wp-json/rip/v1/links` | Internal-link candidates from the sitemap (excludes self/home/blocked). |
+| POST | `/wp-json/rip/v1/block-link` | Block/unblock a page from link suggestions. |
 
 ## Architecture
 

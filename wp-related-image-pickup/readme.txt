@@ -4,7 +4,7 @@ Tags: images, media library, tinymce, classic editor, stock photos, unsplash, pe
 Requires at least: 5.0
 Tested up to: 6.5
 Requires PHP: 7.2
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,12 @@ Only if you enable stock providers. Searching your own Media Library needs no ke
 When you insert a stock image it is downloaded into your Media Library first, then inserted, so it is hosted on your own site.
 
 == Changelog ==
+
+= 1.4.0 =
+* Links mode: "Re-scan" button to re-read the sitemap (bypasses the hourly cache).
+* Auto internal-link spread now scores against the whole article, so "Add all relevant" links the topics actually covered.
+* Never links to the page you are editing (no self-links) or the home page.
+* Block list: stop specific pages from ever being suggested/linked — block inline from the Links list, or manage them in Settings.
 
 = 1.3.0 =
 * Icons mode: images whose filename contains "icon" are kept out of normal image results and auto-place. Place icons by side (left/right) and pixel size; "Spread by name" drops each icon next to text matching its name. Icons are never captioned (existing icon captions are stripped).

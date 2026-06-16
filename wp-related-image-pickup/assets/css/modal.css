@@ -689,7 +689,8 @@
 .rip-mode-icons .rip-insert-btn,
 .rip-mode-icons .rip-spread-icons,
 .rip-mode-links .rip-links-all,
-.rip-mode-links .rip-links-sel { display: inline-flex !important; }
+.rip-mode-links .rip-links-sel,
+.rip-mode-links .rip-links-rescan { display: inline-flex !important; }
 .rip-mode-links .rip-link-hint { display: flex !important; }
 
 /* Links mode hides image search; icons mode is Media-Library only. */
@@ -714,7 +715,8 @@
 
 .rip-spread-icons,
 .rip-links-all,
-.rip-links-sel {
+.rip-links-sel,
+.rip-links-rescan {
 	align-items: center;
 	gap: 7px;
 	height: 42px;
@@ -730,11 +732,40 @@
 	transition: filter 0.15s, border-color 0.15s, transform 0.05s;
 }
 
+.rip-links-rescan {
+	color: var( --rip-text-dim );
+	background: var( --rip-bg-soft );
+	border-color: var( --rip-border-strong );
+}
+
 .rip-links-all { color: #fff; background: var( --rip-accent ); border-color: var( --rip-accent ); }
 .rip-spread-icons:hover,
 .rip-links-sel:hover:not( :disabled ) { border-color: var( --rip-accent ); }
+.rip-links-rescan:hover { background: var( --rip-bg-sunk ); color: var( --rip-text ); }
 .rip-links-all:hover { filter: brightness( 1.08 ); }
 .rip-links-sel:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Per-row block button. */
+.rip-link-block {
+	flex: none;
+	width: 30px;
+	height: 30px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	border: 1px solid transparent;
+	background: transparent;
+	color: var( --rip-text-faint );
+	cursor: pointer;
+	transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.rip-link-block:hover {
+	background: rgba( 220, 38, 38, 0.1 );
+	color: #dc2626;
+	border-color: rgba( 220, 38, 38, 0.4 );
+}
 
 .rip-link-hint {
 	align-items: center;

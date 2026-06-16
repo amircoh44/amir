@@ -7,15 +7,24 @@
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
-delete_option( 'rip_settings' );
+/**
+ * Remove all plugin data for the current site.
+ */
+function rip_uninstall_cleanup() {
+	delete_option( 'rip_settings' );
+	delete_option( 'rip_link_blocklist' );
+	delete_transient( 'rip_sitemap_links' );
+}
 
-// Multisite: clean up per-site options too.
+rip_uninstall_cleanup();
+
+// Multisite: clean up per-site data too.
 if ( is_multisite() ) {
 	global $wpdb;
 	$blog_ids = $wpdb->get_col( "SELECT blog_id FROM {$wpdb->blogs}" ); // phpcs:ignore WordPress.DB
 	foreach ( $blog_ids as $blog_id ) {
 		switch_to_blog( $blog_id );
-		delete_option( 'rip_settings' );
+		rip_uninstall_cleanup();
 		restore_current_blog();
 	}
 }
