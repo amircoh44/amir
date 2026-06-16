@@ -910,6 +910,122 @@
 	flex: none;
 }
 
+/* ---- Link proposal review ---- */
+.rip-prop-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+	padding: 4px 2px 14px;
+	margin-bottom: 6px;
+	border-bottom: 1px solid var( --rip-border );
+	position: sticky;
+	top: 0;
+	background: var( --rip-bg-soft );
+	z-index: 1;
+}
+
+.rip-prop-title { font-size: 13px; font-weight: 600; color: var( --rip-text ); }
+.rip-prop-dupnote { color: #d97706; font-weight: 600; }
+.rip-prop-actions { display: inline-flex; gap: 8px; }
+
+.rip-prop-back {
+	height: 36px;
+	padding: 0 14px;
+	border: 1px solid var( --rip-border-strong );
+	background: var( --rip-bg );
+	color: var( --rip-text-dim );
+	border-radius: var( --rip-radius-sm );
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.rip-prop-back:hover { background: var( --rip-bg-sunk ); color: var( --rip-text ); }
+
+.rip-prop-seed {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	height: 36px;
+	padding: 0 16px;
+	background: var( --rip-accent );
+	color: #fff;
+	border: 1px solid var( --rip-accent );
+	border-radius: var( --rip-radius-sm );
+	cursor: pointer;
+	font-weight: 650;
+}
+
+.rip-prop-seed:hover:not( :disabled ) { filter: brightness( 1.08 ); }
+.rip-prop-seed:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.rip-prop-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	padding: 10px 14px;
+	background: var( --rip-bg );
+	border: 1.5px solid var( --rip-border );
+	border-left-width: 5px;
+	border-radius: var( --rip-radius-sm );
+	margin-bottom: 8px;
+	cursor: pointer;
+}
+
+.rip-prop-row.is-dup { background: rgba( 217, 119, 6, 0.06 ); }
+.rip-prop-row input[type="checkbox"] { flex: none; width: 17px; height: 17px; }
+.rip-prop-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+
+.rip-prop-snippet {
+	font-size: 13px;
+	color: var( --rip-text-dim );
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.rip-prop-snippet mark {
+	background: rgba( 79, 70, 229, 0.16 );
+	color: var( --rip-text );
+	font-weight: 700;
+	padding: 0 2px;
+	border-radius: 3px;
+}
+
+.rip-prop-target {
+	font-size: 11.5px;
+	color: var( --rip-text-faint );
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.rip-prop-url { opacity: 0.8; }
+
+.rip-prop-warn {
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	color: #fff;
+	background: #d97706;
+	padding: 3px 7px;
+	border-radius: 999px;
+	flex: none;
+}
+
+.rip-prop-action {
+	flex: none;
+	height: 32px;
+	border: 1px solid var( --rip-border-strong );
+	border-radius: var( --rip-radius-xs );
+	background: var( --rip-bg-soft );
+	color: var( --rip-text );
+	font-size: 12px;
+	padding: 0 6px;
+}
+
 /* ======================================================================
    Responsive — wrap, then stack to a single column. No horizontal scroll.
    ====================================================================== */

@@ -321,7 +321,7 @@
 			'    <footer class="rip-foot">' +
 			'      <div class="rip-insert-opts rip-when-images">' + insertOpts + '</div>' +
 			'      <div class="rip-icon-opts rip-when-icons">' + iconOpts + '</div>' +
-			'      <div class="rip-link-hint rip-when-links">' + icon( 'link' ) + '<span>Pick targets below, then add links into matching words in your article.</span></div>' +
+			'      <div class="rip-link-hint rip-when-links">' + icon( 'link' ) + '<span>Pick targets (or just Propose all), review each proposed anchor &amp; any duplicates, then confirm to seed.</span></div>' +
 			'      <div class="rip-foot-actions">' +
 			'        <span class="rip-selcount"></span>' +
 			'        <span class="rip-auto rip-when-images" data-tip="Type how many images to scatter (1–20), then click. They land at well-spaced spots — after a paragraph or before a heading, never mid-sentence, kept clear of other images.">' +
@@ -331,8 +331,8 @@
 			'        <button type="button" class="rip-scatter-sel rip-when-images" disabled data-tip="Scatter the images you ticked across the article, matched to related text (kept clear of other images, never mid-sentence)">' + icon( 'magic' ) + '<span>Scatter selected</span></button>' +
 			'        <button type="button" class="rip-spread-icons rip-when-icons" data-tip="Place every icon next to text that matches its name (e.g. a contact icon by “contact us”), and strip any captions from icons.">' + icon( 'magic' ) + '<span>Spread by name</span></button>' +
 			'        <button type="button" class="rip-links-rescan rip-when-links" data-tip="Re-read the sitemap, bypassing the cache">' + icon( 'refresh' ) + '<span>Re-scan</span></button>' +
-			'        <button type="button" class="rip-links-sel rip-when-links" disabled data-tip="Add only the links you ticked">' + icon( 'link' ) + '<span>Add selected</span></button>' +
-			'        <button type="button" class="rip-links-all rip-when-links" data-tip="Add every relevant link found">' + icon( 'link' ) + '<span>Add all relevant</span></button>' +
+			'        <button type="button" class="rip-links-sel rip-when-links" disabled data-tip="Propose links only from the targets you ticked, to review before seeding">' + icon( 'link' ) + '<span>Propose selected</span></button>' +
+			'        <button type="button" class="rip-links-all rip-when-links" data-tip="Scan the article and propose links from all relevant targets, to review before seeding">' + icon( 'link' ) + '<span>Propose all</span></button>' +
 			'        <button type="button" class="rip-insert-btn rip-when-images rip-when-icons" disabled>' + icon( 'insert' ) + '<span>' + esc( i18n.insert || 'Insert' ) + '</span></button>' +
 			'      </div>' +
 			'    </footer>' +
@@ -464,13 +464,33 @@
 
 		$modal.find( '.rip-spread-icons' ).on( 'click', spreadIconsByName );
 		$modal.find( '.rip-links-all' ).on( 'click', function () {
-			applyLinks( false );
+			proposeLinks( false );
 		} );
 		$modal.find( '.rip-links-sel' ).on( 'click', function () {
-			applyLinks( true );
+			proposeLinks( true );
 		} );
 		$modal.find( '.rip-links-rescan' ).on( 'click', function () {
 			fetchLinks( true );
+		} );
+
+		// Proposal review interactions.
+		$modal.on( 'click', '.rip-prop-seed', seedProposals );
+		$modal.on( 'click', '.rip-prop-back', function () {
+			state.reviewing = false;
+			renderLinks( state.links );
+		} );
+		$modal.on( 'change', '.rip-prop-check', updateProposalCount );
+		// Don't let the Replace/Add control toggle the row's checkbox.
+		$modal.on( 'click change', '.rip-prop-action', function ( e ) {
+			e.stopPropagation();
+		} );
+		$modal.on( 'click', '.rip-prop-row', function ( e ) {
+			if ( $( e.target ).is( 'input, select, option' ) ) {
+				return;
+			}
+			var $c = $( this ).find( '.rip-prop-check' );
+			$c.prop( 'checked', ! $c.prop( 'checked' ) );
+			updateProposalCount();
 		} );
 
 		// Recolour a link kind (remembered) and re-paint the list live.
@@ -1691,13 +1711,13 @@
 	}
 
 	/**
-	 * Add internal links into the article. Each chosen target links the first
-	 * matching occurrence of its title in the body text (never inside an
-	 * existing link), longest titles first.
+	 * Scan the article and propose internal links for review — for each chosen
+	 * target, find the exact anchor phrase it would link and a context snippet,
+	 * without changing the article. The user then confirms which to seed.
 	 *
-	 * @param {boolean} selectedOnly Only apply ticked targets.
+	 * @param {boolean} selectedOnly Only consider ticked targets.
 	 */
-	function applyLinks( selectedOnly ) {
+	function proposeLinks( selectedOnly ) {
 		var editor = state.editor;
 		if ( ! editor || editor.isHidden() ) {
 			setStatus( 'Adding links needs the Visual editor — switch from Text to Visual and try again.' );
@@ -1723,7 +1743,7 @@
 		}
 
 		if ( ! links.length ) {
-			setStatus( selectedOnly ? 'Tick at least one link first.' : 'No relevant links to add.' );
+			setStatus( selectedOnly ? 'Tick at least one target first.' : 'No targets to propose.' );
 			return;
 		}
 
@@ -1732,22 +1752,229 @@
 			return ( b.title || '' ).length - ( a.title || '' ).length;
 		} );
 
-		var linked = {};
-		var count = 0;
+		var proposals = computeProposals( links );
+		if ( ! proposals.length ) {
+			setStatus( 'No phrases from these targets appear in your article yet.' );
+			return;
+		}
+
+		state.proposals = proposals;
+		renderProposals( proposals );
+	}
+
+	/**
+	 * Build link proposals (read-only): for each target, the first matchable
+	 * anchor phrase and a snippet of context. Reserves phrases so two targets
+	 * don't claim the same words.
+	 *
+	 * @param {Array} links Target links.
+	 * @return {Array} Proposals.
+	 */
+	function computeProposals( links ) {
+		var editor = state.editor;
+		var existing = existingHrefs( editor );
+		var reserved = {};
+		var proposals = [];
 		links.forEach( function ( link ) {
-			// Try meaningful phrases derived from the title, longest/most
-			// specific first — full titles rarely appear verbatim.
 			var phrases = linkPhrases( link.title );
 			for ( var i = 0; i < phrases.length; i++ ) {
 				var p = phrases[ i ];
-				if ( linked[ p ] ) {
+				if ( reserved[ p ] ) {
 					continue;
 				}
-				if ( wrapFirstOccurrence( editor, p, link.url ) ) {
-					linked[ p ] = true;
-					count++;
+				var hit = findPhraseInArticle( editor, p );
+				if ( hit ) {
+					reserved[ p ] = true;
+					proposals.push( {
+						url: link.url,
+						title: link.title,
+						kind: link.kind || 'url',
+						anchor: p,
+						matched: hit.matched,
+						before: hit.before,
+						after: hit.after,
+						existing: !! existing[ normHref( link.url ) ]
+					} );
 					break;
 				}
+			}
+		} );
+		return proposals;
+	}
+
+	/**
+	 * Normalize an href for comparison (lower-case, no trailing slash).
+	 *
+	 * @param {string} h URL.
+	 * @return {string}
+	 */
+	function normHref( h ) {
+		return ( h || '' ).trim().toLowerCase().replace( /\/+$/, '' );
+	}
+
+	/**
+	 * Map of normalized hrefs already linked in the article.
+	 *
+	 * @param {Object} editor TinyMCE editor.
+	 * @return {Object}
+	 */
+	function existingHrefs( editor ) {
+		var set = {};
+		var anchors = editor.getBody().querySelectorAll( 'a[href]' );
+		Array.prototype.forEach.call( anchors, function ( a ) {
+			var h = normHref( a.getAttribute( 'href' ) );
+			if ( h ) {
+				set[ h ] = true;
+			}
+		} );
+		return set;
+	}
+
+	/**
+	 * Unwrap (remove) every existing link in the article pointing at a URL,
+	 * leaving its text in place.
+	 *
+	 * @param {Object} editor TinyMCE editor.
+	 * @param {string} url    Target URL.
+	 */
+	function unwrapLinksTo( editor, url ) {
+		var target = normHref( url );
+		var anchors = editor.getBody().querySelectorAll( 'a[href]' );
+		Array.prototype.forEach.call( anchors, function ( a ) {
+			if ( normHref( a.getAttribute( 'href' ) ) === target && a.parentNode ) {
+				while ( a.firstChild ) {
+					a.parentNode.insertBefore( a.firstChild, a );
+				}
+				a.parentNode.removeChild( a );
+			}
+		} );
+	}
+
+	/**
+	 * Read-only search for the first linkable occurrence of a phrase, returning
+	 * the matched text + surrounding snippet (no DOM changes).
+	 *
+	 * @param {Object} editor TinyMCE editor.
+	 * @param {string} phrase Phrase.
+	 * @return {Object|null} { matched, before, after }
+	 */
+	function findPhraseInArticle( editor, phrase ) {
+		var doc = editor.getDoc();
+		var body = editor.getBody();
+		var lower = phrase.toLowerCase();
+		var walker = doc.createTreeWalker( body, NodeFilter.SHOW_TEXT, null, false );
+		var node;
+
+		while ( ( node = walker.nextNode() ) ) {
+			if ( closestTag( node.parentNode, 'A' ) ) {
+				continue;
+			}
+			if ( ! closestTag( node.parentNode, 'P' ) && ! closestTag( node.parentNode, 'LI' ) ) {
+				continue;
+			}
+			var text = node.nodeValue;
+			var pos = text.toLowerCase().indexOf( lower );
+			if ( pos === -1 ) {
+				continue;
+			}
+			var before = text.charAt( pos - 1 );
+			var after = text.charAt( pos + phrase.length );
+			if ( /\w/.test( before ) || /\w/.test( after ) ) {
+				continue;
+			}
+			var s = Math.max( 0, pos - 32 );
+			var e = Math.min( text.length, pos + phrase.length + 32 );
+			return {
+				matched: text.substr( pos, phrase.length ),
+				before: ( s > 0 ? '…' : '' ) + text.slice( s, pos ),
+				after: text.slice( pos + phrase.length, e ) + ( e < text.length ? '…' : '' )
+			};
+		}
+		return null;
+	}
+
+	/**
+	 * Render the proposal review list (each ticked by default) with a seed/back
+	 * header.
+	 *
+	 * @param {Array} proposals Proposals.
+	 */
+	function renderProposals( proposals ) {
+		state.reviewing = true;
+		var colors = linkColors();
+		var dupes = proposals.filter( function ( p ) {
+			return p.existing;
+		} ).length;
+
+		var note = dupes ?
+			' <span class="rip-prop-dupnote">' + dupes + ' already linked — choose Replace or Add for those.</span>' : '';
+
+		var head = '<div class="rip-prop-head">' +
+			'<span class="rip-prop-title">Review ' + proposals.length + ' proposed link' + ( proposals.length > 1 ? 's' : '' ) + ' — untick any you don’t want, then seed.' + note + '</span>' +
+			'<span class="rip-prop-actions">' +
+			'<button type="button" class="rip-prop-back">Back</button>' +
+			'<button type="button" class="rip-prop-seed">' + icon( 'link' ) + '<span>Seed links</span></button>' +
+			'</span></div>';
+
+		var rows = proposals.map( function ( p, idx ) {
+			var color = colors[ p.kind ] || colors.url;
+			// Duplicates start unticked (skip by default) and offer Replace/Add.
+			var dupUi = '';
+			if ( p.existing ) {
+				dupUi = '<span class="rip-prop-warn" data-tip="This page is already linked elsewhere in the article">already linked</span>' +
+					'<select class="rip-prop-action" data-tip="Replace removes the existing link to this page; Add keeps both">' +
+					'<option value="replace">Replace existing</option>' +
+					'<option value="add">Add anyway</option>' +
+					'</select>';
+			}
+			return '<div class="rip-prop-row' + ( p.existing ? ' is-dup' : '' ) + '" data-idx="' + idx + '" style="border-left-color:' + color + '">' +
+				'<input type="checkbox" class="rip-prop-check"' + ( p.existing ? '' : ' checked' ) + ' />' +
+				'<span class="rip-prop-main">' +
+				'<span class="rip-prop-snippet">' + esc( p.before ) + '<mark>' + esc( p.matched ) + '</mark>' + esc( p.after ) + '</span>' +
+				'<span class="rip-prop-target">→ ' + esc( p.title ) + ' <span class="rip-prop-url">' + esc( p.url ) + '</span></span>' +
+				'</span>' +
+				dupUi +
+				'<span class="rip-link-kind" style="background:' + color + '">' + esc( kindLabel( p.kind ) ) + '</span>' +
+				'</div>';
+		} ).join( '' );
+
+		setStatus( '' );
+		$modal.find( '.rip-grid' ).html( head + rows );
+		updateProposalCount();
+	}
+
+	/**
+	 * Update the seed button label/state from ticked proposals.
+	 */
+	function updateProposalCount() {
+		var n = $modal.find( '.rip-prop-check:checked' ).length;
+		$modal.find( '.rip-prop-seed span' ).text( 'Seed ' + n + ' link' + ( 1 === n ? '' : 's' ) );
+		$modal.find( '.rip-prop-seed' ).prop( 'disabled', 0 === n );
+	}
+
+	/**
+	 * Seed the confirmed proposals into the article, honouring the chosen
+	 * Replace/Add action for any that are already linked.
+	 */
+	function seedProposals() {
+		var editor = state.editor;
+		if ( ! editor || editor.isHidden() ) {
+			return;
+		}
+		var count = 0;
+		$modal.find( '.rip-prop-row' ).each( function () {
+			if ( ! $( this ).find( '.rip-prop-check' ).is( ':checked' ) ) {
+				return;
+			}
+			var p = state.proposals[ $( this ).data( 'idx' ) ];
+			if ( ! p ) {
+				return;
+			}
+			if ( p.existing && 'replace' === ( $( this ).find( '.rip-prop-action' ).val() || 'replace' ) ) {
+				unwrapLinksTo( editor, p.url );
+			}
+			if ( wrapFirstOccurrence( editor, p.anchor, p.url ) ) {
+				count++;
 			}
 		} );
 
@@ -1760,7 +1987,7 @@
 		if ( count ) {
 			close();
 		} else {
-			setStatus( 'None of those titles appear in your article text yet.' );
+			setStatus( 'Nothing seeded.' );
 		}
 	}
 

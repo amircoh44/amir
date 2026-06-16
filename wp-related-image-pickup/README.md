@@ -59,8 +59,9 @@ Any image whose **filename contains “icon”** is treated as an icon: it’s *
 Auto-discovers your **sitemap** — works with **Yoast, Rank Math, or WordPress core** (via `robots.txt`, `sitemap_index.xml`, `wp-sitemap.xml`), walking sitemap indexes down to the URLs and resolving them to **posts / pages / products** for their titles. Then:
 - targets are shown in a **readable, full-width list**, **colour-coded by kind** — homepage, author, tag, category, product, page, post, other — and each colour is **recolourable from the legend** (remembered), so seeding links is fast to scan;
 - review the candidate list (relevance is scored against the **whole article**, so on-topic targets are flagged **relevant**);
-- **Add all relevant** auto-spreads matching links, or tick targets and **Add selected**;
-- each target links the **first matching, unlinked occurrence** of its title in your article (longest titles win, word-boundary safe);
+- **Propose all** (or tick targets and **Propose selected**) **scans the article** and shows a **review list**: each proposed **anchor phrase** (with a context snippet) and the page it would link to. Untick any, then **Seed** to insert only the confirmed ones — nothing is changed until you confirm;
+- anchors are meaningful phrases derived from each title (longest/most specific first), matched word-boundary safe and never inside an existing link;
+- **Duplicates are flagged:** if a target is **already linked** in the article, the row is marked and offers **Replace existing** (removes the old link, adds the new one) or **Add anyway** (default: skip);
 - **Re-scan** re-reads the sitemap on demand (bypasses the 1-hour cache).
 
 **Never** links to the **page you're editing** (no self-links) or the **home page**.

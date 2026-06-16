@@ -4,7 +4,7 @@ Tags: images, media library, tinymce, classic editor, stock photos, unsplash, pe
 Requires at least: 5.0
 Tested up to: 6.5
 Requires PHP: 7.2
-Stable tag: 1.7.1
+Stable tag: 1.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,10 @@ Only if you enable stock providers. Searching your own Media Library needs no ke
 When you insert a stock image it is downloaded into your Media Library first, then inserted, so it is hosted on your own site.
 
 == Changelog ==
+
+= 1.8.0 =
+* Links seeding is now review-and-confirm: "Propose all" / "Propose selected" scan the article and show each proposed anchor (with a context snippet) and its target. Untick any, then "Seed" to apply only the confirmed ones.
+* Duplicate handling: targets already linked in the article are flagged "already linked" and let you choose to Replace the existing link or Add anyway (default: skip).
 
 = 1.7.1 =
 * Fixed Links mode adding nothing: it required the whole page title to appear verbatim. It now links meaningful phrases derived from each title (e.g. "commercial locksmith", "access control"), longest/most specific first, dropping boilerplate like "No.1" and prepositions.
