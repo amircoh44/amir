@@ -4,7 +4,7 @@ Tags: images, media library, tinymce, classic editor, stock photos, unsplash, pe
 Requires at least: 5.0
 Tested up to: 6.5
 Requires PHP: 7.2
-Stable tag: 1.8.1
+Stable tag: 1.9.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,11 @@ Only if you enable stock providers. Searching your own Media Library needs no ke
 When you insert a stock image it is downloaded into your Media Library first, then inserted, so it is hosted on your own site.
 
 == Changelog ==
+
+= 1.9.0 =
+* Videos mode: save a list of YouTube videos in Settings, then select one or more in the editor and scatter them across the article — each on its own line between empty paragraphs (auto-embeds on the front end).
+* Shortcodes mode: save Elementor (or any) shortcodes in Settings, select and scatter them the same way.
+* Pick one or more items; the plugin distributes your choice across well-spaced spots.
 
 = 1.8.1 =
 * Fixed the close (X) button not responding — clicks on the icon inside the button are now handled.

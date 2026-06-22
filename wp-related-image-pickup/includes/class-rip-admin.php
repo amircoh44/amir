@@ -80,6 +80,129 @@ class RIP_Admin {
 			'rip_link_blocklist',
 			array( $this, 'sanitize_blocklist' )
 		);
+
+		register_setting(
+			'rip_settings_group',
+			'rip_videos',
+			array( $this, 'sanitize_videos' )
+		);
+
+		register_setting(
+			'rip_settings_group',
+			'rip_shortcodes',
+			array( $this, 'sanitize_shortcodes' )
+		);
+	}
+
+	/**
+	 * Parse a "Label | value" textarea into rows.
+	 *
+	 * @param mixed    $input    Raw value.
+	 * @param callable $build    Receives ( $label, $value ) and returns a row or null.
+	 * @return array
+	 */
+	private function parse_pairs( $input, $build ) {
+		$lines = is_array( $input ) ? $input : preg_split( '/[\r\n]+/', (string) $input );
+		$out   = array();
+		foreach ( (array) $lines as $line ) {
+			$line = trim( wp_strip_all_tags( (string) $line ) );
+			if ( '' === $line ) {
+				continue;
+			}
+			$parts = array_map( 'trim', explode( '|', $line, 2 ) );
+			$label = count( $parts ) > 1 ? $parts[0] : '';
+			$value = $parts[ count( $parts ) - 1 ];
+			$row   = call_user_func( $build, $label, $value );
+			if ( $row ) {
+				$out[] = $row;
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Sanitize the saved YouTube videos list ("Title | URL" per line).
+	 *
+	 * @param mixed $input Raw textarea.
+	 * @return array
+	 */
+	public function sanitize_videos( $input ) {
+		return $this->parse_pairs(
+			$input,
+			function ( $label, $value ) {
+				// Require something URL-like so a stray word isn't turned into
+				// "http://word" by esc_url_raw().
+				if ( false === strpos( $value, '://' ) && false === strpos( $value, '.' ) ) {
+					return null;
+				}
+				$url = esc_url_raw( $value );
+				if ( '' === $url ) {
+					return null;
+				}
+				return array(
+					'title' => '' !== $label ? sanitize_text_field( $label ) : $url,
+					'url'   => $url,
+				);
+			}
+		);
+	}
+
+	/**
+	 * Sanitize the saved shortcodes list ("Label | [shortcode]" per line).
+	 *
+	 * @param mixed $input Raw textarea.
+	 * @return array
+	 */
+	public function sanitize_shortcodes( $input ) {
+		return $this->parse_pairs(
+			$input,
+			function ( $label, $value ) {
+				// Keep shortcode brackets/attrs; strip any HTML tags for safety.
+				$code = trim( wp_strip_all_tags( $value ) );
+				if ( '' === $code ) {
+					return null;
+				}
+				return array(
+					'label' => '' !== $label ? sanitize_text_field( $label ) : mb_substr( $code, 0, 40 ),
+					'code'  => $code,
+				);
+			}
+		);
+	}
+
+	/**
+	 * Extract a YouTube video ID from a URL.
+	 *
+	 * @param string $url URL.
+	 * @return string
+	 */
+	public static function youtube_id( $url ) {
+		if ( preg_match( '#(?:youtu\.be/|youtube\.com/(?:watch\?v=|embed/|shorts/|v/))([A-Za-z0-9_-]{6,})#', (string) $url, $m ) ) {
+			return $m[1];
+		}
+		return '';
+	}
+
+	/**
+	 * Videos prepared for the editor (adds id + thumbnail).
+	 *
+	 * @return array
+	 */
+	public static function videos_for_js() {
+		$out = array();
+		foreach ( (array) get_option( 'rip_videos', array() ) as $v ) {
+			if ( empty( $v['url'] ) ) {
+				continue;
+			}
+			$id    = self::youtube_id( $v['url'] );
+			$out[] = array(
+				'title' => isset( $v['title'] ) ? $v['title'] : $v['url'],
+				'url'   => $v['url'],
+				'id'    => $id,
+				'thumb' => $id ? 'https://img.youtube.com/vi/' . $id . '/mqdefault.jpg' : '',
+			);
+		}
+		return $out;
 	}
 
 	/**
@@ -255,6 +378,41 @@ class RIP_Admin {
 					?>
 				</p>
 				<textarea name="rip_link_blocklist" rows="6" class="large-text code" placeholder="*/tag/*&#10;*/author/*&#10;/category/&#10;https://example.com/exact-page/"><?php echo esc_textarea( implode( "\n", RIP_Sitemap::blocklist() ) ); ?></textarea>
+				</div>
+
+				<?php
+				$videos     = (array) get_option( 'rip_videos', array() );
+				$shortcodes = (array) get_option( 'rip_shortcodes', array() );
+				$video_lines = array();
+				foreach ( $videos as $v ) {
+					$video_lines[] = ( ! empty( $v['title'] ) && $v['title'] !== $v['url'] ? $v['title'] . ' | ' : '' ) . ( isset( $v['url'] ) ? $v['url'] : '' );
+				}
+				$sc_lines = array();
+				foreach ( $shortcodes as $sc ) {
+					$sc_lines[] = ( ! empty( $sc['label'] ) ? $sc['label'] . ' | ' : '' ) . ( isset( $sc['code'] ) ? $sc['code'] : '' );
+				}
+				?>
+				<div class="rip-admin-card">
+				<h2 class="title"><?php esc_html_e( 'Videos & shortcodes to scatter', 'wp-related-image-pickup' ); ?></h2>
+				<p class="description">
+					<?php esc_html_e( 'Save items here, then in the editor open Videos or Shortcodes mode, select the ones you want, and scatter them across the article (each placed on its own line between empty paragraphs).', 'wp-related-image-pickup' ); ?>
+				</p>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="rip_videos"><?php esc_html_e( 'YouTube videos', 'wp-related-image-pickup' ); ?></label></th>
+						<td>
+							<textarea id="rip_videos" name="rip_videos" rows="5" class="large-text code" placeholder="How to rekey a lock | https://youtu.be/abc123XYZ&#10;https://www.youtube.com/watch?v=def456ABC"><?php echo esc_textarea( implode( "\n", $video_lines ) ); ?></textarea>
+							<p class="description"><?php esc_html_e( 'One per line, "Title | URL" (title optional). YouTube URLs auto-embed on the front end.', 'wp-related-image-pickup' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="rip_shortcodes"><?php esc_html_e( 'Shortcodes', 'wp-related-image-pickup' ); ?></label></th>
+						<td>
+							<textarea id="rip_shortcodes" name="rip_shortcodes" rows="5" class="large-text code" placeholder='Call to action | [elementor-template id="123"]&#10;Quote box | [my_shortcode foo="bar"]'><?php echo esc_textarea( implode( "\n", $sc_lines ) ); ?></textarea>
+							<p class="description"><?php esc_html_e( 'One per line, "Label | shortcode" (label optional). Works with Elementor templates or any shortcode.', 'wp-related-image-pickup' ); ?></p>
+						</td>
+					</tr>
+				</table>
 				</div>
 
 				<?php submit_button(); ?>

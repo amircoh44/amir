@@ -114,6 +114,8 @@ class RIP_Editor {
 				'perPage'        => (int) RIP_Plugin::get_settings( 'results_per_page', 24 ),
 				'defaultSize'    => (string) RIP_Plugin::get_settings( 'default_insert_size', 'large' ),
 				'canUpload'      => current_user_can( 'upload_files' ),
+				'videos'         => RIP_Admin::videos_for_js(),
+				'shortcodes'     => array_values( (array) get_option( 'rip_shortcodes', array() ) ),
 				'i18n'           => array(
 					'title'        => __( 'Related Image Pickup', 'wp-related-image-pickup' ),
 					'searchPH'     => __( 'Keywords (edit freely)…', 'wp-related-image-pickup' ),

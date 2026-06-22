@@ -145,6 +145,7 @@
 		activeId: null,        // id whose details are being edited
 		links: [],             // link candidates (links mode)
 		linkSel: {},           // url -> link (selected links)
+		embedSel: {},          // index -> true (videos/shortcodes mode)
 		lastRequest: null
 	};
 
@@ -205,7 +206,9 @@
 		grid: '<rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>',
 		side: '<rect x="2.5" y="3" width="5" height="10" rx="1"/><path d="M10 5h4M10 8h3M10 11h4"/>',
 		refresh: '<path d="M13 8a5 5 0 1 1-1.5-3.6"/><path d="M13 2.5V5H10.5"/>',
-		ban: '<circle cx="8" cy="8" r="5.5"/><path d="M4.2 4.2l7.6 7.6"/>'
+		ban: '<circle cx="8" cy="8" r="5.5"/><path d="M4.2 4.2l7.6 7.6"/>',
+		video: '<rect x="2" y="3.5" width="12" height="9" rx="2"/><path d="M6.5 6l3.5 2-3.5 2z"/>',
+		code: '<path d="M5.5 5 2.5 8l3 3M10.5 5l3 3-3 3M9 3.5 7 12.5"/>'
 	};
 
 	/**
@@ -293,6 +296,8 @@
 			'      <button type="button" class="rip-mode is-active" data-mode="images" data-tip="Find and place content images">' + icon( 'images' ) + '<span>Images</span></button>' +
 			'      <button type="button" class="rip-mode" data-mode="icons" data-tip="Place small icons (filename contains “icon”) by side &amp; size — never captioned">' + icon( 'grid' ) + '<span>Icons</span></button>' +
 			'      <button type="button" class="rip-mode" data-mode="links" data-tip="Add internal links from your sitemap (Yoast / Rank Math / core)">' + icon( 'link' ) + '<span>Links</span></button>' +
+			'      <button type="button" class="rip-mode" data-mode="videos" data-tip="Scatter saved YouTube videos across the article, between empty paragraphs">' + icon( 'video' ) + '<span>Videos</span></button>' +
+			'      <button type="button" class="rip-mode" data-mode="shortcodes" data-tip="Scatter saved shortcodes (Elementor or any) across the article, between empty paragraphs">' + icon( 'code' ) + '<span>Shortcodes</span></button>' +
 			'    </nav>' +
 			'    <div class="rip-toolbar">' +
 			'      <span class="rip-search-ic">' + icon( 'search' ) + '</span>' +
@@ -322,6 +327,7 @@
 			'      <div class="rip-insert-opts rip-when-images">' + insertOpts + '</div>' +
 			'      <div class="rip-icon-opts rip-when-icons">' + iconOpts + '</div>' +
 			'      <div class="rip-link-hint rip-when-links">' + icon( 'link' ) + '<span>Pick targets (or just Propose all), review each proposed anchor &amp; any duplicates, then confirm to seed.</span></div>' +
+			'      <div class="rip-link-hint rip-when-videos rip-when-shortcodes">' + icon( 'video' ) + '<span>Tick one or more, then scatter them across the article — each on its own line between empty paragraphs.</span></div>' +
 			'      <div class="rip-foot-actions">' +
 			'        <span class="rip-selcount"></span>' +
 			'        <span class="rip-auto rip-when-images" data-tip="Type how many images to scatter (1–20), then click. They land at well-spaced spots — after a paragraph or before a heading, never mid-sentence, kept clear of other images.">' +
@@ -329,6 +335,7 @@
 			'          <button type="button" class="rip-auto-btn">' + icon( 'magic' ) + '<span>Auto-place</span></button>' +
 			'        </span>' +
 			'        <button type="button" class="rip-scatter-sel rip-when-images" disabled data-tip="Scatter the images you ticked across the article, matched to related text (kept clear of other images, never mid-sentence)">' + icon( 'magic' ) + '<span>Scatter selected</span></button>' +
+			'        <button type="button" class="rip-scatter-embed rip-when-videos rip-when-shortcodes" disabled data-tip="Scatter the ticked items across the article, each on its own line between empty paragraphs">' + icon( 'magic' ) + '<span>Scatter selected</span></button>' +
 			'        <button type="button" class="rip-spread-icons rip-when-icons" data-tip="Place every icon next to text that matches its name (e.g. a contact icon by “contact us”), and strip any captions from icons.">' + icon( 'magic' ) + '<span>Spread by name</span></button>' +
 			'        <button type="button" class="rip-links-rescan rip-when-links" data-tip="Re-read the sitemap, bypassing the cache">' + icon( 'refresh' ) + '<span>Re-scan</span></button>' +
 			'        <button type="button" class="rip-links-sel rip-when-links" disabled data-tip="Propose links only from the targets you ticked, to review before seeding">' + icon( 'link' ) + '<span>Propose selected</span></button>' +
@@ -452,6 +459,12 @@
 		} );
 
 		$modal.find( '.rip-scatter-sel' ).on( 'click', scatterSelected );
+		$modal.find( '.rip-scatter-embed' ).on( 'click', function () {
+			scatterEmbeds( state.mode );
+		} );
+		$modal.on( 'click', '.rip-embed-row', function () {
+			toggleEmbed( $( this ) );
+		} );
 
 		// Mode switching (Images / Icons / Links).
 		$modal.find( '.rip-mode' ).on( 'click', function () {
@@ -645,9 +658,16 @@
 		$modal.find( '.rip-pagination' ).remove();
 		setStatus( '' );
 
+		state.embedSel = {};
+
 		if ( 'links' === mode ) {
 			buildLegend();
 			fetchLinks();
+			return;
+		}
+
+		if ( 'videos' === mode || 'shortcodes' === mode ) {
+			renderEmbedList( mode );
 			return;
 		}
 
@@ -1450,6 +1470,167 @@
 	}
 
 	/**
+	 * The saved list for a mode ('videos' | 'shortcodes').
+	 *
+	 * @param {string} type Mode.
+	 * @return {Array}
+	 */
+	function embedList( type ) {
+		return ( 'videos' === type ? cfg.videos : cfg.shortcodes ) || [];
+	}
+
+	/**
+	 * Render the selectable list of saved videos / shortcodes.
+	 *
+	 * @param {string} type 'videos' | 'shortcodes'.
+	 */
+	function renderEmbedList( type ) {
+		var list = embedList( type );
+		$modal.find( '.rip-grid' ).empty();
+		$modal.find( '.rip-pagination' ).remove();
+
+		if ( ! list.length ) {
+			setStatus( ( 'videos' === type ? 'No videos' : 'No shortcodes' ) + ' saved yet. Add them under Settings → Related Image Pickup.' );
+			updateEmbedCount();
+			return;
+		}
+		setStatus( '' );
+
+		var $grid = $modal.find( '.rip-grid' );
+		list.forEach( function ( item, idx ) {
+			var sel = state.embedSel[ idx ] ? ' is-selected' : '';
+			var media;
+			var sub;
+			if ( 'videos' === type ) {
+				media = item.thumb ?
+					'<span class="rip-embed-thumb" style="background-image:url(' + esc( item.thumb ) + ')"><span class="rip-embed-play">▶</span></span>' :
+					'<span class="rip-embed-thumb rip-embed-noimg">' + icon( 'video' ) + '</span>';
+				sub = esc( item.url );
+			} else {
+				media = '<span class="rip-embed-thumb rip-embed-noimg">' + icon( 'code' ) + '</span>';
+				sub = esc( item.code );
+			}
+			var title = esc( ( 'videos' === type ? item.title : item.label ) || ( 'videos' === type ? item.url : item.code ) );
+			$grid.append(
+				'<div class="rip-embed-row' + sel + '" data-idx="' + idx + '" tabindex="0">' +
+				'<span class="rip-link-check">✓</span>' +
+				media +
+				'<span class="rip-embed-main"><span class="rip-embed-title">' + title + '</span><span class="rip-embed-sub">' + sub + '</span></span>' +
+				'</div>'
+			);
+		} );
+		updateEmbedCount();
+	}
+
+	/**
+	 * Toggle selection of an embed row.
+	 *
+	 * @param {jQuery} $row Row.
+	 */
+	function toggleEmbed( $row ) {
+		var idx = $row.data( 'idx' );
+		if ( state.embedSel[ idx ] ) {
+			delete state.embedSel[ idx ];
+			$row.removeClass( 'is-selected' );
+		} else {
+			state.embedSel[ idx ] = true;
+			$row.addClass( 'is-selected' );
+		}
+		updateEmbedCount();
+	}
+
+	/**
+	 * Update the embed selection count + scatter button state.
+	 */
+	function updateEmbedCount() {
+		var n = Object.keys( state.embedSel ).length;
+		$modal.find( '.rip-selcount' ).text( n ? n + ' selected' : '' );
+		$modal.find( '.rip-scatter-embed' ).prop( 'disabled', 0 === n );
+	}
+
+	/**
+	 * Scatter the ticked videos / shortcodes across the article — each on its
+	 * own line, wrapped in empty paragraphs, at well-spaced spots.
+	 *
+	 * @param {string} type 'videos' | 'shortcodes'.
+	 */
+	function scatterEmbeds( type ) {
+		var editor = state.editor;
+		if ( ! editor || editor.isHidden() ) {
+			setStatus( 'Scatter needs the Visual editor — switch from Text to Visual and try again.' );
+			return;
+		}
+
+		var list = embedList( type );
+		var items = Object.keys( state.embedSel ).map( function ( i ) {
+			return list[ i ];
+		} ).filter( Boolean );
+		if ( ! items.length ) {
+			return;
+		}
+
+		var slots = articleSlots( 2 );
+		if ( ! slots.length ) {
+			setStatus( 'No well-spaced spots found — add more paragraphs/headings or clear nearby blocks.' );
+			return;
+		}
+
+		var chosen = pickSpaced( slots, items.length );
+		var pairs = [];
+		for ( var i = 0; i < items.length && i < chosen.length; i++ ) {
+			pairs.push( { item: items[ i ], slot: chosen[ i ] } );
+		}
+		if ( ! pairs.length ) {
+			setStatus( 'No spots available to scatter into.' );
+			return;
+		}
+
+		// Insert bottom-up so earlier DOM indices stay valid.
+		pairs.sort( function ( a, b ) {
+			return b.slot.index - a.slot.index;
+		} );
+		pairs.forEach( function ( p ) {
+			var content = 'videos' === type ? p.item.url : p.item.code;
+			insertEmbedAt( editor, p.slot, content );
+		} );
+
+		editor.nodeChanged();
+		if ( editor.undoManager ) {
+			editor.undoManager.add();
+		}
+		editor.save();
+		close();
+	}
+
+	/**
+	 * Insert a content line (URL or shortcode) at a slot, wrapped in empty
+	 * paragraphs above and below. Uses a text node so brackets/quotes/URLs stay
+	 * literal (important for YouTube auto-embed and shortcodes).
+	 *
+	 * @param {Object} editor  TinyMCE editor.
+	 * @param {Object} slot    Target slot.
+	 * @param {string} content URL or shortcode text.
+	 */
+	function insertEmbedAt( editor, slot, content ) {
+		var doc = editor.getDoc();
+		var ref = 'before' === slot.where ? slot.node : slot.node.nextSibling;
+		var parent = slot.node.parentNode;
+
+		function emptyP() {
+			var p = doc.createElement( 'p' );
+			p.innerHTML = '&nbsp;';
+			return p;
+		}
+
+		var p = doc.createElement( 'p' );
+		p.textContent = content;
+
+		parent.insertBefore( emptyP(), ref );
+		parent.insertBefore( p, ref );
+		parent.insertBefore( emptyP(), ref );
+	}
+
+	/**
 	 * Build the HTML for a single icon: bare <img>, floated to the chosen side,
 	 * sized in px, and NEVER captioned.
 	 *
@@ -2200,6 +2381,8 @@
 			if ( 'links' === mode ) {
 				buildLegend();
 				fetchLinks();
+			} else if ( 'videos' === mode || 'shortcodes' === mode ) {
+				renderEmbedList( mode );
 			} else {
 				state.tab = 'media';
 				$modal.find( '.rip-tab' ).removeClass( 'is-active' );

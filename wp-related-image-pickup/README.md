@@ -76,6 +76,9 @@ Auto-discovers your **sitemap** — works with **Yoast, Rank Math, or WordPress 
 - **Stock providers** (optional) — **Unsplash, Pexels, Pixabay**. Chosen stock images are **auto‑imported** into the Media Library on insert (with title/alt/caption), so they live on your site like any upload.
 - Both can be enabled together as separate tabs.
 
+### Videos & Shortcodes modes
+Save a list of **YouTube videos** and **shortcodes** (Elementor templates or any shortcode) under **Settings → Related Image Pickup → Videos & shortcodes**. Then in the editor, open **Videos** or **Shortcodes** mode, **tick one or more** items, and **Scatter selected** distributes them across the article — each placed **on its own line, wrapped in empty paragraphs** (which is exactly what YouTube auto-embed needs), at well-spaced spots. Pick as many as you like; the plugin spreads your choice.
+
 ### Scatter selected
 Mark several images in the grid, then **Scatter selected** distributes them across the article — each image dropped at the spot whose text best matches its **alt / title / filename** keywords, with any leftovers filling the next well‑spaced slots. Kept clear of existing images and never mid‑sentence. (Auto‑place finds its own images; Scatter selected uses exactly the ones you ticked.)
 
