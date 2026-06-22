@@ -3,7 +3,7 @@
  * Plugin Name:       WP Related Image Pickup
  * Plugin URI:        https://www.elite-airservices.com/
  * Description:        Select a sentence in the Classic (TinyMCE) editor and instantly find related images from your Media Library — and optional stock providers — with rich filtering by orientation, resolution, size, type, color and more. Insert straight into the post.
- * Version:           1.9.0
+ * Version:           1.10.0
  * Requires at least: 5.0
  * Requires PHP:      7.2
  * Author:            Amir Cohen
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'RIP_VERSION', '1.9.0' );
+define( 'RIP_VERSION', '1.10.0' );
 define( 'RIP_PLUGIN_FILE', __FILE__ );
 define( 'RIP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'RIP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -28,6 +28,7 @@ define( 'RIP_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 require_once RIP_PLUGIN_DIR . 'includes/class-rip-keywords.php';
 require_once RIP_PLUGIN_DIR . 'includes/class-rip-search.php';
 require_once RIP_PLUGIN_DIR . 'includes/class-rip-sitemap.php';
+require_once RIP_PLUGIN_DIR . 'includes/class-rip-youtube.php';
 require_once RIP_PLUGIN_DIR . 'includes/providers/interface-rip-provider.php';
 require_once RIP_PLUGIN_DIR . 'includes/providers/class-rip-provider-unsplash.php';
 require_once RIP_PLUGIN_DIR . 'includes/providers/class-rip-provider-pexels.php';

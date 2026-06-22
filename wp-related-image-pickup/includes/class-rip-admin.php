@@ -37,6 +37,22 @@ class RIP_Admin {
 			array(),
 			RIP_VERSION
 		);
+
+		wp_enqueue_script(
+			'rip-admin',
+			RIP_PLUGIN_URL . 'assets/js/admin.js',
+			array( 'jquery' ),
+			RIP_VERSION,
+			true
+		);
+		wp_localize_script(
+			'rip-admin',
+			'RIP_Admin',
+			array(
+				'restUrl' => esc_url_raw( rest_url( RIP_REST::NS ) ),
+				'nonce'   => wp_create_nonce( 'wp_rest' ),
+			)
+		);
 	}
 
 	/**
@@ -401,8 +417,17 @@ class RIP_Admin {
 					<tr>
 						<th scope="row"><label for="rip_videos"><?php esc_html_e( 'YouTube videos', 'wp-related-image-pickup' ); ?></label></th>
 						<td>
-							<textarea id="rip_videos" name="rip_videos" rows="5" class="large-text code" placeholder="How to rekey a lock | https://youtu.be/abc123XYZ&#10;https://www.youtube.com/watch?v=def456ABC"><?php echo esc_textarea( implode( "\n", $video_lines ) ); ?></textarea>
-							<p class="description"><?php esc_html_e( 'One per line, "Title | URL" (title optional). YouTube URLs auto-embed on the front end.', 'wp-related-image-pickup' ); ?></p>
+							<div class="rip-yt-import">
+								<input type="text" id="rip_yt_channel" class="regular-text" placeholder="<?php esc_attr_e( 'Channel ID (UC…), URL, or @handle', 'wp-related-image-pickup' ); ?>" value="<?php echo esc_attr( (string) get_option( 'rip_yt_channel', '' ) ); ?>" />
+								<input type="text" id="rip_yt_apikey" class="regular-text" placeholder="<?php esc_attr_e( 'Optional: YouTube Data API key (full catalog)', 'wp-related-image-pickup' ); ?>" autocomplete="off" />
+								<button type="button" class="button" id="rip_yt_import"><?php esc_html_e( 'Import from channel', 'wp-related-image-pickup' ); ?></button>
+								<span id="rip_yt_status" class="rip-yt-status"></span>
+							</div>
+							<p class="description">
+								<?php esc_html_e( 'Paste your channel and click Import — it fills the list below automatically (saved immediately). Without an API key it pulls your latest ~15 uploads; add a free YouTube Data API key to import the full back-catalogue.', 'wp-related-image-pickup' ); ?>
+							</p>
+							<textarea id="rip_videos" name="rip_videos" rows="6" class="large-text code" placeholder="How to rekey a lock | https://youtu.be/abc123XYZ&#10;https://www.youtube.com/watch?v=def456ABC"><?php echo esc_textarea( implode( "\n", $video_lines ) ); ?></textarea>
+							<p class="description"><?php esc_html_e( 'One per line, "Title | URL" (title optional). You can also edit/paste manually. YouTube URLs auto-embed on the front end.', 'wp-related-image-pickup' ); ?></p>
 						</td>
 					</tr>
 					<tr>

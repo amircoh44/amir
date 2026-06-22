@@ -4,7 +4,7 @@ Tags: images, media library, tinymce, classic editor, stock photos, unsplash, pe
 Requires at least: 5.0
 Tested up to: 6.5
 Requires PHP: 7.2
-Stable tag: 1.9.0
+Stable tag: 1.10.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,9 @@ Only if you enable stock providers. Searching your own Media Library needs no ke
 When you insert a stock image it is downloaded into your Media Library first, then inserted, so it is hosted on your own site.
 
 == Changelog ==
+
+= 1.10.0 =
+* Import videos from YouTube: paste your channel (ID, URL, or @handle) in Settings and click Import to fill the videos list automatically. Without an API key it pulls your latest ~15 uploads; add a free YouTube Data API key to import the full back-catalogue. Imports merge and de-duplicate with what you already have.
 
 = 1.9.0 =
 * Videos mode: save a list of YouTube videos in Settings, then select one or more in the editor and scatter them across the article — each on its own line between empty paragraphs (auto-embeds on the front end).

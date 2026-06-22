@@ -15,6 +15,7 @@ function rip_uninstall_cleanup() {
 	delete_option( 'rip_link_blocklist' );
 	delete_option( 'rip_videos' );
 	delete_option( 'rip_shortcodes' );
+	delete_option( 'rip_yt_channel' );
 	delete_transient( 'rip_sitemap_links' );
 }
 

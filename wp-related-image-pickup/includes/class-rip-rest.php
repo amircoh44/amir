@@ -127,6 +127,22 @@ class RIP_REST {
 
 		register_rest_route(
 			self::NS,
+			'/import-videos',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'route_import_videos' ),
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'args'                => array(
+					'channel' => array( 'required' => true, 'type' => 'string' ),
+					'apikey'  => array( 'type' => 'string', 'default' => '' ),
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NS,
 			'/block-link',
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
@@ -413,6 +429,77 @@ class RIP_REST {
 				'total'    => count( $links ),
 				'sitemaps' => RIP_Sitemap::discovered(),
 				'keywords' => array_values( $keywords ),
+			)
+		);
+	}
+
+	/**
+	 * POST /import-videos — pull a YouTube channel's videos and merge them into
+	 * the saved videos list (dedup by video ID).
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function route_import_videos( WP_REST_Request $request ) {
+		$result = RIP_YouTube::import(
+			(string) $request->get_param( 'channel' ),
+			(string) $request->get_param( 'apikey' )
+		);
+		if ( is_wp_error( $result ) ) {
+			return new WP_Error( $result->get_error_code(), $result->get_error_message(), array( 'status' => 400 ) );
+		}
+
+		if ( empty( $result['videos'] ) ) {
+			return new WP_Error(
+				'rip_no_videos',
+				'rss' === $result['source']
+					? __( 'No videos found in the channel feed. The channel may be empty or private.', 'wp-related-image-pickup' )
+					: __( 'No videos returned — check the API key and channel.', 'wp-related-image-pickup' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$existing = (array) get_option( 'rip_videos', array() );
+		$by_key   = array();
+		foreach ( $existing as $v ) {
+			if ( empty( $v['url'] ) ) {
+				continue;
+			}
+			$key            = RIP_Admin::youtube_id( $v['url'] );
+			$key            = $key ? $key : $v['url'];
+			$by_key[ $key ] = $v;
+		}
+
+		$added = 0;
+		foreach ( $result['videos'] as $v ) {
+			$key = RIP_Admin::youtube_id( $v['url'] );
+			$key = $key ? $key : $v['url'];
+			if ( ! isset( $by_key[ $key ] ) ) {
+				$by_key[ $key ] = array(
+					'title' => sanitize_text_field( $v['title'] ),
+					'url'   => esc_url_raw( $v['url'] ),
+				);
+				$added++;
+			}
+		}
+
+		$merged = array_values( $by_key );
+		update_option( 'rip_videos', $merged );
+		update_option( 'rip_yt_channel', sanitize_text_field( (string) $request->get_param( 'channel' ) ) );
+
+		$lines = array();
+		foreach ( $merged as $v ) {
+			$lines[] = ( ! empty( $v['title'] ) && $v['title'] !== $v['url'] ? $v['title'] . ' | ' : '' ) . $v['url'];
+		}
+
+		return rest_ensure_response(
+			array(
+				'added'      => $added,
+				'fetched'    => count( $result['videos'] ),
+				'total'      => count( $merged ),
+				'channel_id' => $result['channel_id'],
+				'source'     => $result['source'],
+				'lines'      => implode( "\n", $lines ),
 			)
 		);
 	}

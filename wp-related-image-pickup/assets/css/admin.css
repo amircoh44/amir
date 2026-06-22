@@ -97,6 +97,17 @@
 
 .rip-admin .button-primary:hover { filter: brightness( 1.08 ); }
 
+/* YouTube import row */
+.rip-yt-import {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.rip-yt-status { font-size: 13px; font-weight: 600; }
+
 /* ===== Responsive: stack rows, never horizontal-scroll ===== */
 @media ( max-width: 782px ) {
 	.rip-admin { max-width: 100%; }
