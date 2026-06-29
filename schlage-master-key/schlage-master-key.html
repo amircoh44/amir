@@ -24,16 +24,18 @@
 #smk-app, #smk-app * { box-sizing: border-box; }
 
 #smk-app {
-  --smk-bg: #0f1620;
-  --smk-panel: #182230;
-  --smk-panel-2: #1f2c3d;
-  --smk-line: #2c3b50;
-  --smk-text: #e7eef7;
-  --smk-muted: #9fb0c3;
-  --smk-accent: #ffb000;
-  --smk-accent-2: #2f6fed;
-  --smk-good: #3ec46d;
-  --smk-warn: #ff6b6b;
+  /* Dark forest-green theme · white & silver text · black/white accents */
+  --smk-bg: #0a1810;
+  --smk-panel: #0f2417;
+  --smk-panel-2: #15321f;
+  --smk-line: #28452f;
+  --smk-text: #f4f8f5;          /* near-white */
+  --smk-muted: #aebcb2;         /* silver */
+  --smk-accent: #ffffff;        /* white accent */
+  --smk-accent-2: #d8e2da;      /* silver accent */
+  --smk-ink: #07120b;           /* near-black for on-white elements */
+  --smk-good: #7fd6a3;
+  --smk-warn: #d9e2db;
   --smk-radius: 10px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: var(--smk-text);
@@ -58,8 +60,8 @@
 }
 #smk-app .smk-logo {
   width: 46px; height: 46px; flex: 0 0 46px; border-radius: 9px;
-  background: linear-gradient(135deg, var(--smk-accent), #ff7a00);
-  display: grid; place-items: center; color: #1a1207; font-weight: 800; font-size: 1.3rem;
+  background: #ffffff; border: 1px solid var(--smk-line);
+  display: grid; place-items: center; color: var(--smk-ink); font-weight: 800; font-size: 1.3rem;
 }
 #smk-app .smk-logo.smk-logo-img { background: #fff; padding: 4px; width: auto; min-width: 46px; max-width: 130px; height: 46px; }
 #smk-app .smk-logo.smk-logo-img img { height: 100%; width: auto; max-width: 122px; object-fit: contain; display: block; }
@@ -93,9 +95,9 @@
 }
 #smk-app .smk-btn:active { transform: translateY(1px); }
 #smk-app .smk-btn:hover { filter: brightness(1.08); }
-#smk-app .smk-btn-primary { background: var(--smk-accent); color: #1a1207; width: 100%; }
+#smk-app .smk-btn-primary { background: #ffffff; color: var(--smk-ink); width: 100%; }
 #smk-app .smk-btn-ghost { background: var(--smk-panel-2); color: var(--smk-text); border: 1px solid var(--smk-line); }
-#smk-app .smk-btn-pdf { background: var(--smk-accent-2); color: #fff; width: 100%; }
+#smk-app .smk-btn-pdf { background: var(--smk-ink); color: #ffffff; width: 100%; border: 1px solid var(--smk-line); }
 #smk-app .smk-btn[disabled] { opacity: .5; cursor: not-allowed; }
 
 #smk-app .smk-btnbar { display: flex; gap: 8px; margin-top: 6px; }
@@ -116,24 +118,24 @@
 #smk-app table.smk-table td.k { text-align: left; font-weight: 700; }
 #smk-app table.smk-table td.bit { font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 2px; }
 #smk-app table.smk-table tr.tmk td,
-#smk-app table.smk-table tr.ceo td { background: rgba(255,176,0,.12); font-weight: 600; }
+#smk-app table.smk-table tr.ceo td { background: rgba(255,255,255,.14); font-weight: 600; }
 #smk-app table.smk-table tr.gmk td,
-#smk-app table.smk-table tr.mgr td { background: rgba(47,111,237,.14); }
-#smk-app table.smk-table tr.ceo td.k { color: var(--smk-accent); }
-#smk-app table.smk-table tr.mgr td.k { color: #8fb4ff; }
-#smk-app .smk-pin-b { color: var(--smk-text); font-weight: 700; }
-#smk-app .smk-pin-m { color: var(--smk-accent); }
+#smk-app table.smk-table tr.mgr td { background: rgba(255,255,255,.06); }
+#smk-app table.smk-table tr.ceo td.k { color: #ffffff; }
+#smk-app table.smk-table tr.mgr td.k { color: var(--smk-accent-2); }
+#smk-app .smk-pin-b { color: #ffffff; font-weight: 700; }
+#smk-app .smk-pin-m { color: var(--smk-muted); font-weight: 700; }
 
 #smk-app .smk-scroll { overflow-x: auto; }
 #smk-app .smk-section { margin-top: 18px; }
 
 #smk-app .smk-alert { border-radius: 9px; padding: 11px 13px; font-size: .85rem; margin-bottom: 12px; border: 1px solid; }
-#smk-app .smk-alert-err { background: rgba(255,107,107,.10); border-color: var(--smk-warn); color: #ffd2d2; }
-#smk-app .smk-alert-ok  { background: rgba(62,196,109,.10); border-color: var(--smk-good); color: #c9f4d8; }
-#smk-app .smk-alert-warn{ background: rgba(255,176,0,.10); border-color: var(--smk-accent); color: #ffe7b3; }
+#smk-app .smk-alert-err { background: rgba(0,0,0,.28); border-color: #e08585; color: #f6dada; }
+#smk-app .smk-alert-ok  { background: rgba(127,214,163,.10); border-color: var(--smk-good); color: #d8f3e3; }
+#smk-app .smk-alert-warn{ background: rgba(255,255,255,.07); border-color: var(--smk-accent-2); color: #eef2ee; }
 
-#smk-app .smk-wizard { border-color: var(--smk-accent); box-shadow: 0 0 0 1px rgba(255,176,0,.15) inset; }
-#smk-app .smk-rec { margin-top: 12px; background: rgba(62,196,109,.08); border: 1px solid var(--smk-good); border-radius: 9px; padding: 12px 14px; }
+#smk-app .smk-wizard { border-color: #ffffff; box-shadow: 0 0 0 1px rgba(255,255,255,.10) inset; }
+#smk-app .smk-rec { margin-top: 12px; background: rgba(127,214,163,.08); border: 1px solid var(--smk-good); border-radius: 9px; padding: 12px 14px; }
 #smk-app .smk-rec-head { font-weight: 800; color: var(--smk-good); margin-bottom: 6px; font-size: .92rem; }
 #smk-app .smk-rec p { font-size: .82rem; margin: 5px 0; color: var(--smk-text); }
 #smk-app .smk-rec-foot { color: var(--smk-muted) !important; border-top: 1px solid var(--smk-line); padding-top: 7px; margin-top: 8px !important; }
@@ -144,6 +146,9 @@
 
 #smk-app .smk-empty { color: var(--smk-muted); text-align: center; padding: 40px 10px; }
 #smk-app .smk-foot { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--smk-line); font-size: .72rem; color: var(--smk-muted); }
+#smk-app .smk-dev { display: inline-block; margin-top: 4px; color: var(--smk-muted); }
+#smk-app .smk-dev a { color: var(--smk-accent-2); text-decoration: none; }
+#smk-app .smk-dev a:hover { color: #ffffff; }
 </style>
 </head>
 <body>
@@ -200,6 +205,9 @@
   // `logo` may be an image URL (loaded at runtime) or a data: URL (uploaded).
   var SHOP = { name: "Defense Locksmith", web: "defenselocksmith.com", phone: "(716) 803-2934", logo: "" };
   var uploadedLogo = null; // data URL set when the user uploads a logo file
+
+  // Developer credit — shown in the app footer and on every PDF page.
+  var DEV = { name: "Amir Cohen", web: "amircohenstudio.com" };
 
   // ---- Ready-made templates ------------------------------------------------
   // Each prefills a whole job. `levels` renames the three tiers so the sheets
@@ -846,7 +854,8 @@
 
     root.appendChild(el(
       '<div class="smk-foot"><span id="smk-foot-brand"><b>' + SHOP.name + '</b> &middot; ' + SHOP.web + ' &middot; ' + SHOP.phone + '</span>' +
-      '<br>For authorized locksmithing use. Brand specs are editable presets &mdash; always bench-verify the first cylinder before pinning a full system.</div>'
+      '<br>For authorized locksmithing use. Brand specs are editable presets &mdash; always bench-verify the first cylinder before pinning a full system.' +
+      '<br><span class="smk-dev">Developed by ' + DEV.name + ' &middot; <a href="https://' + DEV.web + '" target="_blank" rel="noopener">' + DEV.web + '</a></span></div>'
     ));
 
     applyBrand(root, DEFAULTS.brand);
@@ -1157,30 +1166,31 @@
     var dateStr = today.getFullYear() + "-" + pad(today.getMonth() + 1, 2) + "-" + pad(today.getDate(), 2);
 
     function header(title) {
-      doc.setFillColor(15, 22, 32); doc.rect(0, 0, pageW, 70, "F");
+      doc.setFillColor(10, 28, 18); doc.rect(0, 0, pageW, 70, "F"); // dark forest band
       var titleX;
       if (logo && logo.data) {
         var h = 36, w = h * (logo.w / logo.h); if (w > 130) { w = 130; h = w * (logo.h / logo.w); }
         try { doc.addImage(logo.data, "PNG", margin, (70 - h) / 2, w, h); } catch (e) {}
         titleX = margin + w + 14;
       } else {
-        doc.setFillColor(255, 176, 0); doc.rect(margin, 22, 26, 26, "F");
-        doc.setTextColor(26, 18, 7); doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text(initials(brand.name), margin + 4, 39);
+        doc.setFillColor(255, 255, 255); doc.rect(margin, 22, 26, 26, "F"); // white tile
+        doc.setTextColor(7, 18, 11); doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text(initials(brand.name), margin + 4, 39);
         titleX = margin + 40;
       }
       doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text(title, titleX, 32);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(159, 176, 195);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(178, 192, 182); // silver
       doc.text((cfg.name || "Master Key System") + "  ·  " + cfg.brandLabel + "  ·  keyway " + cfg.keyway + "  ·  " + dateStr, titleX, 50);
       doc.setTextColor(0, 0, 0);
     }
-    // Shop branding on every page (left) + page number (right). Stamped in a
-    // final pass so even auto-paginated table pages carry it.
+    // Shop branding + developer credit on every page (left), page number (right).
+    // Stamped in a final pass so even auto-paginated table pages carry it.
     function footerPage(pageNum, total) {
-      doc.setDrawColor(220); doc.setLineWidth(0.5); doc.line(margin, pageH - 34, pageW - margin, pageH - 34);
-      doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); doc.setTextColor(31, 44, 61);
-      doc.text([brand.name, brand.web, brand.phone].filter(Boolean).join("  ·  "), margin, pageH - 22);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(140, 140, 140);
-      doc.text("page " + pageNum + " of " + total, pageW - margin, pageH - 22, { align: "right" });
+      doc.setDrawColor(210, 222, 213); doc.setLineWidth(0.5); doc.line(margin, pageH - 38, pageW - margin, pageH - 38);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); doc.setTextColor(15, 42, 26);
+      doc.text([brand.name, brand.web, brand.phone].filter(Boolean).join("  ·  "), margin, pageH - 26);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(140, 150, 142);
+      doc.text("Developed by " + DEV.name + "  ·  " + DEV.web, margin, pageH - 16);
+      doc.setFontSize(8); doc.text("page " + pageNum + " of " + total, pageW - margin, pageH - 21, { align: "right" });
     }
     // Draw the header band on every page a long table spans.
     function tableChrome(title) { return function () { header(title); }; }
@@ -1211,9 +1221,9 @@
     doc.autoTable({
       startY: 92, head: [["Parameter", "Value"]], body: info, theme: "grid",
       margin: { top: 80, bottom: 46, left: margin, right: margin }, tableWidth: pageW - margin * 2, didDrawPage: tableChrome("System Summary"),
-      styles: { font: "helvetica", fontSize: 10, cellPadding: 6, overflow: "linebreak", lineColor: [220, 224, 230], lineWidth: 0.4 }, headStyles: { fillColor: [31, 44, 61], textColor: 255 },
+      styles: { font: "helvetica", fontSize: 10, cellPadding: 6, overflow: "linebreak", lineColor: [210, 222, 213], lineWidth: 0.4 }, headStyles: { fillColor: [15, 42, 26], textColor: 255 },
       columnStyles: { 0: { cellWidth: 180, textColor: [90, 90, 90] }, 1: { fontStyle: "bold" } },
-      alternateRowStyles: { fillColor: [245, 247, 250] }
+      alternateRowStyles: { fillColor: [238, 244, 239] }
     });
 
     // ---- How this system works (plain language) ----
@@ -1245,13 +1255,13 @@
     doc.autoTable({
       startY: 92, head: schedHead, body: schedBody, theme: "grid",
       margin: { top: 80, bottom: 46, left: margin, right: margin }, tableWidth: pageW - margin * 2, didDrawPage: tableChrome("Key Schedule"),
-      styles: { font: "helvetica", fontSize: 9.5, cellPadding: 5, overflow: "linebreak", lineColor: [220, 224, 230], lineWidth: 0.4 }, headStyles: { fillColor: [31, 44, 61], textColor: 255 },
+      styles: { font: "helvetica", fontSize: 9.5, cellPadding: 5, overflow: "linebreak", lineColor: [210, 222, 213], lineWidth: 0.4 }, headStyles: { fillColor: [15, 42, 26], textColor: 255 },
       columnStyles: { 0: { fontStyle: "bold", cellWidth: 70 }, 2: { font: "courier", cellWidth: 90 } },
       didParseCell: function (d) {
         if (d.section !== "body") return;
         var lvl = d.row.raw[1];
-        if (lvl === OL.top || lvl === "Top Master") d.cell.styles.fillColor = [255, 244, 220];
-        else if (lvl === OL.mid || lvl === "Grand Master") d.cell.styles.fillColor = [223, 233, 252];
+        if (lvl === OL.top || lvl === "Top Master") d.cell.styles.fillColor = [223, 238, 228];
+        else if (lvl === OL.mid || lvl === "Grand Master") d.cell.styles.fillColor = [236, 240, 237];
       }
     });
 
@@ -1273,9 +1283,9 @@
     doc.autoTable({
       startY: 92, head: [headRow], body: pinBody, theme: "grid",
       margin: { top: 80, bottom: 46, left: margin, right: margin }, tableWidth: pageW - margin * 2, didDrawPage: tableChrome("Master Pinning Chart"),
-      styles: { font: "helvetica", fontSize: cfg.chambers >= 7 ? 7.5 : 8.5, cellPadding: 3, halign: "center", overflow: "linebreak", lineColor: [220, 224, 230], lineWidth: 0.4 },
-      headStyles: { fillColor: [31, 44, 61], textColor: 255 },
-      columnStyles: { 0: { fontStyle: "bold", halign: "left" }, 1: { font: "courier", halign: "left" } }, alternateRowStyles: { fillColor: [245, 247, 250] }
+      styles: { font: "helvetica", fontSize: cfg.chambers >= 7 ? 7.5 : 8.5, cellPadding: 3, halign: "center", overflow: "linebreak", lineColor: [210, 222, 213], lineWidth: 0.4 },
+      headStyles: { fillColor: [15, 42, 26], textColor: 255 },
+      columnStyles: { 0: { fontStyle: "bold", halign: "left" }, 1: { font: "courier", halign: "left" } }, alternateRowStyles: { fillColor: [238, 244, 239] }
     });
     if (doc.lastAutoTable.finalY < pageH - 60) {
       doc.setFontSize(8.5); doc.setTextColor(90, 90, 90);
@@ -1313,7 +1323,7 @@
 
   function drawTicket(doc, x, y, w, t, cfg) {
     doc.setDrawColor(200); doc.setLineWidth(0.8); doc.roundedRect(x, y, w, 108, 5, 5, "S");
-    doc.setFillColor(31, 44, 61); doc.roundedRect(x, y, w, 22, 5, 5, "F"); doc.rect(x, y + 14, w, 8, "F");
+    doc.setFillColor(15, 42, 26); doc.roundedRect(x, y, w, 22, 5, 5, "F"); doc.rect(x, y + 14, w, 8, "F");
     doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text("Cylinder " + t.id, x + 8, y + 15);
     doc.setFont("courier", "bold"); doc.setFontSize(11); doc.text(t.key.join(""), x + w - 8, y + 15, { align: "right" });
 
@@ -1330,7 +1340,7 @@
       doc.setFont("courier", "bold"); doc.setFontSize(8.5);
       lines.forEach(function (ln, li) {
         var isM = ln[0] === "M";
-        doc.setTextColor(isM ? 200 : 20, isM ? 120 : 20, isM ? 0 : 20);
+        doc.setTextColor(isM ? 110 : 15, isM ? 118 : 15, isM ? 112 : 15); // master = gray, bottom = near-black
         doc.text(ln, cx + cw / 2, topY + 22 + li * 10, { align: "center" });
       });
     }

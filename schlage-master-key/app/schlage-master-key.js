@@ -50,6 +50,9 @@
   var SHOP = { name: "Defense Locksmith", web: "defenselocksmith.com", phone: "(716) 803-2934", logo: "" };
   var uploadedLogo = null; // data URL set when the user uploads a logo file
 
+  // Developer credit — shown in the app footer and on every PDF page.
+  var DEV = { name: "Amir Cohen", web: "amircohenstudio.com" };
+
   // ---- Ready-made templates ------------------------------------------------
   // Each prefills a whole job. `levels` renames the three tiers so the sheets
   // read in the customer's own language (e.g. Building Master / Floor / Apartment).
@@ -695,7 +698,8 @@
 
     root.appendChild(el(
       '<div class="smk-foot"><span id="smk-foot-brand"><b>' + SHOP.name + '</b> &middot; ' + SHOP.web + ' &middot; ' + SHOP.phone + '</span>' +
-      '<br>For authorized locksmithing use. Brand specs are editable presets &mdash; always bench-verify the first cylinder before pinning a full system.</div>'
+      '<br>For authorized locksmithing use. Brand specs are editable presets &mdash; always bench-verify the first cylinder before pinning a full system.' +
+      '<br><span class="smk-dev">Developed by ' + DEV.name + ' &middot; <a href="https://' + DEV.web + '" target="_blank" rel="noopener">' + DEV.web + '</a></span></div>'
     ));
 
     applyBrand(root, DEFAULTS.brand);
@@ -1006,30 +1010,31 @@
     var dateStr = today.getFullYear() + "-" + pad(today.getMonth() + 1, 2) + "-" + pad(today.getDate(), 2);
 
     function header(title) {
-      doc.setFillColor(15, 22, 32); doc.rect(0, 0, pageW, 70, "F");
+      doc.setFillColor(10, 28, 18); doc.rect(0, 0, pageW, 70, "F"); // dark forest band
       var titleX;
       if (logo && logo.data) {
         var h = 36, w = h * (logo.w / logo.h); if (w > 130) { w = 130; h = w * (logo.h / logo.w); }
         try { doc.addImage(logo.data, "PNG", margin, (70 - h) / 2, w, h); } catch (e) {}
         titleX = margin + w + 14;
       } else {
-        doc.setFillColor(255, 176, 0); doc.rect(margin, 22, 26, 26, "F");
-        doc.setTextColor(26, 18, 7); doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text(initials(brand.name), margin + 4, 39);
+        doc.setFillColor(255, 255, 255); doc.rect(margin, 22, 26, 26, "F"); // white tile
+        doc.setTextColor(7, 18, 11); doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text(initials(brand.name), margin + 4, 39);
         titleX = margin + 40;
       }
       doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.text(title, titleX, 32);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(159, 176, 195);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(178, 192, 182); // silver
       doc.text((cfg.name || "Master Key System") + "  ·  " + cfg.brandLabel + "  ·  keyway " + cfg.keyway + "  ·  " + dateStr, titleX, 50);
       doc.setTextColor(0, 0, 0);
     }
-    // Shop branding on every page (left) + page number (right). Stamped in a
-    // final pass so even auto-paginated table pages carry it.
+    // Shop branding + developer credit on every page (left), page number (right).
+    // Stamped in a final pass so even auto-paginated table pages carry it.
     function footerPage(pageNum, total) {
-      doc.setDrawColor(220); doc.setLineWidth(0.5); doc.line(margin, pageH - 34, pageW - margin, pageH - 34);
-      doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); doc.setTextColor(31, 44, 61);
-      doc.text([brand.name, brand.web, brand.phone].filter(Boolean).join("  ·  "), margin, pageH - 22);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(140, 140, 140);
-      doc.text("page " + pageNum + " of " + total, pageW - margin, pageH - 22, { align: "right" });
+      doc.setDrawColor(210, 222, 213); doc.setLineWidth(0.5); doc.line(margin, pageH - 38, pageW - margin, pageH - 38);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); doc.setTextColor(15, 42, 26);
+      doc.text([brand.name, brand.web, brand.phone].filter(Boolean).join("  ·  "), margin, pageH - 26);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(140, 150, 142);
+      doc.text("Developed by " + DEV.name + "  ·  " + DEV.web, margin, pageH - 16);
+      doc.setFontSize(8); doc.text("page " + pageNum + " of " + total, pageW - margin, pageH - 21, { align: "right" });
     }
     // Draw the header band on every page a long table spans.
     function tableChrome(title) { return function () { header(title); }; }
@@ -1060,9 +1065,9 @@
     doc.autoTable({
       startY: 92, head: [["Parameter", "Value"]], body: info, theme: "grid",
       margin: { top: 80, bottom: 46, left: margin, right: margin }, tableWidth: pageW - margin * 2, didDrawPage: tableChrome("System Summary"),
-      styles: { font: "helvetica", fontSize: 10, cellPadding: 6, overflow: "linebreak", lineColor: [220, 224, 230], lineWidth: 0.4 }, headStyles: { fillColor: [31, 44, 61], textColor: 255 },
+      styles: { font: "helvetica", fontSize: 10, cellPadding: 6, overflow: "linebreak", lineColor: [210, 222, 213], lineWidth: 0.4 }, headStyles: { fillColor: [15, 42, 26], textColor: 255 },
       columnStyles: { 0: { cellWidth: 180, textColor: [90, 90, 90] }, 1: { fontStyle: "bold" } },
-      alternateRowStyles: { fillColor: [245, 247, 250] }
+      alternateRowStyles: { fillColor: [238, 244, 239] }
     });
 
     // ---- How this system works (plain language) ----
@@ -1094,13 +1099,13 @@
     doc.autoTable({
       startY: 92, head: schedHead, body: schedBody, theme: "grid",
       margin: { top: 80, bottom: 46, left: margin, right: margin }, tableWidth: pageW - margin * 2, didDrawPage: tableChrome("Key Schedule"),
-      styles: { font: "helvetica", fontSize: 9.5, cellPadding: 5, overflow: "linebreak", lineColor: [220, 224, 230], lineWidth: 0.4 }, headStyles: { fillColor: [31, 44, 61], textColor: 255 },
+      styles: { font: "helvetica", fontSize: 9.5, cellPadding: 5, overflow: "linebreak", lineColor: [210, 222, 213], lineWidth: 0.4 }, headStyles: { fillColor: [15, 42, 26], textColor: 255 },
       columnStyles: { 0: { fontStyle: "bold", cellWidth: 70 }, 2: { font: "courier", cellWidth: 90 } },
       didParseCell: function (d) {
         if (d.section !== "body") return;
         var lvl = d.row.raw[1];
-        if (lvl === OL.top || lvl === "Top Master") d.cell.styles.fillColor = [255, 244, 220];
-        else if (lvl === OL.mid || lvl === "Grand Master") d.cell.styles.fillColor = [223, 233, 252];
+        if (lvl === OL.top || lvl === "Top Master") d.cell.styles.fillColor = [223, 238, 228];
+        else if (lvl === OL.mid || lvl === "Grand Master") d.cell.styles.fillColor = [236, 240, 237];
       }
     });
 
@@ -1122,9 +1127,9 @@
     doc.autoTable({
       startY: 92, head: [headRow], body: pinBody, theme: "grid",
       margin: { top: 80, bottom: 46, left: margin, right: margin }, tableWidth: pageW - margin * 2, didDrawPage: tableChrome("Master Pinning Chart"),
-      styles: { font: "helvetica", fontSize: cfg.chambers >= 7 ? 7.5 : 8.5, cellPadding: 3, halign: "center", overflow: "linebreak", lineColor: [220, 224, 230], lineWidth: 0.4 },
-      headStyles: { fillColor: [31, 44, 61], textColor: 255 },
-      columnStyles: { 0: { fontStyle: "bold", halign: "left" }, 1: { font: "courier", halign: "left" } }, alternateRowStyles: { fillColor: [245, 247, 250] }
+      styles: { font: "helvetica", fontSize: cfg.chambers >= 7 ? 7.5 : 8.5, cellPadding: 3, halign: "center", overflow: "linebreak", lineColor: [210, 222, 213], lineWidth: 0.4 },
+      headStyles: { fillColor: [15, 42, 26], textColor: 255 },
+      columnStyles: { 0: { fontStyle: "bold", halign: "left" }, 1: { font: "courier", halign: "left" } }, alternateRowStyles: { fillColor: [238, 244, 239] }
     });
     if (doc.lastAutoTable.finalY < pageH - 60) {
       doc.setFontSize(8.5); doc.setTextColor(90, 90, 90);
@@ -1162,7 +1167,7 @@
 
   function drawTicket(doc, x, y, w, t, cfg) {
     doc.setDrawColor(200); doc.setLineWidth(0.8); doc.roundedRect(x, y, w, 108, 5, 5, "S");
-    doc.setFillColor(31, 44, 61); doc.roundedRect(x, y, w, 22, 5, 5, "F"); doc.rect(x, y + 14, w, 8, "F");
+    doc.setFillColor(15, 42, 26); doc.roundedRect(x, y, w, 22, 5, 5, "F"); doc.rect(x, y + 14, w, 8, "F");
     doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text("Cylinder " + t.id, x + 8, y + 15);
     doc.setFont("courier", "bold"); doc.setFontSize(11); doc.text(t.key.join(""), x + w - 8, y + 15, { align: "right" });
 
@@ -1179,7 +1184,7 @@
       doc.setFont("courier", "bold"); doc.setFontSize(8.5);
       lines.forEach(function (ln, li) {
         var isM = ln[0] === "M";
-        doc.setTextColor(isM ? 200 : 20, isM ? 120 : 20, isM ? 0 : 20);
+        doc.setTextColor(isM ? 110 : 15, isM ? 118 : 15, isM ? 112 : 15); // master = gray, bottom = near-black
         doc.text(ln, cx + cw / 2, topY + 22 + li * 10, { align: "center" });
       });
     }
