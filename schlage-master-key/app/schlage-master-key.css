@@ -1,0 +1,111 @@
+/* Schlage Master Key System Designer — scoped styles
+ * All rules are namespaced under #smk-app so they never leak into a host
+ * WordPress / Elementor theme. */
+
+#smk-app, #smk-app * { box-sizing: border-box; }
+
+#smk-app {
+  --smk-bg: #0f1620;
+  --smk-panel: #182230;
+  --smk-panel-2: #1f2c3d;
+  --smk-line: #2c3b50;
+  --smk-text: #e7eef7;
+  --smk-muted: #9fb0c3;
+  --smk-accent: #ffb000;
+  --smk-accent-2: #2f6fed;
+  --smk-good: #3ec46d;
+  --smk-warn: #ff6b6b;
+  --smk-radius: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--smk-text);
+  background: var(--smk-bg);
+  line-height: 1.45;
+  padding: 18px;
+  border-radius: var(--smk-radius);
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+#smk-app h1, #smk-app h2, #smk-app h3 { margin: 0 0 .35em; font-weight: 700; letter-spacing: .2px; }
+#smk-app h1 { font-size: 1.5rem; }
+#smk-app h2 { font-size: 1.05rem; color: var(--smk-accent); text-transform: uppercase; letter-spacing: 1px; }
+#smk-app h3 { font-size: .95rem; color: var(--smk-muted); }
+#smk-app p { margin: .25em 0; }
+#smk-app a { color: var(--smk-accent-2); }
+
+#smk-app .smk-header {
+  display: flex; align-items: center; gap: 14px;
+  border-bottom: 1px solid var(--smk-line); padding-bottom: 14px; margin-bottom: 18px;
+}
+#smk-app .smk-logo {
+  width: 46px; height: 46px; flex: 0 0 46px; border-radius: 9px;
+  background: linear-gradient(135deg, var(--smk-accent), #ff7a00);
+  display: grid; place-items: center; color: #1a1207; font-weight: 800; font-size: 1.3rem;
+}
+#smk-app .smk-sub { color: var(--smk-muted); font-size: .85rem; }
+
+#smk-app .smk-grid { display: grid; grid-template-columns: 360px 1fr; gap: 18px; align-items: start; }
+@media (max-width: 820px) { #smk-app .smk-grid { grid-template-columns: 1fr; } }
+
+#smk-app .smk-panel { background: var(--smk-panel); border: 1px solid var(--smk-line); border-radius: var(--smk-radius); padding: 16px; }
+#smk-app .smk-panel + .smk-panel { margin-top: 14px; }
+
+#smk-app .smk-field { margin-bottom: 12px; }
+#smk-app .smk-field label { display: block; font-size: .8rem; color: var(--smk-muted); margin-bottom: 4px; }
+#smk-app .smk-row { display: flex; gap: 10px; }
+#smk-app .smk-row > .smk-field { flex: 1; }
+
+#smk-app input[type=text], #smk-app input[type=number], #smk-app select {
+  width: 100%; background: var(--smk-panel-2); border: 1px solid var(--smk-line);
+  color: var(--smk-text); border-radius: 8px; padding: 9px 10px; font-size: .92rem; font-family: inherit;
+}
+#smk-app input:focus, #smk-app select:focus { outline: none; border-color: var(--smk-accent-2); }
+#smk-app input[type=text].smk-bitting { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; letter-spacing: 3px; font-size: 1.05rem; }
+
+#smk-app .smk-check { display: flex; align-items: center; gap: 8px; }
+#smk-app .smk-check input { width: auto; }
+
+#smk-app .smk-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border: none; border-radius: 8px; padding: 11px 14px; font-size: .92rem; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: filter .15s ease, transform .05s ease;
+}
+#smk-app .smk-btn:active { transform: translateY(1px); }
+#smk-app .smk-btn:hover { filter: brightness(1.08); }
+#smk-app .smk-btn-primary { background: var(--smk-accent); color: #1a1207; width: 100%; }
+#smk-app .smk-btn-ghost { background: var(--smk-panel-2); color: var(--smk-text); border: 1px solid var(--smk-line); }
+#smk-app .smk-btn-pdf { background: var(--smk-accent-2); color: #fff; width: 100%; }
+#smk-app .smk-btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+#smk-app .smk-btnbar { display: flex; gap: 8px; margin-top: 6px; }
+
+#smk-app .smk-note { font-size: .75rem; color: var(--smk-muted); margin-top: 4px; }
+
+#smk-app .smk-stat-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+#smk-app .smk-stat {
+  background: var(--smk-panel-2); border: 1px solid var(--smk-line); border-radius: 9px;
+  padding: 10px 14px; min-width: 110px; flex: 1;
+}
+#smk-app .smk-stat .v { font-size: 1.4rem; font-weight: 800; color: var(--smk-accent); }
+#smk-app .smk-stat .l { font-size: .72rem; color: var(--smk-muted); text-transform: uppercase; letter-spacing: .5px; }
+
+#smk-app table.smk-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+#smk-app table.smk-table th, #smk-app table.smk-table td { border: 1px solid var(--smk-line); padding: 6px 8px; text-align: center; }
+#smk-app table.smk-table th { background: var(--smk-panel-2); color: var(--smk-muted); font-weight: 600; text-transform: uppercase; font-size: .7rem; letter-spacing: .5px; }
+#smk-app table.smk-table td.k { text-align: left; font-weight: 700; }
+#smk-app table.smk-table td.bit { font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 2px; }
+#smk-app table.smk-table tr.tmk td { background: rgba(255,176,0,.10); }
+#smk-app table.smk-table tr.gmk td { background: rgba(47,111,237,.12); }
+#smk-app .smk-pin-b { color: var(--smk-text); font-weight: 700; }
+#smk-app .smk-pin-m { color: var(--smk-accent); }
+
+#smk-app .smk-scroll { overflow-x: auto; }
+#smk-app .smk-section { margin-top: 18px; }
+
+#smk-app .smk-alert { border-radius: 9px; padding: 11px 13px; font-size: .85rem; margin-bottom: 12px; border: 1px solid; }
+#smk-app .smk-alert-err { background: rgba(255,107,107,.10); border-color: var(--smk-warn); color: #ffd2d2; }
+#smk-app .smk-alert-ok  { background: rgba(62,196,109,.10); border-color: var(--smk-good); color: #c9f4d8; }
+#smk-app .smk-alert-warn{ background: rgba(255,176,0,.10); border-color: var(--smk-accent); color: #ffe7b3; }
+
+#smk-app .smk-empty { color: var(--smk-muted); text-align: center; padding: 40px 10px; }
+#smk-app .smk-foot { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--smk-line); font-size: .72rem; color: var(--smk-muted); }
