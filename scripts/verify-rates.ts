@@ -1,13 +1,13 @@
-import { COUNTRY_BY_ISO } from '../src/shipping/data/countries'
-import { DHL_RATES } from '../src/shipping/data/dhl'
-import { FEDEX_RATES } from '../src/shipping/data/fedex'
-import { UPS_SAVER_RATES } from '../src/shipping/data/ups'
-import { PMI_RATES } from '../src/shipping/data/usps'
-import { bestPerService, importCharges, isQuote, quoteOne } from '../src/shipping/engine'
-import { pack } from '../src/shipping/packaging'
-import { CONTAINER_BY_ID } from '../src/shipping/packaging'
-import { SERVICE_BY_ID } from '../src/shipping/services'
-import type { QuoteInput } from '../src/shipping/types'
+import { COUNTRY_BY_ISO } from '@amir/shipping-core'
+import { DHL_RATES } from '@amir/shipping-core/data/dhl'
+import { FEDEX_RATES } from '@amir/shipping-core/data/fedex'
+import { UPS_SAVER_RATES } from '@amir/shipping-core/data/ups'
+import { PMI_RATES } from '@amir/shipping-core/data/usps'
+import { bestPerService, importCharges, isQuote, quoteOne } from '@amir/shipping-core'
+import { pack } from '@amir/shipping-core'
+import { CONTAINER_BY_ID } from '@amir/shipping-core'
+import { SERVICE_BY_ID } from '@amir/shipping-core'
+import type { QuoteInput } from '@amir/shipping-core'
 
 let failures = 0
 function check(label: string, actual: unknown, expected: unknown) {

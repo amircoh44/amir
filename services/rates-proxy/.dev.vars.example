@@ -1,0 +1,4 @@
+# Copy to .dev.vars for `wrangler dev`. Never commit the real file.
+# Use your EasyPost TEST key here — it returns rates without charging.
+EASYPOST_API_KEY=EZTK_your_test_key_here
+CLIENT_TOKEN=

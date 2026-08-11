@@ -1,7 +1,5 @@
 import { Fragment, useState } from 'react'
-import { usd } from '../../shipping/format'
-import { CARRIERS } from '../../shipping/services'
-import type { CostLine, QuoteResult } from '../../shipping/types'
+import { CARRIERS, usd, type CostLine, type QuoteResult } from '@amir/shipping-core'
 
 
 function Lines({ lines }: { lines: CostLine[] }) {

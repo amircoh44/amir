@@ -25,3 +25,10 @@ dist-ssr
 
 # rate-table source PDFs (see scripts/extract/README.md)
 pdf/
+
+# wrangler local secrets
+.dev.vars
+.wrangler/
+
+# local env
+.env.local

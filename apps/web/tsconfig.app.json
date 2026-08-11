@@ -22,7 +22,20 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    /* Workspace packages are consumed as TypeScript source, so both the
+       compiler and the bundler resolve them straight to their entry files. */
+    "baseUrl": ".",
+    "paths": {
+      "@amir/shipping-core": ["../../packages/shipping-core/src/index.ts"],
+      "@amir/shipping-core/*": ["../../packages/shipping-core/src/*"],
+      "@amir/shipping-client": ["../../packages/shipping-client/src/index.ts"]
+    }
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "../../packages/shipping-core/src",
+    "../../packages/shipping-client/src"
+  ]
 }

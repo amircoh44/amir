@@ -1,22 +1,19 @@
 import { useMemo, useState } from 'react'
 import { ControlPanel } from './components/shipping/ControlPanel'
+import { LiveRates } from './components/shipping/LiveRates'
 import { PackagingMatrix } from './components/shipping/PackagingMatrix'
 import { QuoteTable } from './components/shipping/QuoteTable'
 import { WorldTable } from './components/shipping/WorldTable'
-import { COUNTRY_BY_ISO } from './shipping/data/countries'
-import { ORIGIN, bestPerService, importCharges, isQuote } from './shipping/engine'
-import { usd } from './shipping/format'
-import { CARRIERS } from './shipping/services'
-import { DEFAULT_SETTINGS, type Settings } from './shipping/settings'
-import type { QuoteInput } from './shipping/types'
-import './shipping/shipping.css'
+import { CARRIERS, COUNTRY_BY_ISO, DEFAULT_SETTINGS, ORIGIN, bestPerService, importCharges, isQuote, usd, type QuoteInput, type Settings } from '@amir/shipping-core'
+import './components/shipping/shipping.css'
 
-type Tab = 'quotes' | 'packaging' | 'world'
+type Tab = 'quotes' | 'packaging' | 'world' | 'live'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'quotes', label: 'Rate comparison' },
   { id: 'packaging', label: 'Packaging & bagging' },
   { id: 'world', label: 'Worldwide' },
+  { id: 'live', label: 'Live rates' },
 ]
 
 export default function ShippingApp() {
@@ -184,6 +181,8 @@ export default function ShippingApp() {
               </p>
             </>
           )}
+
+          {tab === 'live' && <LiveRates input={input} />}
 
           {tab === 'world' && (
             <WorldTable

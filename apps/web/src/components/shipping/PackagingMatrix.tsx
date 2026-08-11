@@ -1,9 +1,5 @@
 import { useMemo } from 'react'
-import { quoteOne } from '../../shipping/engine'
-import { candidateContainers } from '../../shipping/packaging'
-import { usd } from '../../shipping/format'
-import { CARRIERS, SERVICES } from '../../shipping/services'
-import type { Quote, QuoteInput } from '../../shipping/types'
+import { CARRIERS, SERVICES, candidateContainers, quoteOne, usd, type Quote, type QuoteInput } from '@amir/shipping-core'
 
 interface Row {
   containerId: string

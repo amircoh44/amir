@@ -3,31 +3,25 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "apps/web",
+    "packages/*",
+    "services/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "verify": "esbuild scripts/verify-rates.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-rates.cjs --log-level=error && node node_modules/.cache/verify-rates.cjs"
-  },
-  "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "uuid": "^13.0.0"
+    "dev": "npm run dev --workspace @amir/web",
+    "build": "npm run build --workspace @amir/web",
+    "lint": "npm run lint --workspace @amir/web",
+    "mobile": "npm --prefix apps/mobile run start",
+    "proxy:dev": "npm run dev --workspace @amir/rates-proxy",
+    "proxy:deploy": "npm run deploy --workspace @amir/rates-proxy",
+    "verify": "esbuild scripts/verify-rates.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-rates.cjs --log-level=error && node node_modules/.cache/verify-rates.cjs",
+    "typecheck": "tsc -b apps/web && npm run typecheck --workspace @amir/rates-proxy",
+    "mobile:install": "npm --prefix apps/mobile install",
+    "verify:proxy": "esbuild scripts/verify-proxy.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-proxy.cjs --log-level=error && node node_modules/.cache/verify-proxy.cjs",
+    "verify:all": "npm run verify && npm run verify:proxy"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/node": "^24.10.1",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
-    "@types/uuid": "^10.0.0",
-    "@vitejs/plugin-react": "^5.1.1",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "esbuild": "^0.25.0"
   }
 }

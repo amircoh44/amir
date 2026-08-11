@@ -1,9 +1,5 @@
 import { useMemo, useState } from 'react'
-import { COUNTRIES } from '../../shipping/data/countries'
-import { cheapestToEveryCountry } from '../../shipping/engine'
-import { usd } from '../../shipping/format'
-import { CARRIERS } from '../../shipping/services'
-import type { QuoteInput } from '../../shipping/types'
+import { CARRIERS, COUNTRIES, cheapestToEveryCountry, usd, type QuoteInput } from '@amir/shipping-core'
 
 type SortKey = 'name' | 'region' | 'cost' | 'landed' | 'days'
 

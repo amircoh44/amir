@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Denver Ship",
+    "slug": "denver-ship",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": { "backgroundColor": "#0b0d12" },
+    "ios": { "supportsTablet": true },
+    "android": { "adaptiveIcon": { "backgroundColor": "#0b0d12" } },
+    "extra": {
+      "ratesProxyUrl": "http://localhost:8787"
+    }
+  }
+}

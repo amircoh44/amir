@@ -1,0 +1,20 @@
+name = "amir-rates-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-01-15"
+
+# Origins allowed to call this from a browser. React Native sends no Origin
+# header, so it is unaffected by this list.
+[vars]
+ALLOWED_ORIGINS = "http://localhost:5173"
+ORIGIN_ADDRESS = '{"name":"Warehouse","street1":"1600 Champa St","city":"Denver","state":"CO","zip":"80202","country":"US"}'
+
+# Caching for quotes and per-IP rate-limit counters. Create with:
+#   wrangler kv namespace create RATES_KV
+# then paste the id below and uncomment.
+# [[kv_namespaces]]
+# binding = "RATES_KV"
+# id = "..."
+
+# Secrets are NOT set here. Run:
+#   wrangler secret put EASYPOST_API_KEY
+#   wrangler secret put CLIENT_TOKEN      # optional shared token

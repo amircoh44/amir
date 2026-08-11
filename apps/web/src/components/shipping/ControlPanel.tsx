@@ -1,6 +1,4 @@
-import { COUNTRIES } from '../../shipping/data/countries'
-import { DEFAULT_SETTINGS, type Settings } from '../../shipping/settings'
-import type { CarrierId, Country, Item, PackOptions } from '../../shipping/types'
+import { COUNTRIES, DEFAULT_SETTINGS, type CarrierId, type Country, type Item, type PackOptions, type Settings } from '@amir/shipping-core'
 
 const byRegion = COUNTRIES.reduce<Record<string, Country[]>>((acc, c) => {
   ;(acc[c.region] ??= []).push(c)
