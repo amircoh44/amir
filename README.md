@@ -93,6 +93,15 @@ Switching aggregators is a change inside `services/rates-proxy` only. It
 normalises responses into the `LiveRate` shape declared in `shipping-core`, so
 no client code knows EasyPost exists.
 
+## Documentation
+
+- [`docs/THIRD-PARTY-API-COSTS.md`](docs/THIRD-PARTY-API-COSTS.md) — what the
+  external APIs cost for this app's usage pattern, worked scenarios, two
+  implementation defects that inflate the bill, and a confidence rating on every
+  figure quoted.
+- [`scripts/extract/README.md`](scripts/extract/README.md) — how the carrier
+  rate tables are regenerated from the published tariff PDFs.
+
 ## Audio-reactive image visualizer
 
 Upload images and an audio track; the images pulse, rotate and shift with the
