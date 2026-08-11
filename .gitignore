@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# rate-table source PDFs (see scripts/extract/README.md)
+pdf/
